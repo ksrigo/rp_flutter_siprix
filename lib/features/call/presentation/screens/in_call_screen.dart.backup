@@ -1,0 +1,346 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../core/services/sip_service.dart';
+import '../../../../core/services/navigation_service.dart';
+
+class InCallScreen extends ConsumerStatefulWidget {
+  final String callId;
+  final String? contactName;
+  final String? phoneNumber;
+
+  const InCallScreen({
+    super.key,
+    required this.callId,
+    this.contactName,
+    this.phoneNumber,
+  });
+
+  @override
+  ConsumerState<InCallScreen> createState() => _InCallScreenState();
+}
+
+class _InCallScreenState extends ConsumerState<InCallScreen> {
+  bool _isMuted = false;
+  bool _isOnHold = false;
+  bool _isSpeakerOn = false;
+  bool _showKeypad = false;
+  Timer? _callTimer;
+  int _callDuration = 0;
+  StreamSubscription<CallInfo?>? _callStateSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _startCallTimer();
+    _listenToCallStateChanges();
+  }
+
+  @override
+  void dispose() {
+    _callTimer?.cancel();
+    _callStateSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _startCallTimer() {
+    _callTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        _callDuration++;
+      });
+    });
+  }
+
+  String _formatCallDuration() {
+    final minutes = (_callDuration / 60).floor().toString().padLeft(2, '0');
+    final seconds = (_callDuration % 60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
+
+  void _listenToCallStateChanges() {
+    debugPrint('InCallScreen: Setting up call state listener for callId: ${widget.callId}');
+    _callStateSubscription = SipService.instance.currentCallStream.listen((callInfo) {
+      debugPrint('InCallScreen: Received call state update - callId: ${callInfo?.id}, state: ${callInfo?.state}, widgetCallId: ${widget.callId}');
+      
+      // Check if the call ended or failed and navigate back to keypad
+      if (callInfo?.state == AppCallState.ended || callInfo?.state == AppCallState.failed) {
+        debugPrint('InCallScreen: Call ${callInfo?.state.name}: Navigating back to keypad');
+        NavigationService.goToKeypad();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            children: [
+              // Quality indicator
+              _buildQualityIndicator(),
+              
+              const SizedBox(height: 32),
+              
+              // Contact name
+              _buildContactInfo(),
+              
+              const SizedBox(height: 8),
+              
+              // Call duration
+              _buildCallDuration(),
+              
+              const Spacer(),
+              
+              // Call controls
+              _buildCallControls(),
+              
+              const SizedBox(height: 48),
+              
+              // End call button
+              _buildEndCallButton(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQualityIndicator() {
+    return Row(
+      children: [
+        Icon(
+          Icons.signal_cellular_4_bar,
+          size: 16,
+          color: Colors.green,
+        ),
+        const SizedBox(width: 4),
+        Text(
+          'Excellent Quality',
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w400,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContactInfo() {
+    return Text(
+      widget.contactName ?? 'Ethan Carter',
+      style: const TextStyle(
+        fontSize: 32,
+        fontWeight: FontWeight.w700,
+        color: Colors.black87,
+      ),
+      textAlign: TextAlign.center,
+    );
+  }
+
+  Widget _buildCallDuration() {
+    return Text(
+      _formatCallDuration(),
+      style: TextStyle(
+        fontSize: 16,
+        color: Colors.grey[600],
+        fontWeight: FontWeight.w400,
+      ),
+    );
+  }
+
+  Widget _buildCallControls() {
+    return Column(
+      children: [
+          // First row of controls
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildControlButton(
+                icon: _isMuted ? Icons.mic_off : Icons.mic,
+                label: 'Mute',
+                isActive: _isMuted,
+                onPressed: _toggleMute,
+              ),
+              _buildControlButton(
+                icon: _isSpeakerOn ? Icons.volume_up : Icons.volume_down,
+                label: 'Speaker',
+                isActive: _isSpeakerOn,
+                onPressed: _toggleSpeaker,
+              ),
+              _buildControlButton(
+                icon: _isOnHold ? Icons.play_arrow : Icons.pause,
+                label: _isOnHold ? 'Resume' : 'Hold',
+                isActive: _isOnHold,
+                onPressed: _toggleHold,
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 24),
+          
+          // Second row of controls
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildControlButton(
+                icon: Icons.dialpad,
+                label: 'Keypad',
+                isActive: _showKeypad,
+                onPressed: _toggleKeypad,
+              ),
+              _buildControlButton(
+                icon: Icons.person_add,
+                label: 'Add Call',
+                onPressed: _addCall,
+              ),
+              _buildControlButton(
+                icon: Icons.call_merge,
+                label: 'Transfer',
+                onPressed: _transferCall,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+
+  Widget _buildControlButton({
+    required IconData icon,
+    required String label,
+    bool isActive = false,
+    required VoidCallback onPressed,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        GestureDetector(
+          onTap: onPressed,
+          child: Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              color: isActive 
+                  ? const Color(0xFF6B46C1)
+                  : const Color(0xFFE6E6FA),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              size: 28,
+              color: isActive ? Colors.white : const Color(0xFF6B46C1),
+            ),
+          ),
+        ),
+        
+        const SizedBox(height: 8),
+        
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.grey[600],
+            fontSize: 12,
+            fontWeight: FontWeight.w400,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEndCallButton() {
+    return Center(
+      child: Container(
+        width: 280,
+        height: 56,
+        decoration: BoxDecoration(
+          color: Color(0xFFE53E3E),
+          borderRadius: BorderRadius.circular(28),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(28),
+            onTap: _endCall,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.call_end,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                SizedBox(width: 8),
+                Text(
+                  'End Call',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _toggleMute() {
+    setState(() {
+      _isMuted = !_isMuted;
+    });
+    SipService.instance.muteCall(widget.callId, _isMuted);
+  }
+
+  void _toggleHold() {
+    setState(() {
+      _isOnHold = !_isOnHold;
+    });
+    if (_isOnHold) {
+      SipService.instance.holdCall(widget.callId);
+    } else {
+      SipService.instance.unholdCall(widget.callId);
+    }
+  }
+
+  void _toggleSpeaker() {
+    setState(() {
+      _isSpeakerOn = !_isSpeakerOn;
+    });
+    SipService.instance.setSpeaker(widget.callId, _isSpeakerOn);
+  }
+
+  void _toggleKeypad() {
+    setState(() {
+      _showKeypad = !_showKeypad;
+    });
+  }
+
+
+  void _addCall() {
+    // TODO: Implement add call functionality
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Add call feature coming soon')),
+    );
+  }
+
+  void _transferCall() {
+    // TODO: Implement call transfer functionality
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Call transfer feature coming soon')),
+    );
+  }
+
+  void _endCall() {
+    SipService.instance.hangupCall(widget.callId);
+    NavigationService.goToKeypad();
+  }
+}
+

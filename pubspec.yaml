@@ -1,0 +1,106 @@
+name: ringplus_pbx
+description: A production-ready multitenant PBX softphone built with Flutter + WebRTC
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # Core SIP VoIP SDK
+  siprix_voip_sdk: ^1.0.25
+
+  # Push notifications - temporarily commented out for build fix
+  # firebase_messaging: ^14.7.9
+  flutter_voip_kit: ^0.0.6
+
+  # Incoming call UI
+  flutter_callkit_incoming: ^2.0.0
+
+  # State management
+  provider: ^6.1.1
+  riverpod: ^2.4.9
+  flutter_riverpod: ^2.4.9
+
+  # Storage and persistence
+  shared_preferences: ^2.2.2
+  flutter_secure_storage: ^9.0.0
+  sqflite: ^2.3.0
+  path: ^1.8.3
+
+  # UI and navigation
+  go_router: ^12.1.3
+  flutter_svg: ^2.0.9
+  cached_network_image: ^3.3.0
+  shimmer: ^3.0.0
+
+  # Audio and media
+  just_audio: ^0.9.36
+  audio_session: ^0.1.16
+  permission_handler: ^11.1.0
+  vibration: ^1.8.4
+
+  # Networking and HTTP
+  dio: ^5.4.0
+  connectivity_plus: ^5.0.2
+
+  # Utilities
+  intl: ^0.20.2
+  uuid: ^4.2.1
+  url_launcher: ^6.2.2
+  package_info_plus: ^4.2.0
+  device_info_plus: ^9.1.1
+
+  # Contacts
+  contacts_service: ^0.6.3
+  flutter_contacts: ^1.1.7+1
+
+  # Icons and fonts
+  cupertino_icons: ^1.0.6
+  material_design_icons_flutter: ^7.0.7296
+
+  # Development and debugging
+  logger: ^2.0.2+1
+  
+  # JWT token handling
+  dart_jsonwebtoken: ^2.12.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+  build_runner: ^2.4.7
+  json_annotation: ^4.8.1
+  json_serializable: ^6.7.1
+
+flutter:
+  uses-material-design: true
+  generate: true
+
+  assets:
+    - assets/images/
+    - assets/icons/
+    - assets/sounds/
+
+# fonts:
+    # - family: Roboto
+    #   fonts:
+    #     - asset: assets/fonts/Roboto-Regular.ttf
+    #     - asset: assets/fonts/Roboto-Medium.ttf
+    #       weight: 500
+    #     - asset: assets/fonts/Roboto-Bold.ttf
+    #       weight: 700
+    # - family: SFProDisplay
+    #   fonts:
+    #     - asset: assets/fonts/SFProDisplay-Regular.ttf
+    #     - asset: assets/fonts/SFProDisplay-Medium.ttf
+    #       weight: 500
+    #     - asset: assets/fonts/SFProDisplay-Bold.ttf
+    #       weight: 700
+
