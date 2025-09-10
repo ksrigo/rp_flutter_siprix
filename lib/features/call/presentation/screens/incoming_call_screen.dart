@@ -100,7 +100,11 @@ class _IncomingCallScreenState extends ConsumerState<IncomingCallScreen>
         // Add small delay before navigation to prevent GlobalKey conflicts
         await Future.delayed(const Duration(milliseconds: 100));
         if (mounted) {
-          NavigationService.goToInCall(widget.callId);
+          NavigationService.goToInCall(
+            widget.callId,
+            phoneNumber: widget.callerNumber,
+            contactName: widget.callerName,
+          );
         }
       }
     } catch (e) {

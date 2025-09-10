@@ -829,3 +829,17 @@ When an incoming calls come in and then caller hungup it before being answered. 
 When I have an incoming call, I have callkit starting show the incoming call when i press on the button to accept the call, incoming_call_screen shows up. When I hangup that call with our app hangup. I have IOS callkit screen, still running in the background. Hangup doenst work from both UI.
 
 ---
+
+On the incoming call, when I try to hangup on Call Screen, the same screen reopens again with Caller number Unknown and Status: Connecting. Bye message is never sent to hangup the call.
+
+---
+
+Issue with Screen reopening is fixed but when hanging up the call Bye SIP message is not sent.
+
+---
+
+Outgoing call is not working. Invite is sent properly but on 407 Proxy Authentication Required, the new invite is not sent. Caller details is shown as Unknown on oncall screen.
+
+---
+
+When making an outgoing call, once the dial button is pressed oncall screen shows up and for few milliseconds Caller Number is Unknown (I guess till a replied is received), for an outgoing call we know the dialer number we should show, so we dont have Unknow for few milliseconds.

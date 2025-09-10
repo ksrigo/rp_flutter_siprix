@@ -669,6 +669,12 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         return;
       }
 
+      // Check if the call is already answered
+      if (_currentCall != null && _currentCall!.state == AppCallState.answered) {
+        debugPrint('Answer call: Call is already answered, ignoring');
+        return;
+      }
+
       // Parse callId to integer
       final intCallId = int.tryParse(callId);
       if (intCallId == null) {
@@ -859,29 +865,74 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         return;
       }
 
+      // Check if we have an active call in our internal state
+      if (_currentCall == null || _currentCall!.state == AppCallState.ended || _currentCall!.state == AppCallState.failed) {
+        debugPrint('Mute failed: No active call in our internal state');
+        throw Exception('No active call available for muting');
+      }
+
       // Get the active call from Siprix
       final activeCall = _callsModel!.switchedCall();
-      if (activeCall != null) {
+      final switchedCallId = _callsModel!.switchedCallId;
+      final callsCount = _callsModel!.length;
+      
+      debugPrint('Mute: Active call object: ${activeCall != null ? activeCall.myCallId : 'null'}, switched ID: $switchedCallId, total calls: $callsCount');
+      
+      bool muteSuccess = false;
+      
+      // First try: Use the switched/active call
+      if (activeCall != null && switchedCallId != 0) {
         debugPrint('Mute: Using call object for call ID: ${activeCall.myCallId}');
-        await activeCall.muteMic(mute);
-        debugPrint('Mute: Successfully ${mute ? 'muted' : 'unmuted'} microphone via call object');
-      } else {
-        // Fallback to direct SDK method
-        final switchedCallId = _callsModel!.switchedCallId;
-        if (switchedCallId != 0) {
-          debugPrint('Mute: Using direct SDK for call ID: $switchedCallId');
-          await _siprixSdk!.muteMic(switchedCallId, mute);
-          debugPrint('Mute: Successfully ${mute ? 'muted' : 'unmuted'} microphone via SDK');
-        } else {
-          debugPrint('Mute: No active call found');
+        try {
+          await activeCall.muteMic(mute);
+          debugPrint('Mute: Successfully ${mute ? 'muted' : 'unmuted'} microphone via call object');
+          muteSuccess = true;
+        } catch (callObjectError) {
+          debugPrint('Mute: Call object method failed: $callObjectError, trying direct SDK method');
         }
       }
       
-      // Update our internal call state
-      _updateCurrentCall(_currentCall?.copyWith(isMuted: mute));
+      // Second try: Direct SDK method if call object failed
+      if (!muteSuccess && switchedCallId != 0) {
+        debugPrint('Mute: Using direct SDK for call ID: $switchedCallId');
+        try {
+          await _siprixSdk!.muteMic(switchedCallId, mute);
+          debugPrint('Mute: Successfully ${mute ? 'muted' : 'unmuted'} microphone via SDK');
+          muteSuccess = true;
+        } catch (sdkError) {
+          debugPrint('Mute: Direct SDK method also failed: $sdkError');
+        }
+      }
+      
+      // Third try: Iterate through all available calls (last resort)
+      if (!muteSuccess && callsCount > 0) {
+        debugPrint('Mute: Trying any available call (last resort)');
+        for (int i = 0; i < callsCount; i++) {
+          try {
+            final call = _callsModel![i];
+            debugPrint('Mute: Attempting to mute call ${call.myCallId} at index $i');
+            await call.muteMic(mute);
+            debugPrint('Mute: Successfully ${mute ? 'muted' : 'unmuted'} call ${call.myCallId}');
+            muteSuccess = true;
+            break;
+          } catch (e) {
+            debugPrint('Mute: Failed to mute call at index $i: $e');
+          }
+        }
+      }
+      
+      if (muteSuccess) {
+        // Update our internal call state on success
+        _updateCurrentCall(_currentCall?.copyWith(isMuted: mute));
+      } else {
+        debugPrint('Mute: All mute attempts failed');
+        throw Exception('No active call found for muting (all methods failed)');
+      }
       
     } catch (e) {
       debugPrint('Mute call failed: $e');
+      // Re-throw to let UI handle the error
+      throw e;
     }
   }
 
@@ -1283,6 +1334,9 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
 
   // Mapping to track CallKit UUIDs to SIP call IDs
   final Map<String, String> _callKitToSipMapping = {};
+  
+  // Track accepted CallKit calls to prevent duplicate accepts
+  final Set<String> _acceptedCallKitIds = {};
 
   // Initialize CallKit event listeners
   void _initializeCallKitListeners() {
@@ -1316,7 +1370,16 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       final String? sipCallId = _callKitToSipMapping[callKitId];
       
       if (sipCallId != null) {
+        // Check if this call has already been accepted
+        if (_acceptedCallKitIds.contains(callKitId)) {
+          debugPrint('SIP Service: CallKit call $callKitId already accepted, ignoring duplicate accept event');
+          return;
+        }
+        
         debugPrint('SIP Service: CallKit accept for SIP call: $sipCallId');
+        
+        // Mark this call as accepted to prevent duplicate attempts
+        _acceptedCallKitIds.add(callKitId);
         
         // Answer the SIP call
         await answerCall(sipCallId);
@@ -1330,7 +1393,12 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         // Navigate to in-call screen (with debouncing)
         if (!_isNavigatingFromCallKit) {
           _isNavigatingFromCallKit = true;
-          NavigationService.goToInCall(sipCallId);
+          // For incoming calls, pass the caller information if available
+          NavigationService.goToInCall(
+            sipCallId,
+            phoneNumber: _currentCall?.remoteNumber,
+            contactName: _currentCall?.remoteName,
+          );
           // Reset flag after a delay to allow future navigation
           Future.delayed(const Duration(milliseconds: 500), () {
             _isNavigatingFromCallKit = false;
@@ -1358,6 +1426,7 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         
         // Remove the mapping first to prevent double cleanup in hangupCall
         _callKitToSipMapping.remove(callKitId);
+        _acceptedCallKitIds.remove(callKitId);
         
         // Decline the SIP call
         await hangupCall(sipCallId);
@@ -1391,6 +1460,7 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         debugPrint('SIP Service: CallKit timeout for SIP call: $sipCallId');
         // The call timed out, just clean up
         _callKitToSipMapping.remove(callKitId);
+        _acceptedCallKitIds.remove(callKitId);
         // Add small delay before navigation to prevent GlobalKey conflicts
         await Future.delayed(const Duration(milliseconds: 100));
         
@@ -1429,6 +1499,7 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       if (callKitId != null) {
         await FlutterCallkitIncoming.endCall(callKitId);
         _callKitToSipMapping.remove(callKitId);
+        _acceptedCallKitIds.remove(callKitId);
         debugPrint('SIP Service: Ended CallKit call for SIP callId: $sipCallId');
       }
     } catch (e) {

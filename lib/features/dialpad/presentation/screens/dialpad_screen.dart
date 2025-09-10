@@ -33,8 +33,8 @@ class _DialpadScreenState extends ConsumerState<DialpadScreen> {
     if (_dialedNumber.isNotEmpty) {
       final callId = await SipService.instance.makeCall(_dialedNumber);
       if (callId != null) {
-        // Navigate to call screen
-        NavigationService.goToInCall(callId);
+        // Navigate to call screen with the dialed number
+        NavigationService.goToInCall(callId, phoneNumber: _dialedNumber);
         // Clear the dialed number after initiating call
         setState(() {
           _dialedNumber = '';

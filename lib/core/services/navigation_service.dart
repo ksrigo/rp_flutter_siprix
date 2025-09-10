@@ -148,7 +148,13 @@ class NavigationService {
         name: 'in-call',
         builder: (context, state) {
           final callId = state.uri.queryParameters['callId'];
-          return InCallScreen(callId: callId ?? '');
+          final phoneNumber = state.uri.queryParameters['phoneNumber'];
+          final contactName = state.uri.queryParameters['contactName'];
+          return InCallScreen(
+            callId: callId ?? '',
+            phoneNumber: phoneNumber,
+            contactName: contactName,
+          );
         },
       ),
     ],
@@ -203,8 +209,15 @@ class NavigationService {
         '/incoming-call?callId=$callId&callerName=$callerName&callerNumber=$callerNumber');
   }
 
-  static void goToInCall(String callId) {
-    router.go('/in-call?callId=$callId');
+  static void goToInCall(String callId, {String? phoneNumber, String? contactName}) {
+    String url = '/in-call?callId=$callId';
+    if (phoneNumber != null && phoneNumber.isNotEmpty) {
+      url += '&phoneNumber=${Uri.encodeQueryComponent(phoneNumber)}';
+    }
+    if (contactName != null && contactName.isNotEmpty) {
+      url += '&contactName=${Uri.encodeQueryComponent(contactName)}';
+    }
+    router.go(url);
   }
 
   static void goBack() {

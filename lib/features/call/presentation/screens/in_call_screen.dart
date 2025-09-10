@@ -69,6 +69,8 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
         setState(() {
           _currentCallState = callInfo.state;
           _currentCallInfo = callInfo;
+          // Sync mute state from call info
+          _isMuted = callInfo.isMuted ?? false;
         });
         
         // Start timer when call is answered
@@ -351,7 +353,7 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
               icon: _isMuted ? Icons.mic_off : Icons.mic,
               label: 'Mute',
               isActive: _isMuted,
-              onPressed: _isCallAnswered ? _toggleMute : null,
+              onPressed: _isCallAnswered && _isCallActive() ? _toggleMute : null,
             ),
             _buildAudioControlButton(
               label: 'Audio',
@@ -548,11 +550,37 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
     );
   }
 
-  void _toggleMute() {
+  bool _canControlCall() {
+    // Allow mute control for connecting, ringing, and answered calls
+    return _currentCallState == AppCallState.connecting ||
+           _currentCallState == AppCallState.ringing ||
+           _currentCallState == AppCallState.answered;
+  }
+
+  bool _isCallActive() {
+    // Check if the call is still active (not ended or failed)
+    return _currentCallState != AppCallState.ended && 
+           _currentCallState != AppCallState.failed;
+  }
+
+  void _toggleMute() async {
+    final newMuteState = !_isMuted;
+    
+    // Optimistically update UI
     setState(() {
-      _isMuted = !_isMuted;
+      _isMuted = newMuteState;
     });
-    SipService.instance.muteCall(widget.callId, _isMuted);
+    
+    try {
+      await SipService.instance.muteCall(widget.callId, newMuteState);
+      debugPrint('InCallScreen: Mute toggled successfully to $newMuteState');
+    } catch (e) {
+      // Revert UI state if mute operation failed
+      debugPrint('InCallScreen: Mute operation failed, reverting UI state: $e');
+      setState(() {
+        _isMuted = !newMuteState;
+      });
+    }
   }
 
   void _toggleHold() {
