@@ -26,6 +26,7 @@ class _IncomingCallScreenState extends ConsumerState<IncomingCallScreen>
   late AnimationController _animationController;
   late Animation<double> _pulseAnimation;
   StreamSubscription<CallInfo?>? _callStateSubscription;
+  bool _isNavigatingAway = false;
 
   @override
   void initState() {
@@ -70,10 +71,15 @@ class _IncomingCallScreenState extends ConsumerState<IncomingCallScreen>
     });
   }
 
-  void _handleCallEnded() {
-    if (mounted) {
+  void _handleCallEnded() async {
+    if (mounted && !_isNavigatingAway) {
+      _isNavigatingAway = true;
       debugPrint('IncomingCallScreen: Navigating back to keypad due to call termination');
-      NavigationService.goToKeypad();
+      // Add small delay before navigation to prevent GlobalKey conflicts
+      await Future.delayed(const Duration(milliseconds: 150));
+      if (mounted) {
+        NavigationService.goToKeypad();
+      }
     }
   }
 
@@ -85,24 +91,40 @@ class _IncomingCallScreenState extends ConsumerState<IncomingCallScreen>
   }
 
   Future<void> _answerCall() async {
+    if (_isNavigatingAway) return;
+    
     try {
+      _isNavigatingAway = true;
       await SipService.instance.answerCall(widget.callId);
       if (mounted) {
-        NavigationService.goToInCall(widget.callId);
+        // Add small delay before navigation to prevent GlobalKey conflicts
+        await Future.delayed(const Duration(milliseconds: 100));
+        if (mounted) {
+          NavigationService.goToInCall(widget.callId);
+        }
       }
     } catch (e) {
       debugPrint('Error answering call: $e');
+      _isNavigatingAway = false; // Reset flag on error
     }
   }
 
   Future<void> _declineCall() async {
+    if (_isNavigatingAway) return;
+    
     try {
+      _isNavigatingAway = true;
       await SipService.instance.hangupCall(widget.callId);
       if (mounted) {
-        NavigationService.goToKeypad();
+        // Add small delay before navigation to prevent GlobalKey conflicts
+        await Future.delayed(const Duration(milliseconds: 100));
+        if (mounted) {
+          NavigationService.goToKeypad();
+        }
       }
     } catch (e) {
       debugPrint('Error declining call: $e');
+      _isNavigatingAway = false; // Reset flag on error
     }
   }
 

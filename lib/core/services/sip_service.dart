@@ -129,6 +129,9 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
   
   // Flag to prevent state updates after disposal
   bool _isDisposed = false;
+  
+  // Flag to prevent multiple navigation attempts
+  bool _isNavigatingFromCallKit = false;
 
   // Store credentials for re-registration
   Map<String, dynamic>? _lastCredentials;
@@ -1321,8 +1324,18 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         // Mark CallKit call as connected
         await FlutterCallkitIncoming.setCallConnected(callKitId);
         
-        // Navigate to in-call screen
-        NavigationService.goToInCall(sipCallId);
+        // Add small delay before navigation to prevent GlobalKey conflicts
+        await Future.delayed(const Duration(milliseconds: 100));
+        
+        // Navigate to in-call screen (with debouncing)
+        if (!_isNavigatingFromCallKit) {
+          _isNavigatingFromCallKit = true;
+          NavigationService.goToInCall(sipCallId);
+          // Reset flag after a delay to allow future navigation
+          Future.delayed(const Duration(milliseconds: 500), () {
+            _isNavigatingFromCallKit = false;
+          });
+        }
         
         // Keep the mapping for hangup - remove it only on call termination
         debugPrint('SIP Service: CallKit call accepted and connected');
@@ -1349,8 +1362,18 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         // Decline the SIP call
         await hangupCall(sipCallId);
         
-        // Navigate back to keypad
-        NavigationService.goToKeypad();
+        // Add small delay before navigation to prevent GlobalKey conflicts
+        await Future.delayed(const Duration(milliseconds: 100));
+        
+        // Navigate back to keypad (with debouncing)
+        if (!_isNavigatingFromCallKit) {
+          _isNavigatingFromCallKit = true;
+          NavigationService.goToKeypad();
+          // Reset flag after a delay to allow future navigation
+          Future.delayed(const Duration(milliseconds: 500), () {
+            _isNavigatingFromCallKit = false;
+          });
+        }
         
         debugPrint('SIP Service: CallKit call declined successfully');
       }
@@ -1359,7 +1382,7 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  void _handleCallKitTimeout(dynamic body) {
+  void _handleCallKitTimeout(dynamic body) async {
     try {
       final String callKitId = body['id'];
       final String? sipCallId = _callKitToSipMapping[callKitId];
@@ -1368,7 +1391,18 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         debugPrint('SIP Service: CallKit timeout for SIP call: $sipCallId');
         // The call timed out, just clean up
         _callKitToSipMapping.remove(callKitId);
-        NavigationService.goToKeypad();
+        // Add small delay before navigation to prevent GlobalKey conflicts
+        await Future.delayed(const Duration(milliseconds: 100));
+        
+        // Navigate back to keypad (with debouncing)
+        if (!_isNavigatingFromCallKit) {
+          _isNavigatingFromCallKit = true;
+          NavigationService.goToKeypad();
+          // Reset flag after a delay to allow future navigation
+          Future.delayed(const Duration(milliseconds: 500), () {
+            _isNavigatingFromCallKit = false;
+          });
+        }
       }
     } catch (e) {
       debugPrint('SIP Service: Error handling CallKit timeout: $e');

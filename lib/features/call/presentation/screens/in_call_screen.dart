@@ -31,6 +31,7 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
   AppCallState _currentCallState = AppCallState.connecting;
   bool _isCallAnswered = false;
   CallInfo? _currentCallInfo;
+  bool _isNavigatingAway = false;
 
   @override
   void initState() {
@@ -80,8 +81,21 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
         // Stop timer if call ends or fails
         if (callInfo.state == AppCallState.ended || callInfo.state == AppCallState.failed) {
           _callTimer?.cancel();
-          debugPrint('InCallScreen: Call ${callInfo.state.name}: Navigating back to keypad');
-          NavigationService.goToKeypad();
+          
+          // Prevent multiple navigation attempts
+          if (!_isNavigatingAway) {
+            _isNavigatingAway = true;
+            debugPrint('InCallScreen: Call ${callInfo.state.name}: Navigating back to keypad');
+            
+            // Add small delay before navigation to prevent GlobalKey conflicts
+            Future.delayed(const Duration(milliseconds: 150), () {
+              if (mounted) {
+                NavigationService.goToKeypad();
+              }
+            });
+          } else {
+            debugPrint('InCallScreen: Call ${callInfo.state.name}: Navigation already in progress, skipping');
+          }
         }
       }
     });
@@ -659,8 +673,16 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
   }
 
   void _endCall() {
-    SipService.instance.hangupCall(widget.callId);
-    NavigationService.goToKeypad();
+    if (!_isNavigatingAway) {
+      _isNavigatingAway = true;
+      SipService.instance.hangupCall(widget.callId);
+      // Add small delay before navigation to prevent GlobalKey conflicts
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) {
+          NavigationService.goToKeypad();
+        }
+      });
+    }
   }
 }
 
