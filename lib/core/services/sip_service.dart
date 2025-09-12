@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:siprix_voip_sdk/siprix_voip_sdk.dart';
@@ -123,13 +124,13 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
   SipRegistrationState _registrationState = SipRegistrationState.unregistered;
   CallInfo? _currentCall;
   Timer? _connectionCheckTimer;
-  
+
   // Flag to prevent actions during hangup process
   bool _isHangingUp = false;
-  
+
   // Flag to prevent state updates after disposal
   bool _isDisposed = false;
-  
+
   // Flag to prevent multiple navigation attempts
   bool _isNavigatingFromCallKit = false;
 
@@ -172,6 +173,17 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       initData.license = ""; // TODO: Add license key here or use trial mode
       initData.singleCallMode = false; // Allow multiple calls
       initData.shareUdpTransport = true; // Share UDP transport for all accounts
+      initData.enableVideoCall =
+          false; // Disable video - reduces WebRTC SDP attributes
+
+      // Enable CallKit for iOS (PushKit disabled until push notifications are implemented)
+      if (Platform.isIOS) {
+        initData.enableCallKit = true;
+        initData.enablePushKit =
+            false; // Disabled - no push notification infrastructure yet
+        initData.unregOnDestroy = false;
+        debugPrint('SIP Service: Enabled CallKit for iOS (PushKit disabled)');
+      }
 
       _siprixSdk = SiprixVoipSdk();
 
@@ -185,10 +197,9 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       _setupEventListeners();
 
       await _siprixSdk!.initialize(initData);
-      
-      // Load audio devices and set earpiece as default
+
+      // Load audio devices - CallKit will handle audio configuration
       _devicesModel?.load();
-      await _setDefaultEarpieceAudio();
 
       // Set up direct SDK call listener for call events
       _siprixSdk!.callListener = CallStateListener(
@@ -197,7 +208,11 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         proceeding: _onCallProceeding,
         connected: _onCallConnected,
         incoming: _onCallIncomingDirect,
+        // incomingPush: null - disabled until push notifications are implemented
       );
+
+      debugPrint('SIP Service: Call and push listeners configured');
+
       debugPrint('SIP Service: Siprix SDK initialized successfully');
 
       // Add app lifecycle observer (not available on web)
@@ -222,7 +237,7 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
 
       // Initialize CallKit listeners for iOS native ringtone and vibration
       _initializeCallKitListeners();
-      
+
       debugPrint('SIP Service: Initialization complete');
     } catch (e) {
       debugPrint('Error initializing SIP service: $e');
@@ -274,14 +289,16 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   void _onNetworkChanged() {
-    debugPrint('SIP Service: Network model changed - checking network state...');
+    debugPrint(
+        'SIP Service: Network model changed - checking network state...');
     if (_networkModel != null) {
       final isNetworkLost = _networkModel!.networkLost;
       debugPrint('SIP Service: Network lost: $isNetworkLost');
-      
+
       // If we have an active call and network issues, track the network state
       if (_currentCall != null && isNetworkLost) {
-        debugPrint('SIP Service: Network lost during active call - call may need recovery');
+        debugPrint(
+            'SIP Service: Network lost during active call - call may need recovery');
       }
     }
   }
@@ -326,13 +343,13 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
   void _onCallProceeding(int callId, String response) {
     debugPrint(
         'SIP Service: Call proceeding - callId: $callId, response: $response');
-    
+
     // Ignore proceeding events if we're in the middle of hanging up
     if (_isHangingUp) {
       debugPrint('SIP Service: Ignoring proceeding event - hangup in progress');
       return;
     }
-    
+
     if (_currentCall != null) {
       // Handle different SIP response codes to show appropriate states
       if (response.contains('100')) {
@@ -352,13 +369,13 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
   void _onCallConnected(int callId, String from, String to, bool withVideo) {
     debugPrint(
         'SIP Service: Call connected - callId: $callId, from: $from, to: $to, withVideo: $withVideo');
-    
+
     // Ignore connected events if we're in the middle of hanging up
     if (_isHangingUp) {
       debugPrint('SIP Service: Ignoring connected event - hangup in progress');
       return;
     }
-    
+
     // Call is now connected/answered - this is when we should start the timer
     if (_currentCall != null) {
       _updateCurrentCall(_currentCall?.copyWith(
@@ -369,23 +386,25 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  void _onCallIncomingDirect(int callId, int accId, bool withVideo, String from, String to) {
+  void _onCallIncomingDirect(
+      int callId, int accId, bool withVideo, String from, String to) {
     debugPrint(
         'SIP Service: Incoming call - callId: $callId, from: $from, to: $to, withVideo: $withVideo');
-    
+
     // Ignore incoming calls if we're in the middle of hanging up
     if (_isHangingUp) {
       debugPrint('SIP Service: Ignoring incoming call - hangup in progress');
       return;
     }
-    
+
     // Parse caller information from the 'from' field
     final callerInfo = _parseCallerInfo(from);
     final callerName = callerInfo['name'] ?? 'Unknown';
     final callerNumber = callerInfo['number'] ?? 'Unknown';
-    
-    debugPrint('SIP Service: Parsed caller - name: $callerName, number: $callerNumber');
-    
+
+    debugPrint(
+        'SIP Service: Parsed caller - name: $callerName, number: $callerNumber');
+
     // Create call info for incoming call
     final callInfo = CallInfo(
       id: callId.toString(),
@@ -395,23 +414,24 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       startTime: DateTime.now(),
       isIncoming: true,
     );
-    
+
     _updateCurrentCall(callInfo);
-    
+
     // Show CallKit incoming call with system ringtone and vibration
     // CallKit will handle the UI - no need to navigate to incoming_call_screen
     _showCallKitIncomingCall(callId.toString(), callerName, callerNumber);
-    
-    debugPrint('SIP Service: CallKit incoming call displayed - no app UI needed');
+
+    debugPrint(
+        'SIP Service: CallKit incoming call displayed - no app UI needed');
   }
 
   Map<String, String> _parseCallerInfo(String fromHeader) {
     // Parse SIP from header like: "Srigo" <sip:1001@408708399.ringplus.co.uk>
     // or just: sip:1001@408708399.ringplus.co.uk
-    
+
     String name = 'Unknown';
     String number = 'Unknown';
-    
+
     try {
       if (fromHeader.contains('<')) {
         // Format: "Name" <sip:number@domain>
@@ -419,7 +439,7 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         if (nameMatch != null) {
           name = nameMatch.group(1)?.trim() ?? 'Unknown';
         }
-        
+
         final sipMatch = RegExp(r'sip:([^@]+)@').firstMatch(fromHeader);
         if (sipMatch != null) {
           number = sipMatch.group(1)?.trim() ?? 'Unknown';
@@ -435,9 +455,12 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
     } catch (e) {
       debugPrint('SIP Service: Error parsing caller info: $e');
     }
-    
+
     return {'name': name, 'number': number};
   }
+
+  // TODO: Implement push notification handler when PushKit infrastructure is ready
+  // void _onIncomingPush(String callKitId, Map<String, dynamic> pushPayload) { ... }
 
   Future<void> _autoRegister(Map<String, dynamic> credentials) async {
     try {
@@ -495,12 +518,35 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       account.keepAliveTime = 30; // Keep alive packets every 30 seconds
       account.transport = SipTransport.udp; // Use UDP as configured on server
 
+      // Disable all WebRTC-specific features for traditional SIP compatibility
+      account.iceEnabled =
+          false; // Disable ICE - prevents WebRTC SDP attributes
+      account.rtcpMuxEnabled = false; // Disable RTCP-Mux - prevents a=rtcp-mux
+
+      // Ensure no STUN/TURN servers are set to prevent WebRTC behavior
+      account.stunServer = null;
+      account.turnServer = null;
+
+      // Configure audio codecs to match server capabilities
+      // Support PCMU (0), PCMA (8), and DTMF (101) as seen in server SDP
+      // account.aCodecs = [
+      //   SiprixVoipSdk.kAudioCodecPCMU, // G.711 μ-law
+      //   SiprixVoipSdk.kAudioCodecPCMA, // G.711 A-law
+      //   SiprixVoipSdk.kAudioCodecDTMF, // DTMF/telephone-event
+      // ];
+
+      // Additional media/RTP configurations for better timing
+      account.expireTime = 300; // Registration expiry time
+
       // Add custom authentication headers if needed
       if (account.xheaders == null) {
         account.xheaders = <String, String>{};
       }
       // Add any custom headers that might help with proxy authentication
       account.xheaders!['User-Agent'] = 'RingPlus-Siprix/1.0';
+
+      // TODO: Add PushKit token when push notifications are implemented
+      // Note: PushKit is currently disabled - enable when push infrastructure is ready
 
       // Generate unique instance ID for proper authentication
       account.instanceId = await _accountsModel!.genAccInstId();
@@ -626,15 +672,14 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       destination.inviteTimeout = 60; // Increase timeout to 60 seconds
       destination.displName = number; // Set display name for the call
 
+      // CallKit handles all audio session and device management automatically
+
       // Make the actual SIP call using Siprix
       debugPrint(
           'Make call: Sending INVITE to $number via account $_currentAccountId');
       await _callsModel!.invite(destination);
       debugPrint(
           'Make call: INVITE sent successfully via Siprix SDK to $number');
-      
-      // Ensure earpiece is selected for the call
-      await _setDefaultEarpieceAudio();
 
       // Generate a tracking ID for our call management
       final callId = DateTime.now().millisecondsSinceEpoch.toString();
@@ -663,14 +708,15 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> answerCall(String callId) async {
     try {
       debugPrint('Answer call: $callId');
-      
+
       if (_callsModel == null || _siprixSdk == null) {
         debugPrint('Answer call failed: Models not initialized');
         return;
       }
 
       // Check if the call is already answered
-      if (_currentCall != null && _currentCall!.state == AppCallState.answered) {
+      if (_currentCall != null &&
+          _currentCall!.state == AppCallState.answered) {
         debugPrint('Answer call: Call is already answered, ignoring');
         return;
       }
@@ -682,24 +728,24 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         return;
       }
 
+      // CallKit handles all audio session management automatically
+
       // Use Siprix SDK accept method (audio-only for now)
       debugPrint('Answer call: Accepting call with ID $intCallId');
       await _siprixSdk!.accept(intCallId, false); // false = audio only
       debugPrint('Answer call: Successfully accepted call via SDK');
-      
+
       // Update our internal call state
       _updateCurrentCall(_currentCall?.copyWith(state: AppCallState.answered));
-      
     } catch (e) {
       debugPrint('Answer call failed: $e');
     }
   }
 
-
   Future<void> hangupCall(String callId) async {
     try {
       debugPrint('Hangup call: $callId');
-      
+
       if (_callsModel == null || _siprixSdk == null) {
         debugPrint('Hangup failed: Models not initialized');
         // Still end CallKit call even if SIP models aren't available
@@ -709,7 +755,7 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         _isHangingUp = false; // Clear flag even if models aren't available
         return;
       }
-      
+
       // Set hangup flag AFTER checking models to prevent unnecessary flag setting
       _isHangingUp = true;
 
@@ -717,15 +763,17 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       final activeCall = _callsModel!.switchedCall();
       final switchedCallId = _callsModel!.switchedCallId;
       final callsCount = _callsModel!.length;
-      
-      debugPrint('Hangup: Active call: ${activeCall?.myCallId}, switched ID: $switchedCallId, total calls: $callsCount');
+
+      debugPrint(
+          'Hangup: Active call: ${activeCall?.myCallId}, switched ID: $switchedCallId, total calls: $callsCount');
 
       bool byeSent = false;
-      
+
       // First try: Use the switched/active call
       if (activeCall != null) {
         try {
-          debugPrint('Hangup: Terminating Siprix call ID: ${activeCall.myCallId}');
+          debugPrint(
+              'Hangup: Terminating Siprix call ID: ${activeCall.myCallId}');
           await activeCall.bye();
           debugPrint('Hangup: BYE request sent successfully via call object');
           byeSent = true;
@@ -733,7 +781,7 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
           debugPrint('Hangup: Call object BYE failed: $callError');
         }
       }
-      
+
       // Second try: Look for call matching our callId
       if (!byeSent && callsCount > 0) {
         final targetCallId = int.tryParse(callId);
@@ -742,7 +790,8 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
             try {
               final call = _callsModel![i];
               if (call.myCallId == targetCallId) {
-                debugPrint('Hangup: Found matching call ${call.myCallId}, sending BYE');
+                debugPrint(
+                    'Hangup: Found matching call ${call.myCallId}, sending BYE');
                 await call.bye();
                 debugPrint('Hangup: BYE sent successfully for matching call');
                 byeSent = true;
@@ -754,11 +803,12 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
           }
         }
       }
-      
+
       // Fallback: Try direct SDK method if call object failed
       if (!byeSent && switchedCallId != 0) {
         try {
-          debugPrint('Hangup: Attempting direct BYE via SDK for call ID: $switchedCallId');
+          debugPrint(
+              'Hangup: Attempting direct BYE via SDK for call ID: $switchedCallId');
           await _siprixSdk!.bye(switchedCallId);
           debugPrint('Hangup: Direct BYE request sent successfully');
           byeSent = true;
@@ -766,14 +816,16 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
           debugPrint('Hangup: Direct SDK BYE failed: $sdkError');
         }
       }
-      
+
       // Third try: Try any available call (last resort)
       if (!byeSent && callsCount > 0) {
-        debugPrint('Hangup: Trying to terminate any available call (last resort)');
+        debugPrint(
+            'Hangup: Trying to terminate any available call (last resort)');
         for (int i = 0; i < callsCount; i++) {
           try {
             final call = _callsModel![i];
-            debugPrint('Hangup: Attempting to terminate call ${call.myCallId} at index $i');
+            debugPrint(
+                'Hangup: Attempting to terminate call ${call.myCallId} at index $i');
             await call.bye();
             debugPrint('Hangup: Successfully terminated call ${call.myCallId}');
             byeSent = true;
@@ -789,9 +841,11 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         final targetCallId = int.tryParse(callId);
         if (targetCallId != null) {
           try {
-            debugPrint('Hangup: Trying direct SDK bye with callId: $targetCallId');
+            debugPrint(
+                'Hangup: Trying direct SDK bye with callId: $targetCallId');
             await _siprixSdk!.bye(targetCallId);
-            debugPrint('Hangup: Direct SDK BYE sent successfully with callId: $targetCallId');
+            debugPrint(
+                'Hangup: Direct SDK BYE sent successfully with callId: $targetCallId');
             byeSent = true;
           } catch (e) {
             debugPrint('Hangup: Direct SDK BYE with callId failed: $e');
@@ -800,14 +854,15 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       }
 
       if (!byeSent) {
-        debugPrint('Hangup: ERROR - No BYE request could be sent after all attempts!');
+        debugPrint(
+            'Hangup: ERROR - No BYE request could be sent after all attempts!');
       } else {
         debugPrint('Hangup: SUCCESS - BYE request sent successfully');
       }
 
       // Update our internal call state FIRST
       _updateCurrentCall(_currentCall?.copyWith(state: AppCallState.ended));
-      
+
       // End CallKit call AFTER SIP BYE is sent
       await _endCallKitCall(callId);
 
@@ -819,7 +874,6 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         // Clear hangup flag after cleanup
         _isHangingUp = false;
       });
-      
     } catch (e) {
       debugPrint('Hangup call failed: $e');
       // Even if Siprix call termination fails, update our state
@@ -859,14 +913,16 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> muteCall(String callId, bool mute) async {
     try {
       debugPrint('Mute call: $callId, mute: $mute');
-      
+
       if (_callsModel == null || _siprixSdk == null) {
         debugPrint('Mute failed: Models not initialized');
         return;
       }
 
       // Check if we have an active call in our internal state
-      if (_currentCall == null || _currentCall!.state == AppCallState.ended || _currentCall!.state == AppCallState.failed) {
+      if (_currentCall == null ||
+          _currentCall!.state == AppCallState.ended ||
+          _currentCall!.state == AppCallState.failed) {
         debugPrint('Mute failed: No active call in our internal state');
         throw Exception('No active call available for muting');
       }
@@ -875,44 +931,51 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       final activeCall = _callsModel!.switchedCall();
       final switchedCallId = _callsModel!.switchedCallId;
       final callsCount = _callsModel!.length;
-      
-      debugPrint('Mute: Active call object: ${activeCall != null ? activeCall.myCallId : 'null'}, switched ID: $switchedCallId, total calls: $callsCount');
-      
+
+      debugPrint(
+          'Mute: Active call object: ${activeCall != null ? activeCall.myCallId : 'null'}, switched ID: $switchedCallId, total calls: $callsCount');
+
       bool muteSuccess = false;
-      
+
       // First try: Use the switched/active call
       if (activeCall != null && switchedCallId != 0) {
-        debugPrint('Mute: Using call object for call ID: ${activeCall.myCallId}');
+        debugPrint(
+            'Mute: Using call object for call ID: ${activeCall.myCallId}');
         try {
           await activeCall.muteMic(mute);
-          debugPrint('Mute: Successfully ${mute ? 'muted' : 'unmuted'} microphone via call object');
+          debugPrint(
+              'Mute: Successfully ${mute ? 'muted' : 'unmuted'} microphone via call object');
           muteSuccess = true;
         } catch (callObjectError) {
-          debugPrint('Mute: Call object method failed: $callObjectError, trying direct SDK method');
+          debugPrint(
+              'Mute: Call object method failed: $callObjectError, trying direct SDK method');
         }
       }
-      
+
       // Second try: Direct SDK method if call object failed
       if (!muteSuccess && switchedCallId != 0) {
         debugPrint('Mute: Using direct SDK for call ID: $switchedCallId');
         try {
           await _siprixSdk!.muteMic(switchedCallId, mute);
-          debugPrint('Mute: Successfully ${mute ? 'muted' : 'unmuted'} microphone via SDK');
+          debugPrint(
+              'Mute: Successfully ${mute ? 'muted' : 'unmuted'} microphone via SDK');
           muteSuccess = true;
         } catch (sdkError) {
           debugPrint('Mute: Direct SDK method also failed: $sdkError');
         }
       }
-      
+
       // Third try: Iterate through all available calls (last resort)
       if (!muteSuccess && callsCount > 0) {
         debugPrint('Mute: Trying any available call (last resort)');
         for (int i = 0; i < callsCount; i++) {
           try {
             final call = _callsModel![i];
-            debugPrint('Mute: Attempting to mute call ${call.myCallId} at index $i');
+            debugPrint(
+                'Mute: Attempting to mute call ${call.myCallId} at index $i');
             await call.muteMic(mute);
-            debugPrint('Mute: Successfully ${mute ? 'muted' : 'unmuted'} call ${call.myCallId}');
+            debugPrint(
+                'Mute: Successfully ${mute ? 'muted' : 'unmuted'} call ${call.myCallId}');
             muteSuccess = true;
             break;
           } catch (e) {
@@ -920,7 +983,7 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
           }
         }
       }
-      
+
       if (muteSuccess) {
         // Update our internal call state on success
         _updateCurrentCall(_currentCall?.copyWith(isMuted: mute));
@@ -928,7 +991,6 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         debugPrint('Mute: All mute attempts failed');
         throw Exception('No active call found for muting (all methods failed)');
       }
-      
     } catch (e) {
       debugPrint('Mute call failed: $e');
       // Re-throw to let UI handle the error
@@ -951,13 +1013,14 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
     final devices = _devicesModel?.playout ?? [];
     final List<AudioDeviceInfo> categorized = [];
     bool hasBuiltinAdded = false;
-    
+
     for (int i = 0; i < devices.length; i++) {
       final device = devices[i];
       final category = _getAudioDeviceCategory(device);
-      
+
       // Merge earpiece and builtin into one "iPhone" entry
-      if (category == AudioDeviceCategory.earpiece || category == AudioDeviceCategory.builtin) {
+      if (category == AudioDeviceCategory.earpiece ||
+          category == AudioDeviceCategory.builtin) {
         if (!hasBuiltinAdded) {
           categorized.add(AudioDeviceInfo(
             device: device,
@@ -970,7 +1033,7 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         }
         continue;
       }
-      
+
       // Only show Speaker - Bluetooth and wired are disabled for now
       if (category == AudioDeviceCategory.speaker) {
         categorized.add(AudioDeviceInfo(
@@ -981,7 +1044,7 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
           icon: Icons.volume_up,
         ));
       }
-      
+
       // Bluetooth and wired devices are disabled
       // } else if (category == AudioDeviceCategory.bluetooth) {
       //   categorized.add(AudioDeviceInfo(...));
@@ -989,14 +1052,14 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       //   categorized.add(AudioDeviceInfo(...));
       // }
     }
-    
+
     return categorized;
   }
 
   AudioDeviceInfo? get currentAudioDevice {
     final deviceIndex = _devicesModel?.playoutIndex ?? -1;
     final categorized = categorizedAudioDevices;
-    
+
     if (deviceIndex == -1) {
       // Return earpiece as default when no device is set
       try {
@@ -1007,7 +1070,7 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         return categorized.isNotEmpty ? categorized.first : null;
       }
     }
-    
+
     try {
       return categorized.firstWhere(
         (device) => device.index == deviceIndex,
@@ -1026,30 +1089,23 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> setAudioOutputDevice(int deviceIndex) async {
     try {
-      debugPrint('Setting audio output device to index: $deviceIndex');
-      
-      if (_devicesModel == null) {
-        debugPrint('Devices model not initialized');
-        return;
-      }
-
-      await _devicesModel!.setPlayoutDevice(deviceIndex);
-      debugPrint('Audio output device set successfully to index: $deviceIndex');
-      
-      // Notify listeners of the change
-      notifyListeners();
-      
+      debugPrint(
+          'Audio device selection disabled - CallKit handles all audio management');
+      // CallKit manages all audio devices automatically
+      // Custom audio device selection conflicts with CallKit and causes interruptions
     } catch (e) {
-      debugPrint('Failed to set audio output device: $e');
+      debugPrint('Audio device selection disabled: $e');
     }
   }
 
   AudioDeviceCategory _getAudioDeviceCategory(MediaDevice device) {
     final name = device.name.toLowerCase();
-    
+
     if (name.contains('speaker') || name.contains('loud')) {
       return AudioDeviceCategory.speaker;
-    } else if (name.contains('bluetooth') || name.contains('airpods') || name.contains('headset')) {
+    } else if (name.contains('bluetooth') ||
+        name.contains('airpods') ||
+        name.contains('headset')) {
       return AudioDeviceCategory.bluetooth;
     } else if (name.contains('earpiece') || name.contains('receiver')) {
       return AudioDeviceCategory.earpiece;
@@ -1062,53 +1118,19 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  // Set earpiece as default audio device
-  Future<void> _setDefaultEarpieceAudio() async {
-    try {
-      final devices = _devicesModel?.playout ?? [];
-      if (devices.isEmpty) return;
-      
-      // Find earpiece or builtin device (first non-speaker device)
-      int earpieceIndex = -1;
-      for (int i = 0; i < devices.length; i++) {
-        final device = devices[i];
-        final category = _getAudioDeviceCategory(device);
-        
-        if (category == AudioDeviceCategory.earpiece || 
-            category == AudioDeviceCategory.builtin) {
-          earpieceIndex = i;
-          break;
-        }
-      }
-      
-      // If no earpiece found, use first non-speaker device or first device
-      if (earpieceIndex == -1) {
-        for (int i = 0; i < devices.length; i++) {
-          final device = devices[i];
-          final category = _getAudioDeviceCategory(device);
-          
-          if (category != AudioDeviceCategory.speaker) {
-            earpieceIndex = i;
-            break;
-          }
-        }
-      }
-      
-      // If still no earpiece found, use first device
-      if (earpieceIndex == -1 && devices.isNotEmpty) {
-        earpieceIndex = 0;
-      }
-      
-      // Set the earpiece as default
-      if (earpieceIndex != -1) {
-        debugPrint('Setting default audio output to earpiece at index: $earpieceIndex');
-        await _devicesModel!.setPlayoutDevice(earpieceIndex);
-        debugPrint('Default earpiece audio device set successfully');
-      }
-      
-    } catch (e) {
-      debugPrint('Failed to set default earpiece audio: $e');
-    }
+  // Note: CallKit handles audio session management automatically
+  // No custom audio session configuration needed
+
+  // Audio device management removed - CallKit handles everything
+  // Custom audio device manipulation causes interruptions and conflicts with CallKit
+  void _setDefaultEarpieceAudio() {
+    debugPrint(
+        'Audio device initialization disabled - CallKit manages all audio devices');
+    // CallKit automatically handles:
+    // - Audio session activation/deactivation
+    // - Audio routing (earpiece/speaker/bluetooth)
+    // - Audio interruption recovery
+    // - Proper audio device selection based on user preferences
   }
 
   // Legacy method for backward compatibility
@@ -1150,16 +1172,16 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       debugPrint('SipService: Ignoring state update after disposal');
       return;
     }
-    
+
     debugPrint(
         'SipService: _updateCurrentCall called - callId: ${call?.id}, state: ${call?.state}');
     _currentCall = call;
-    
+
     // Safely add to stream controller
     if (!_currentCallController.isClosed) {
       _currentCallController.add(call);
     }
-    
+
     // Only notify listeners if not disposed
     if (!_isDisposed) {
       notifyListeners();
@@ -1241,7 +1263,8 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
 
   @override
   void dispose() {
-    _isDisposed = true; // Set disposal flag first to prevent further state updates
+    _isDisposed =
+        true; // Set disposal flag first to prevent further state updates
     _connectionCheckTimer?.cancel();
     _connectivitySubscription?.cancel();
     _registrationStateController.close();
@@ -1263,14 +1286,17 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   // CallKit Integration for iOS native ringtone and vibration
-  Future<void> _showCallKitIncomingCall(String callId, String callerName, String callerNumber) async {
+  Future<void> _showCallKitIncomingCall(
+      String callId, String callerName, String callerNumber) async {
     try {
       final uuid = const Uuid().v4();
-      
+
       final params = CallKitParams(
         id: uuid,
-        nameCaller: callerName.isNotEmpty && callerName != 'Unknown' ? callerName : callerNumber,
-        appName: 'RingPlus PBX',
+        nameCaller: callerName.isNotEmpty && callerName != 'Unknown'
+            ? callerName
+            : callerNumber,
+        appName: 'RingPlus',
         avatar: '', // You can add avatar URL here if available
         handle: callerNumber,
         type: 0, // Audio call
@@ -1303,24 +1329,28 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
           supportsVideo: false,
           maximumCallGroups: 1,
           maximumCallsPerCallGroup: 1,
-          audioSessionMode: 'default',
-          audioSessionActive: true,
-          audioSessionPreferredSampleRate: 44100.0,
+          audioSessionMode: 'voiceChat', // Optimal mode for VoIP calls
+          audioSessionActive:
+              false, // Let CallKit control audio session activation
+          audioSessionPreferredSampleRate:
+              48000.0, // Match Siprix expectation from logs
           audioSessionPreferredIOBufferDuration: 0.005,
           supportsDTMF: true,
           supportsHolding: true,
           supportsGrouping: false,
           supportsUngrouping: false,
-          ringtonePath: 'system_ringtone_default', // This uses iOS system ringtone
+          ringtonePath:
+              'system_ringtone_default', // This uses iOS system ringtone
         ),
       );
 
       // Store the mapping of CallKit UUID to SIP call ID
       _callKitToSipMapping[uuid] = callId;
-      
+
       await FlutterCallkitIncoming.showCallkitIncoming(params);
-      
-      debugPrint('SIP Service: CallKit incoming call shown with UUID: $uuid, SIP callId: $callId');
+
+      debugPrint(
+          'SIP Service: CallKit incoming call shown with UUID: $uuid, SIP callId: $callId');
     } catch (e) {
       debugPrint('SIP Service: Error showing CallKit incoming call: $e');
       // Fallback to direct navigation if CallKit fails
@@ -1334,7 +1364,7 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
 
   // Mapping to track CallKit UUIDs to SIP call IDs
   final Map<String, String> _callKitToSipMapping = {};
-  
+
   // Track accepted CallKit calls to prevent duplicate accepts
   final Set<String> _acceptedCallKitIds = {};
 
@@ -1342,9 +1372,9 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
   void _initializeCallKitListeners() {
     FlutterCallkitIncoming.onEvent.listen((CallEvent? event) {
       if (event == null) return;
-      
+
       debugPrint('SIP Service: CallKit event: ${event.event}');
-      
+
       switch (event.event) {
         case Event.actionCallAccept:
           _handleCallKitAccept(event.body);
@@ -1368,28 +1398,31 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
     try {
       final String callKitId = body['id'];
       final String? sipCallId = _callKitToSipMapping[callKitId];
-      
+
       if (sipCallId != null) {
         // Check if this call has already been accepted
         if (_acceptedCallKitIds.contains(callKitId)) {
-          debugPrint('SIP Service: CallKit call $callKitId already accepted, ignoring duplicate accept event');
+          debugPrint(
+              'SIP Service: CallKit call $callKitId already accepted, ignoring duplicate accept event');
           return;
         }
-        
+
         debugPrint('SIP Service: CallKit accept for SIP call: $sipCallId');
-        
+
         // Mark this call as accepted to prevent duplicate attempts
         _acceptedCallKitIds.add(callKitId);
-        
+
+        // CallKit handles all audio session and device management automatically
+
         // Answer the SIP call
         await answerCall(sipCallId);
-        
+
         // Mark CallKit call as connected
         await FlutterCallkitIncoming.setCallConnected(callKitId);
-        
+
         // Add small delay before navigation to prevent GlobalKey conflicts
         await Future.delayed(const Duration(milliseconds: 100));
-        
+
         // Navigate to in-call screen (with debouncing)
         if (!_isNavigatingFromCallKit) {
           _isNavigatingFromCallKit = true;
@@ -1404,7 +1437,7 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
             _isNavigatingFromCallKit = false;
           });
         }
-        
+
         // Keep the mapping for hangup - remove it only on call termination
         debugPrint('SIP Service: CallKit call accepted and connected');
       }
@@ -1417,23 +1450,23 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
     try {
       final String callKitId = body['id'];
       final String? sipCallId = _callKitToSipMapping[callKitId];
-      
+
       if (sipCallId != null) {
         debugPrint('SIP Service: CallKit decline for SIP call: $sipCallId');
-        
+
         // Set hangup flag to prevent state conflicts
         _isHangingUp = true;
-        
+
         // Remove the mapping first to prevent double cleanup in hangupCall
         _callKitToSipMapping.remove(callKitId);
         _acceptedCallKitIds.remove(callKitId);
-        
+
         // Decline the SIP call
         await hangupCall(sipCallId);
-        
+
         // Add small delay before navigation to prevent GlobalKey conflicts
         await Future.delayed(const Duration(milliseconds: 100));
-        
+
         // Navigate back to keypad (with debouncing)
         if (!_isNavigatingFromCallKit) {
           _isNavigatingFromCallKit = true;
@@ -1443,7 +1476,7 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
             _isNavigatingFromCallKit = false;
           });
         }
-        
+
         debugPrint('SIP Service: CallKit call declined successfully');
       }
     } catch (e) {
@@ -1455,7 +1488,7 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
     try {
       final String callKitId = body['id'];
       final String? sipCallId = _callKitToSipMapping[callKitId];
-      
+
       if (sipCallId != null) {
         debugPrint('SIP Service: CallKit timeout for SIP call: $sipCallId');
         // The call timed out, just clean up
@@ -1463,7 +1496,7 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         _acceptedCallKitIds.remove(callKitId);
         // Add small delay before navigation to prevent GlobalKey conflicts
         await Future.delayed(const Duration(milliseconds: 100));
-        
+
         // Navigate back to keypad (with debouncing)
         if (!_isNavigatingFromCallKit) {
           _isNavigatingFromCallKit = true;
@@ -1495,12 +1528,13 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
           break;
         }
       }
-      
+
       if (callKitId != null) {
         await FlutterCallkitIncoming.endCall(callKitId);
         _callKitToSipMapping.remove(callKitId);
         _acceptedCallKitIds.remove(callKitId);
-        debugPrint('SIP Service: Ended CallKit call for SIP callId: $sipCallId');
+        debugPrint(
+            'SIP Service: Ended CallKit call for SIP callId: $sipCallId');
       }
     } catch (e) {
       debugPrint('SIP Service: Error ending CallKit call: $e');

@@ -843,3 +843,44 @@ Outgoing call is not working. Invite is sent properly but on 407 Proxy Authentic
 ---
 
 When making an outgoing call, once the dial button is pressed oncall screen shows up and for few milliseconds Caller Number is Unknown (I guess till a replied is received), for an outgoing call we know the dialer number we should show, so we dont have Unknow for few milliseconds.
+
+---
+
+On incoming call and once answered siprix sends:
+
+U 2025/09/10 22:22:45.681266 78.240.172.143:56741 -> 10.16.0.5:5060 #8057
+SIP/2.0 200 OK.
+Via: SIP/2.0/UDP 68.183.254.236:5060;branch=z9hG4bK31f4.eb8b6bd6.0.
+Contact: <sip:1002@78.240.172.143:56741;transport=udp>;+sip.instance="<urn:uuid:0e4ef933-94e1-43fb-bc07-64cb9d827db5>";reg-id=1.
+To: <sip:1002@408708399.ringplus.co.uk;user=phone>;tag=ee9f2220.
+From: "Srigo" <sip:1001@408708399.ringplus.co.uk>;tag=3099470047.
+Call-ID: 72255472@192_168_0_75.
+CSeq: 3 INVITE.
+Session-Expires: 1800;refresher=uas.
+Allow: INVITE, ACK, CANCEL, OPTIONS, BYE, REFER, NOTIFY, SUBSCRIBE, UPDATE, PRACK, INFO, MESSAGE.
+Content-Type: application/sdp.
+Supported: replaces, timer, norefersub, answermode, tdialog.
+User-Agent: Ringplus/1.0.0.
+Content-Length: 302.
+.
+v=0.
+o=- 6472689401898196955 2 IN IP4 127.0.0.1.
+s=-.
+t=0 0.
+m=audio 59040 RTP/AVP 0 8 101.
+c=IN IP4 10.31.124.203.
+a=rtpmap:0 PCMU/8000.
+a=rtpmap:8 PCMA/8000.
+a=rtpmap:101 telephone-event/8000.
+a=fmtp:101 0-16.
+a=mid:0.
+a=sendrecv.
+a=msid:- siprixAudio.
+a=ptime:20.
+a=rtcp:61846 IN IP4 10.31.124.203.
+
+SDP has 127.0.0.1 and 10.31.124.203. Can siprix detect it's behind a NAT and add the public IP in the SDP
+
+---
+
+On incoming call, siprix send 200 OK with a=mid and a=msid and a=rtcp-mux. Can we disable them?

@@ -1,0 +1,888 @@
+232853.736 [4280692] (Transport.cxx:403): RX 'Req INVITE/cseq=3' from: [68.173.X.X:5060 UDP]
+232853.736 [4280693] (UserAgent.cxx:462): getIncomingConversationProfile: comparing requestUri=sip:1002@78.234.X.X:21880;transport=udp to contactUri=sip:1002@78.234.X.X:21880;transport=udp - MATCHED!
+232853.736 [4280693] (RemoteParticipantDialogSet.cxx:45): RemoteParticipantDialogSet created.
+232853.736 [4280693] (UserAgent.cxx:462): getIncomingConversationProfile: comparing requestUri=sip:1002@78.234.X.X:21880;transport=udp to contactUri=sip:1002@78.234.X.X:21880;transport=udp - MATCHED!
+232853.736 [4280693] (RemoteParticipant.cxx:190): iceServer: iceEnabled:0 prefIP:10.143.19.226 sdesSrtp:0 audioCodecs:FGH videoCodecs:QP
+232853.736 [4280693] (LibWebRTCRemoteParticipant.cxx:77): LibWebRTCRemoteParticipant created (UAS or forked leg), handle = 209
+232853.736 [4280693] (InviteSession.cxx:2841): Transition UAS_Start -> UAS_Offer
+232853.736 [4280693] (RemoteParticipant.cxx:1468): onNewSession(Server): handle=209, SipReq:  INVITE 1002@78.234.X.X:21880 tid=c571.515e1fe7.0 cseq=3 INVITE contact=68.173.X.X:5060 / 3 from(wire)
+232853.736 [4280693] (RemoteParticipant.cxx:1050): setHasVideo handle=209 hasVideo:0
+232853.736 [4280693] (SiprixConvManager.cpp:69): onIncomingParticipant callId:209 accId: 1
+232853.736 [4280693] (RemoteParticipant.cxx:1719): onOffer: handle=209
+232853.736 [4280694] (Callbacks.cpp:311): Callback:40 callId:209 sendToApp: 1
+232853.736 [4280693] (ServerInviteSession.cxx:142): UAS_Offer: provisional(180)
+232853.736 [4280693] (InviteSession.cxx:2841): Transition UAS_Offer -> UAS_EarlyOffer
+232853.736 [4280693] (ConversationManager.cxx:348): Switch to call: 209
+232853.737 [4280647] (audio_device_impl.cc:761): InitPlayout
+232853.737 [4280647] (audio_device_impl.cc:787): PlayoutIsInitialized
+232853.737 [4280647] (audio_device_ios.mm:176): AudioDeviceIOS::InitPlayout
+flutter: event OnCallIncoming {accId: 1, callId: 209, withVideo: false, from: "John" <sip:1001@408708399.testrp.co.uk>, to: sip:1002@408708399.testrp.co.uk}
+flutter: SIP Service: Incoming call - callId: 209, from: "John" <sip:1001@408708399.testrp.co.uk>, to: sip:1002@408708399.testrp.co.uk, withVideo: false
+flutter: SIP Service: Parsed caller - name: John, number: 1001
+flutter: SipService: _updateCurrentCall called - callId: 209, state: AppCallState.ringing
+232853.737 [4280647] (audio_device_ios.mm:858): AudioDeviceIOS::InitPlayOrRecord
+232853.737 [4280692] (TransportSelector.cxx:1348): TX 'Resp 180/cseq=3/INVITE' to [68.173.X.X:5060 UDP] via [10.143.19.226:5060 UDP]
+232853.738 [4280694] (Callbacks.cpp:243): Callback:47 callId:209
+232853.739 [4280694] (Callbacks.cpp:264): Callback:34 started:1
+flutter: SIP Service: CallKit incoming call displayed - no app UI needed
+flutter: event OnCallSwitched {callId: 209}
+flutter: SIP Service: Direct call switched - callId: 209
+232853.746 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:825 ConfigureAudioSessionLocked): Configuring audio session.
+232853.746 [4280647] (RTCLogging.mm:33): (RTCAudioSession.mm:715 -[RTCAudioSession configureWebRTCSession:]): Configuring audio session for WebRTC.
+flutter: SIP Service: CallKit incoming call shown with UUID: a2c0d699-5cf1-4d69-93c8-06e7be8b7365, SIP callId: 209
+232853.860 [4280647] (RTCLogging.mm:33): (RTCAudioSession+Configuration.mm:62 -[RTCAudioSession(Configuration) setConfiguration:active:shouldSetActive:error:]): Set category to: AVAudioSessionCategoryPlayAndRecord
+232853.862 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:532 -[RTCAudioSession handleRouteChangeNotification:]): Audio route changed:
+232853.863 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:545 -[RTCAudioSession handleRouteChangeNotification:]): Audio route changed: CategoryChange to :AVAudioSessionCategoryPlayAndRecord
+232853.863 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:564 -[RTCAudioSession handleRouteChangeNotification:]): Previous route: <AVAudioSessionRouteDescription: 0x14abfcf10, 
+inputs = (
+); 
+outputs = (
+    "<AVAudioSessionPortDescription: 0x14abfc970, type = Speaker; name = Speaker; UID = Speaker; selectedDataSource = (null)>"
+)>
+Current route:<AVAudioSessionRouteDescription: 0x14abfce30, 
+inputs = (
+    "<AVAudioSessionPortDescription: 0x14abfc9d0, type = MicrophoneBuiltIn; name = iPhone Microphone; UID = Built-In Microphone; selectedDataSource = Bottom>"
+); 
+outputs = (
+    "<AVAudioSessionPortDescription: 0x14abfcdd0, type = Receiver; name = Receiver; UID = Built-In Receiver; selectedDataSource = (null)>"
+)>
+232853.901 [4280647] (RTCLogging.mm:33): (RTCAudioSession+Configuration.mm:73 -[RTCAudioSession(Configuration) setConfiguration:active:shouldSetActive:error:]): Set mode to: AVAudioSessionModeVoiceChat
+232853.941 [4280647] (RTCLogging.mm:33): (RTCAudioSession+Configuration.mm:88 -[RTCAudioSession(Configuration) setConfiguration:active:shouldSetActive:error:]): Set category options to: 4
+232853.951 [4280647] (RTCLogging.mm:33): (RTCAudioSession+Configuration.mm:103 -[RTCAudioSession(Configuration) setConfiguration:active:shouldSetActive:error:]): Set preferred sample rate to: 48000.00
+232853.959 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:856 -[RTCAudioSession observeValueForKeyPath:ofObject:change:context:]): OutputVolumeDidChange to 1.000000
+232853.959 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:532 -[RTCAudioSession handleRouteChangeNotification:]): Audio route changed:
+232853.959 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:557 -[RTCAudioSession handleRouteChangeNotification:]): Audio route changed: RouteConfigurationChange
+232853.959 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:564 -[RTCAudioSession handleRouteChangeNotification:]): Previous route: <AVAudioSessionRouteDescription: 0x14abfcf10, 
+inputs = (
+    "<AVAudioSessionPortDescription: 0x14abfc4e0, type = MicrophoneBuiltIn; name = iPhone Microphone; UID = Built-In Microphone; selectedDataSource = Bottom>"
+); 
+outputs = (
+    "<AVAudioSessionPortDescription: 0x14abfcc70, type = Receiver; name = Receiver; UID = Built-In Receiver; selectedDataSource = (null)>"
+)>
+Current route:<AVAudioSessionRouteDescription: 0x14abfc930, 
+inputs = (
+    "<AVAudioSessionPortDescription: 0x14abfcd70, type = MicrophoneBuiltIn; name = iPhone Microphone; UID = Built-In Microphone; selectedDataSource = Bottom>"
+); 
+outputs = (
+    "<AVAudioSessionPortDescription: 0x14abfcfe0, type = Receiver; name = Receiver; UID = Built-In Receiver; selectedDataSource = (null)>"
+)>
+232853.959 [4280230] (RTCLogging.mm:33): (RTCNativeAudioSessionDelegateAdapter.mm:62 -[RTCNativeAudioSessionDelegateAdapter audioSessionDidChangeRoute:reason:previousRoute:]): Ignoring RouteConfigurationChange
+232853.960 [4280647] (RTCLogging.mm:33): (RTCAudioSession+Configuration.mm:118 -[RTCAudioSession(Configuration) setConfiguration:active:shouldSetActive:error:]): Set preferred IO buffer duration to: 0.020000
+232853.960 [4280647] (RTCLogging.mm:33): (RTCAudioSession.mm:651 -[RTCAudioSession incrementActivationCount]): Incrementing activation count.
+232853.960 [4280647] (RTCLogging.mm:33): (RTCAudioSession.mm:407 -[RTCAudioSession setActive:error:]): Number of current activations: 1
+232853.991 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:834 ConfigureAudioSessionLocked): Configured audio session.
+232853.991 [4280647] (audio_device_ios.mm:653): AudioDeviceIOS::SetupAudioBuffersForActiveAudioSession
+232854.007 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:658 SetupAudioBuffersForActiveAudioSession): RTC_OBJC_TYPE(RTCAudioSession): {
+  category: AVAudioSessionCategoryPlayAndRecord
+  categoryOptions: 4
+  mode: AVAudioSessionModeVoiceChat
+  isActive: 1
+  sampleRate: 48000.00
+  IOBufferDuration: 0.020000
+  outputNumberOfChannels: 1
+  inputNumberOfChannels: 1
+  outputLatency: 0.004500
+  inputLatency: 0.000625
+  outputVolume: 1.000000
+}
+232854.007 [4280647] (audio_device_ios.mm:690):  frames per I/O buffer: 960
+232854.007 [4280647] (audio_device_ios.mm:691):  bytes per I/O buffer: 1920
+232854.007 [4280647] (audio_device_ios.mm:637): AudioDeviceIOS::UpdateAudioDevicebuffer
+232854.007 [4280647] (audio_device_buffer.cc:189): SetPlayoutSampleRate(48000)
+232854.007 [4280647] (audio_device_buffer.cc:209): SetPlayoutChannels(1)
+232854.007 [4280647] (audio_device_buffer.cc:183): SetRecordingSampleRate(48000)
+232854.007 [4280647] (audio_device_buffer.cc:203): SetRecordingChannels(1)
+232854.007 [4280647] (RTCLogging.mm:33): (voice_processing_audio_unit.mm:198 Initialize): Initializing audio unit with sample rate: 48000.000000
+232854.114 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:532 -[RTCAudioSession handleRouteChangeNotification:]): Audio route changed:
+232854.114 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:557 -[RTCAudioSession handleRouteChangeNotification:]): Audio route changed: RouteConfigurationChange
+232854.114 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:564 -[RTCAudioSession handleRouteChangeNotification:]): Previous route: <AVAudioSessionRouteDescription: 0x14abfcdd0, 
+inputs = (
+    "<AVAudioSessionPortDescription: 0x14abfcdb0, type = MicrophoneBuiltIn; name = iPhone Microphone; UID = Built-In Microphone; selectedDataSource = Bottom>"
+); 
+outputs = (
+    "<AVAudioSessionPortDescription: 0x14abfd080, type = Receiver; name = Receiver; UID = Built-In Receiver; selectedDataSource = (null)>"
+)>
+Current route:<AVAudioSessionRouteDescription: 0x14abfd0c0, 
+inputs = (
+    "<AVAudioSessionPortDescription: 0x14abfcce0, type = MicrophoneBuiltIn; name = iPhone Microphone; UID = Built-In Microphone; selectedDataSource = (null)>"
+); 
+outputs = (
+    "<AVAudioSessionPortDescription: 0x14abfd1a0, type = Receiver; name = Receiver; UID = Built-In Receiver; selectedDataSource = (null)>"
+)>
+232854.114 [4280230] (RTCLogging.mm:33): (RTCNativeAudioSessionDelegateAdapter.mm:62 -[RTCNativeAudioSessionDelegateAdapter audioSessionDidChangeRoute:reason:previousRoute:]): Ignoring RouteConfigurationChange
+232854.116 [4280647] (RTCLogging.mm:33): (voice_processing_audio_unit.mm:252 Initialize): Voice Processing I/O unit is now initialized.
+232854.132 [4280647] (RTCLogging.mm:33): (voice_processing_audio_unit.mm:70 GetAGCState): VPIO unit AGC: 1
+232854.132 [4280647] (RTCLogging.mm:33): (voice_processing_audio_unit.mm:322 Initialize): WebRTC.Audio.BuiltInAGCWasEnabledByDefault: 1
+232854.132 [4280647] (RTCLogging.mm:33): (voice_processing_audio_unit.mm:328 Initialize): WebRTC.Audio.BuiltInAGCIsEnabled: 1
+232854.132 [4280647] (audio_device_impl.cc:767): output: 0
+232854.132 [4280647] (audio_device_impl.cc:799): StartPlayout
+232854.132 [4280647] (audio_device_impl.cc:824): Playing
+232854.132 [4280647] (audio_device_ios.mm:218): AudioDeviceIOS::StartPlayout
+232854.132 [4280647] (RTCLogging.mm:33): (voice_processing_audio_unit.mm:336 Start): Starting audio unit.
+232854.315 [4280647] (RTCLogging.mm:33): (voice_processing_audio_unit.mm:343 Start): Started audio unit
+232854.315 [4280647] (audio_device_ios.mm:234): Voice-Processing I/O audio unit is now started
+232854.315 [4280647] (audio_device_impl.cc:806): output: 0
+232854.327 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:509 HandleValidRouteChange): RTC_OBJC_TYPE(RTCAudioSession): {
+  category: AVAudioSessionCategoryPlayAndRecord
+  categoryOptions: 4
+  mode: AVAudioSessionModeVoiceChat
+  isActive: 1
+  sampleRate: 48000.00
+  IOBufferDuration: 0.020000
+  outputNumberOfChannels: 1
+  inputNumberOfChannels: 4
+  outputLatency: 0.004000
+  inputLatency: 0.000625
+  outputVolume: 1.000000
+}
+232854.327 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:520 HandleSampleRateChange): Handling sample rate change.
+232854.328 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:549 HandleSampleRateChange): Handling playout sample rate change:
+  Session sample rate: 48000.000000 frames_per_buffer: 960
+  ADM sample rate: 48000.000000 frames_per_buffer: 960
+232854.328 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:554 HandleSampleRateChange): Ignoring sample rate change since audio parameters are intact.
+232854.328 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:630 HandleOutputVolumeChange): Output volume change detected.
+232854.336 [4294159] (RTCLogging.mm:33): (audio_device_ios.mm:444 OnGetPlayoutData): Possible playout audio glitch detected.
+  Time since last OnGetPlayoutData was 644536 ms.
+
+232854.336 [4294159] (RTCLogging.mm:33): (audio_device_ios.mm:453 OnGetPlayoutData): Glitch warning is ignored. Probably caused by device switch.
+flutter: SIP Service: CallKit event: Event.actionCallIncoming
+232854.428 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:856 -[RTCAudioSession observeValueForKeyPath:ofObject:change:context:]): OutputVolumeDidChange to 0.950000
+232854.429 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:630 HandleOutputVolumeChange): Output volume change detected.
+232854.474 [4294159] (RTCLogging.mm:33): (audio_device_ios.mm:444 OnGetPlayoutData): Possible playout audio glitch detected.
+  Time since last OnGetPlayoutData was 59 ms.
+
+232854.474 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:615 HandlePlayoutGlitchDetected): Ignoring audio glitch due to recent output volume change.
+232855.510 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:532 -[RTCAudioSession handleRouteChangeNotification:]): Audio route changed:
+232855.510 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:557 -[RTCAudioSession handleRouteChangeNotification:]): Audio route changed: RouteConfigurationChange
+232855.510 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:564 -[RTCAudioSession handleRouteChangeNotification:]): Previous route: <AVAudioSessionRouteDescription: 0x14abfce30, 
+inputs = (
+    "<AVAudioSessionPortDescription: 0x14abfceb0, type = MicrophoneBuiltIn; name = iPhone Microphone; UID = Built-In Microphone; selectedDataSource = (null)>"
+); 
+outputs = (
+    "<AVAudioSessionPortDescription: 0x14abfce10, type = Receiver; name = Receiver; UID = Built-In Receiver; selectedDataSource = (null)>"
+)>
+Current route:<AVAudioSessionRouteDescription: 0x14abfc950, 
+inputs = (
+); 
+outputs = (
+    "<AVAudioSessionPortDescription: 0x14abfcb90, type = Speaker; name = Speaker; UID = Speaker; selectedDataSource = (null)>"
+)>
+232855.510 [4280230] (RTCLogging.mm:33): (RTCNativeAudioSessionDelegateAdapter.mm:62 -[RTCNativeAudioSessionDelegateAdapter audioSessionDidChangeRoute:reason:previousRoute:]): Ignoring RouteConfigurationChange
+232855.518 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:505 -[RTCAudioSession handleInterruptionNotification:]): Audio session interruption began.
+232855.518 [4280230] (audio_device_ios.mm:337): AudioDeviceIOS::OnInterruptionBegin
+232855.518 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:472 HandleInterruptionBegin): Interruption begin. IsInterrupted changed from 0 to 1.
+232855.518 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:474 HandleInterruptionBegin): Stopping the audio unit due to interruption begin.
+232855.518 [4280647] (RTCLogging.mm:33): (voice_processing_audio_unit.mm:351 Stop): Stopping audio unit.
+232855.518 [4280647] (RTCLogging.mm:33): (voice_processing_audio_unit.mm:358 Stop): Stopped audio unit
+232855.518 [4280647] (audio_device_ios.mm:934): AudioDeviceIOS::PrepareForNewStart
+232855.548 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:532 -[RTCAudioSession handleRouteChangeNotification:]): Audio route changed:
+232855.549 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:545 -[RTCAudioSession handleRouteChangeNotification:]): Audio route changed: CategoryChange to :AVAudioSessionCategoryPlayAndRecord
+232855.549 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:564 -[RTCAudioSession handleRouteChangeNotification:]): Previous route: <AVAudioSessionRouteDescription: 0x14abfce30, 
+inputs = (
+    "<AVAudioSessionPortDescription: 0x14abfceb0, type = MicrophoneBuiltIn; name = iPhone Microphone; UID = Built-In Microphone; selectedDataSource = Bottom>"
+); 
+outputs = (
+    "<AVAudioSessionPortDescription: 0x14abfc9b0, type = Receiver; name = Receiver; UID = Built-In Receiver; selectedDataSource = (null)>"
+)>
+Current route:<AVAudioSessionRouteDescription: 0x14abfc950, 
+inputs = (
+); 
+outputs = (
+    "<AVAudioSessionPortDescription: 0x14abfcbf0, type = Speaker; name = Speaker; UID = Speaker; selectedDataSource = (null)>"
+)>
+232855.569 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:509 HandleValidRouteChange): RTC_OBJC_TYPE(RTCAudioSession): {
+  category: AVAudioSessionCategoryPlayAndRecord
+  categoryOptions: 3
+  mode: AVAudioSessionModeDefault
+  isActive: 0
+  sampleRate: 48000.00
+  IOBufferDuration: 0.021333
+  outputNumberOfChannels: 2
+  inputNumberOfChannels: 0
+  outputLatency: 0.015042
+  inputLatency: 0.000000
+  outputVolume: 0.950000
+}
+232855.569 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:520 HandleSampleRateChange): Handling sample rate change.
+232855.569 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:524 HandleSampleRateChange): Ignoring sample rate change due to interruption.
+Error Domain=NSOSStatusErrorDomain Code=561017449 "Session activation failed" UserInfo={NSLocalizedDescription=Session activation failed}
+flutter: SIP Service: CallKit event: Event.actionCallAccept
+flutter: SIP Service: CallKit accept for SIP call: 209
+flutter: Configuring iOS audio session for CallKit...
+flutter: iOS audio session configured for CallKit
+flutter: Answer call: 209
+flutter: Configuring iOS audio session for CallKit...
+flutter: iOS audio session configured for CallKit
+flutter: Answer call: Accepting call with ID 209
+flutter: Answer call: Successfully accepted call via SDK
+flutter: SipService: _updateCurrentCall called - callId: 209, state: AppCallState.answered
+232856.925 [4280230] (SiprixModule.cpp:946): accept callId:209 withVideo:0
+232856.928 [4280694] (Callbacks.cpp:264): Callback:34 started:0
+232856.928 [4280693] (RemoteParticipant.cxx:190): iceServer: iceEnabled:0 prefIP:10.143.19.226 sdesSrtp:0 audioCodecs:FGH videoCodecs:QP
+232856.928 [4280693] (RemoteParticipant.cxx:571): accept handle:209 withVideo:0 prefLocalIP:10.143.19.226
+232856.928 [4280693] (rtc_peerconnection_impl.cc:246): RTCPeerConnectionImpl: ctor
+232856.932 [4280647] (peer_connection_factory.cc:344): Using default network controller factory
+232856.933 [4280647] (bitrate_prober.cc:59): Bandwidth probing enabled, set to inactive
+232856.933 [4280647] (maybe_worker_thread.cc:33): WebRTC-SendPacketsOnWorkerThread Disabled
+232856.933 [4280647] (maybe_worker_thread.cc:33): WebRTC-SendPacketsOnWorkerThread Disabled
+232856.933 [4280647] (remote_estimator_proxy.cc:64): Maximum interval between transport feedback RTCP messages (ms): 250
+232856.933 [4280647] (aimd_rate_control.cc:112): Using aimd rate control with back off factor 0.85
+232856.933 [4280647] (remote_bitrate_estimator_single_stream.cc:71): RemoteBitrateEstimatorSingleStream: Instantiating.
+232856.937 [4280649] (peer_connection.cc:2112): TCP candidates are disabled.
+232856.937 [4280649] (peer_connection.cc:2123): Disable candidates on link-local network interfaces.
+232856.938 [4280693] (rtc_audio_source_impl.cc:8): RTCAudioSourceImpl: ctor 
+232856.940 [4280648] (rtp_transmission_manager.cc:188): Adding audio transceiver in response to a call to AddTrack.
+232856.940 [4280648] (LibWebRTCRemoteParticipant.cxx:1382): OnRenegotiationNeeded
+232856.940 [4280693] (rtc_audio_source_impl.cc:12): ~RTCAudioSourceImpl: dtor 
+232856.940 [4280693] (rtc_peerconnection_impl.cc:549):  Received session description :v=0
+o=1001 5016 65 IN IP4 178.62.X.X
+s=Mapping
+c=IN IP4 178.62.X.X
+t=0 0
+m=audio 16578 RTP/AVP 8 0 101
+a=rtpmap:8 PCMA/8000
+a=rtpmap:0 PCMU/8000
+a=rtpmap:101 telephone-event/8000
+a=fmtp:101 0-16
+a=sendrecv
+a=rtcp:16579
+a=ptime:20
+a=ice-ufrag:okL5
+
+232856.941 [4280648] (sdp_offer_answer.cc:3756): SetRemoteDescription: Remote media section at i=0 is missing an a=mid line. Filling in the value '0' generated just now.
+Error Domain=NSOSStatusErrorDomain Code=561017449 "Session activation failed" UserInfo={NSLocalizedDescription=Session activation failed}
+232856.942 [4280649] (p2p_transport_channel.cc:578): Set backup connection ping interval to 25000 milliseconds.
+232856.942 [4280649] (p2p_transport_channel.cc:587): Set ICE receiving timeout to 2500 milliseconds
+232856.942 [4280649] (p2p_transport_channel.cc:594): Set ping most likely connection to 0
+232856.942 [4280649] (p2p_transport_channel.cc:601): Set stable_writable_connection_ping_interval to 2500
+232856.942 [4280649] (p2p_transport_channel.cc:614): Set presume writable when fully relayed to 0
+232856.942 [4280649] (p2p_transport_channel.cc:632): Set regather_on_failed_networks_interval to 300000
+232856.942 [4280649] (p2p_transport_channel.cc:639): Set receiving_switching_delay to 1000
+232856.942 [4280649] (p2p_transport_channel.cc:578): Set backup connection ping interval to 25000 milliseconds.
+232856.942 [4280649] (p2p_transport_channel.cc:587): Set ICE receiving timeout to 2500 milliseconds
+232856.942 [4280649] (p2p_transport_channel.cc:594): Set ping most likely connection to 0
+232856.942 [4280649] (p2p_transport_channel.cc:601): Set stable_writable_connection_ping_interval to 2500
+flutter: SIP Service: CallKit event: Event.actionCallAccept
+flutter: SIP Service: CallKit call a2c0d699-5cf1-4d69-93c8-06e7be8b7365 already accepted, ignoring duplicate accept event
+232856.942 [4280649] (p2p_transport_channel.cc:614): Set presume writable when fully relayed to 0
+232856.942 [4280649] (p2p_transport_channel.cc:632): Set regather_on_failed_networks_interval to 300000
+232856.942 [4280649] (p2p_transport_channel.cc:639): Set receiving_switching_delay to 1000
+232856.942 [4280649] (jsep_transport_controller.cc:1061): Creating UnencryptedRtpTransport, becayse encryption is disabled.
+232856.942 [4280649] (p2p_transport_channel.cc:523): Received remote ICE parameters: ufrag=okL5, renomination disabled
+232856.942 [4280649] (p2p_transport_channel.cc:523): Received remote ICE parameters: ufrag=okL5, renomination disabled
+232856.943 [4280647] (webrtc_voice_engine.cc:1494): Setting voice channel options: AudioOptions {audio_jitter_buffer_max_packets: 200, audio_jitter_buffer_fast_accelerate: 0, audio_jitter_buffer_min_delay_ms: 0, }
+232856.943 [4280647] (webrtc_voice_engine.cc:425): WebRtcVoiceEngine::ApplyOptions: AudioOptions {audio_jitter_buffer_max_packets: 200, audio_jitter_buffer_fast_accelerate: 0, audio_jitter_buffer_min_delay_ms: 0, }
+232856.943 [4280647] (webrtc_voice_engine.cc:444): Always disable AEC on iOS. Use built-in instead.
+232856.943 [4280647] (webrtc_voice_engine.cc:454): Always disable AGC on iOS. Use built-in instead.
+232856.943 [4280647] (audio_device_impl.cc:878): BuiltInAECIsAvailable
+232856.943 [4280647] (audio_device_generic.cc:18): BuiltInAECIsAvailable: Not supported on this platform
+232856.943 [4280647] (audio_device_impl.cc:881): output: 0
+232856.943 [4280647] (audio_device_impl.cc:894): BuiltInAGCIsAvailable
+232856.943 [4280647] (audio_device_generic.cc:28): BuiltInAGCIsAvailable: Not supported on this platform
+232856.943 [4280647] (audio_device_impl.cc:897): output: 0
+232856.943 [4280647] (audio_processing_impl.cc:515): AudioProcessing::ApplyConfig: AudioProcessing::Config{ pipeline: { maximum_internal_processing_rate: 48000, multi_channel_render: 0, multi_channel_capture: 0 }, pre_amplifier: { enabled: 0, fixed_gain_factor: 1 },capture_level_adjustment: { enabled: 0, pre_gain_factor: 1, post_gain_factor: 1, analog_mic_gain_emulation: { enabled: 0, initial_level: 255 }}, high_pass_filter: { enabled: 1 }, echo_canceller: { enabled: 0, mobile_mode: 0, enforce_high_pass_filtering: 1 }, noise_suppression: { enabled: 0, level: High }, transient_suppression: { enabled: 1 }, gain_controller1: { enabled: 0, mode: FixedDigital, target_level_dbfs: 3, compression_gain_db: 9, enable_limiter: 1, analog_gain_controller { enabled: 1, startup_min_volume: 0, clipped_level_min: 70, enable_digital_adaptive: 1, clipped_level_step: 15, clipped_ratio_threshold: 0.1, clipped_wait_frames: 300, clipping_predictor:  { enabled: 0, mode: 0, window_length: 5, reference_window_length: 5, reference_window_delay: 5, clipping_threshold: -1, crest_factor_margin: 3, use_predicted_step: 1 }}}, gain_controller2: { enabled: 0, fixed_digital: { gain_db: 0 }, adaptive_digital: { enabled: 0, dry_run: 0, headroom_db: 6, max_gain_db: 30, initial_gain_db: 8, vad_reset_period_ms: 1500, adjacent_speech_frames_threshold: 12, max_gain_change_db_per_second: 3, max_output_noise_level_dbfs: -50 }, input_volume_control : { enabled 0}}
+232856.943 [4280647] (webrtc_voice_engine.cc:1508): Set voice channel options. Current options: AudioOptions {audio_jitter_buffer_max_packets: 200, audio_jitter_buffer_fast_accelerate: 0, audio_jitter_buffer_min_delay_ms: 0, }
+232856.944 [4280648] (sdp_offer_answer.cc:2684): Session: 3138032245276429570 Old state: stable New state: have-remote-offer
+232856.945 [4280647] (channel.cc:927): Setting remote voice description for {mid: 0, media_type: audio}
+232856.945 [4280647] (webrtc_voice_engine.cc:1308): WebRtcVoiceMediaChannel::SetSendParameters: {codecs: [AudioCodec[8:PCMA:8000:0:1], AudioCodec[0:PCMU:8000:0:1], AudioCodec[101:telephone-event:8000:0:1]], extensions: [], extmap-allow-mixed: false, max_bandwidth_bps: -1, mid: 0, options: AudioOptions {}}
+232856.945 [4280647] (webrtc_voice_engine.cc:2290): WebRtcVoiceMediaChannel::SetMaxSendBitrate.
+232856.945 [4280647] (webrtc_voice_engine.cc:1494): Setting voice channel options: AudioOptions {}
+232856.945 [4280647] (webrtc_voice_engine.cc:425): WebRtcVoiceEngine::ApplyOptions: AudioOptions {audio_jitter_buffer_max_packets: 200, audio_jitter_buffer_fast_accelerate: 0, audio_jitter_buffer_min_delay_ms: 0, }
+232856.945 [4280647] (webrtc_voice_engine.cc:444): Always disable AEC on iOS. Use built-in instead.
+232856.945 [4280647] (webrtc_voice_engine.cc:454): Always disable AGC on iOS. Use built-in instead.
+232856.945 [4280647] (audio_device_impl.cc:878): BuiltInAECIsAvailable
+232856.945 [4280647] (audio_device_generic.cc:18): BuiltInAECIsAvailable: Not supported on this platform
+232856.945 [4280647] (audio_device_impl.cc:881): output: 0
+232856.945 [4280647] (audio_device_impl.cc:894): BuiltInAGCIsAvailable
+232856.945 [4280647] (audio_device_generic.cc:28): BuiltInAGCIsAvailable: Not supported on this platform
+232856.945 [4280647] (audio_device_impl.cc:897): output: 0
+232856.945 [4280647] (audio_processing_impl.cc:515): AudioProcessing::ApplyConfig: AudioProcessing::Config{ pipeline: { maximum_internal_processing_rate: 48000, multi_channel_render: 0, multi_channel_capture: 0 }, pre_amplifier: { enabled: 0, fixed_gain_factor: 1 },capture_level_adjustment: { enabled: 0, pre_gain_factor: 1, post_gain_factor: 1, analog_mic_gain_emulation: { enabled: 0, initial_level: 255 }}, high_pass_filter: { enabled: 1 }, echo_canceller: { enabled: 0, mobile_mode: 0, enforce_high_pass_filtering: 1 }, noise_suppression: { enabled: 0, level: High }, transient_suppression: { enabled: 1 }, gain_controller1: { enabled: 0, mode: FixedDigital, target_level_dbfs: 3, compression_gain_db: 9, enable_limiter: 1, analog_gain_controller { enabled: 1, startup_min_volume: 0, clipped_level_min: 70, enable_digital_adaptive: 1, clipped_level_step: 15, clipped_ratio_threshold: 0.1, clipped_wait_frames: 300, clipping_predictor:  { enabled: 0, mode: 0, window_length: 5, reference_window_length: 5, reference_window_delay: 5, clipping_threshold: -1, crest_factor_margin: 3, use_predicted_step: 1 }}}, gain_controller2: { enabled: 0, fixed_digital: { gain_db: 0 }, adaptive_digital: { enabled: 0, dry_run: 0, headroom_db: 6, max_gain_db: 30, initial_gain_db: 8, vad_reset_period_ms: 1500, adjacent_speech_frames_threshold: 12, max_gain_change_db_per_second: 3, max_output_noise_level_dbfs: -50 }, input_volume_control : { enabled 0}}
+232856.945 [4280647] (webrtc_voice_engine.cc:1508): Set voice channel options. Current options: AudioOptions {audio_jitter_buffer_max_packets: 200, audio_jitter_buffer_fast_accelerate: 0, audio_jitter_buffer_min_delay_ms: 0, }
+232856.945 [4280647] (channel.cc:859): Changing voice state, recv=0 send=0 for {mid: 0, media_type: audio}
+232856.945 [4280648] (sdp_offer_answer.cc:1972): Processing the MSIDs for MID=0 (streams=[]).
+232856.945 [4280648] (sdp_offer_answer.cc:1982): Processing the addition of a remote track for MID=0.
+232856.945 [4280648] (rtc_peerconnection_impl.cc:289): OnAddStream 883c3efd-c943-497f-94d9-d3f92f784ae6
+232856.945 [4280648] (rtc_peerconnection_impl.cc:186): OnSuccess
+232856.946 [4280649] (p2p_transport_channel.cc:512): Set ICE ufrag: PIDi pwd: 4lTz0bH0fEjzjZntuNB9HtBV on transport 0
+232856.946 [4280649] (p2p_transport_channel.cc:512): Set ICE ufrag: PIDi pwd: 4lTz0bH0fEjzjZntuNB9HtBV on transport 0
+232856.946 [4280649] (dtls_transport.cc:281): DtlsTransport[0|1|__]: Other side didn't support DTLS.
+232856.946 [4280649] (dtls_transport.cc:281): DtlsTransport[0|2|__]: Other side didn't support DTLS.
+232856.946 [4280648] (rtp_transceiver.cc:465): Changing transceiver (MID=0) current direction from <not set> to kSendRecv.
+232856.946 [4280648] (sdp_offer_answer.cc:2684): Session: 3138032245276429570 Old state: have-remote-offer New state: stable
+232856.946 [4280647] (channel.cc:527): Channel enabled: {mid: 0, media_type: audio}
+232856.946 [4280647] (channel.cc:859): Changing voice state, recv=0 send=0 for {mid: 0, media_type: audio}
+232856.946 [4280647] (webrtc_voice_engine.cc:1354): WebRtcVoiceMediaChannel::SetRecvParameters: {codecs: [AudioCodec[0:PCMU:8000:0:1], AudioCodec[8:PCMA:8000:0:1], AudioCodec[101:telephone-event:8000:0:1]], extensions: []}
+232856.946 [4280647] (webrtc_voice_engine.cc:1518): Setting receive voice codecs.
+232856.946 [4280647] (webrtc_voice_engine.cc:1845): AddSendStream: {id:siprixAudio;ssrcs:[3028670453];ssrc_groups:;cname:3vdG+a8YSQinEnxp;stream_ids:;}
+232856.946 [4280647] (delay_manager.cc:62): Delay manager config: quantile=0.95 forget_factor=0.983 start_forget_weight=2 resample_interval_ms=500 use_reorder_optimizer=1 reorder_forget_factor=0.9993 ms_per_loss_percent=20
+232856.946 [4280647] (decision_logic.cc:78): NetEq decision logic config: enable_stable_playout_delay=0 reinit_after_expands=100 packet_history_size_ms=2000 deceleration_target_level_offset_ms=85
+232856.946 [4280647] (neteq_impl.cc:139): NetEq config: sample_rate_hz=48000, enable_post_decode_vad=true, max_packets_in_buffer=200, min_delay_ms=0, enable_fast_accelerate=false, enable_muted_state=false, enable_rtx_handling=false
+232856.946 [4280647] (audio_coding_module.cc:226): Created
+232856.946 [4280647] (audio_send_stream.cc:167): AudioSendStream: 3028670453
+232856.946 [4280647] (audio_send_stream.cc:233): AudioSendStream::ConfigureStream: {rtp: {ssrc: 3028670453, mid: 0, extmap-allow-mixed: false, extensions: [], c_name: 3vdG+a8YSQinEnxp}, rtcp_report_interval_ms: 5000, send_transport: (Transport), min_bitrate_bps: 64000, max_bitrate_bps: 64000, has audio_network_adaptor_config: false, has_dscp: false, send_codec_spec: {nack_enabled: false, transport_cc_enabled: false, enable_non_sender_rtt: false, cng_payload_type: <unset>, red_payload_type: <unset>, payload_type: 8, format: {name: PCMA, clockrate_hz: 8000, num_channels: 1, parameters: {ptime: 20}}}}
+232856.946 [4280647] (audio_send_stream.cc:874): Config is invalid: min_bitrate_bps=-1; max_bitrate_bps=-1; both expected greater or equal to 0
+232856.946 [4280647] (channel.cc:686): Add send stream ssrc: 3028670453 into {mid: 0, media_type: audio}
+232856.946 [4280647] (channel.cc:859): Changing voice state, recv=1 send=0 for {mid: 0, media_type: audio}
+232856.946 [4280648] (peer_connection.cc:2207): Non-rejected SCTP m= section is needed to get the SSL Role of the SCTP transport.
+232856.946 [4280647] (webrtc_voice_engine.cc:1494): Setting voice channel options: AudioOptions {}
+232856.946 [4280647] (webrtc_voice_engine.cc:425): WebRtcVoiceEngine::ApplyOptions: AudioOptions {audio_jitter_buffer_max_packets: 200, audio_jitter_buffer_fast_accelerate: 0, audio_jitter_buffer_min_delay_ms: 0, }
+232856.946 [4280647] (webrtc_voice_engine.cc:444): Always disable AEC on iOS. Use built-in instead.
+232856.946 [4280647] (webrtc_voice_engine.cc:454): Always disable AGC on iOS. Use built-in instead.
+232856.946 [4280647] (audio_device_impl.cc:878): BuiltInAECIsAvailable
+232856.946 [4280647] (audio_device_generic.cc:18): BuiltInAECIsAvailable: Not supported on this platform
+232856.946 [4280647] (audio_device_impl.cc:881): output: 0
+232856.946 [4280647] (audio_device_impl.cc:894): BuiltInAGCIsAvailable
+232856.946 [4280647] (audio_device_generic.cc:28): BuiltInAGCIsAvailable: Not supported on this platform
+232856.946 [4280647] (audio_device_impl.cc:897): output: 0
+232856.946 [4280647] (audio_processing_impl.cc:515): AudioProcessing::ApplyConfig: AudioProcessing::Config{ pipeline: { maximum_internal_processing_rate: 48000, multi_channel_render: 0, multi_channel_capture: 0 }, pre_amplifier: { enabled: 0, fixed_gain_factor: 1 },capture_level_adjustment: { enabled: 0, pre_gain_factor: 1, post_gain_factor: 1, analog_mic_gain_emulation: { enabled: 0, initial_level: 255 }}, high_pass_filter: { enabled: 1 }, echo_canceller: { enabled: 0, mobile_mode: 0, enforce_high_pass_filtering: 1 }, noise_suppression: { enabled: 0, level: High }, transient_suppression: { enabled: 1 }, gain_controller1: { enabled: 0, mode: FixedDigital, target_level_dbfs: 3, compression_gain_db: 9, enable_limiter: 1, analog_gain_controller { enabled: 1, startup_min_volume: 0, clipped_level_min: 70, enable_digital_adaptive: 1, clipped_level_step: 15, clipped_ratio_threshold: 0.1, clipped_wait_frames: 300, clipping_predictor:  { enabled: 0, mode: 0, window_length: 5, reference_window_length: 5, reference_window_delay: 5, clipping_threshold: -1, crest_factor_margin: 3, use_predicted_step: 1 }}}, gain_controller2: { enabled: 0, fixed_digital: { gain_db: 0 }, adaptive_digital: { enabled: 0, dry_run: 0, headroom_db: 6, max_gain_db: 30, initial_gain_db: 8, vad_reset_period_ms: 1500, adjacent_speech_frames_threshold: 12, max_gain_change_db_per_second: 3, max_output_noise_level_dbfs: -50 }, input_volume_control : { enabled 0}}
+232856.946 [4280647] (webrtc_voice_engine.cc:1508): Set voice channel options. Current options: AudioOptions {audio_jitter_buffer_max_packets: 200, audio_jitter_buffer_fast_accelerate: 0, audio_jitter_buffer_min_delay_ms: 0, }
+232856.946 [4280649] (basic_port_allocator.cc:439): Start getting ports with turn_port_prune_policy 0
+232856.946 [4280649] (basic_port_allocator.cc:439): Start getting ports with turn_port_prune_policy 0
+232856.946 [4280648] (rtc_peerconnection_impl.cc:186): OnSuccess
+232856.946 [4280648] (LibWebRTCRemoteParticipant.cxx:1117): iceGatheringState changed to: 1 cmd:0x14b678600
+232856.947 [4280649] (basic_port_allocator.cc:113): Filtered out link-local networks:
+232856.947 [4280649] (basic_port_allocator.cc:115): Net[en2:169.254.0.x/16:Wifi:id=1]
+232856.947 [4280649] (basic_port_allocator.cc:113): Filtered out ignored networks:
+232856.947 [4280649] (basic_port_allocator.cc:115): Net[lo0:127.0.0.x/8:Loopback:id=4]
+232856.947 [4280649] (basic_port_allocator.cc:115): Net[lo0:0:0:0:x:x:x:x:x/128:Loopback:id=5]
+232856.947 [4280649] (basic_port_allocator.cc:989): Network manager has started
+232856.947 [4280649] (basic_port_allocator.cc:113): Filtered out link-local networks:
+232856.947 [4280649] (basic_port_allocator.cc:115): Net[en2:169.254.0.x/16:Wifi:id=1]
+232856.947 [4280649] (basic_port_allocator.cc:113): Filtered out ignored networks:
+232856.947 [4280649] (basic_port_allocator.cc:115): Net[lo0:127.0.0.x/8:Loopback:id=4]
+232856.947 [4280649] (basic_port_allocator.cc:115): Net[lo0:0:0:0:x:x:x:x:x/128:Loopback:id=5]
+232856.947 [4280649] (basic_port_allocator.cc:989): Network manager has started
+232856.947 [4280649] (basic_port_allocator.cc:113): Filtered out link-local networks:
+232856.947 [4280649] (basic_port_allocator.cc:115): Net[en2:169.254.0.x/16:Wifi:id=1]
+232856.947 [4280649] (basic_port_allocator.cc:113): Filtered out ignored networks:
+232856.947 [4280649] (basic_port_allocator.cc:115): Net[lo0:127.0.0.x/8:Loopback:id=4]
+232856.947 [4280649] (basic_port_allocator.cc:115): Net[lo0:0:0:0:x:x:x:x:x/128:Loopback:id=5]
+232856.947 [4280649] (basic_port_allocator.cc:899): Allocate ports on utun8 pdp_ip1 pdp_ip0 pdp_ip0 ipsec5 ipsec6 
+232856.947 [4280649] (basic_port_allocator.cc:113): Filtered out link-local networks:
+232856.947 [4280649] (basic_port_allocator.cc:115): Net[en2:169.254.0.x/16:Wifi:id=1]
+232856.947 [4280649] (basic_port_allocator.cc:113): Filtered out ignored networks:
+232856.947 [4280649] (basic_port_allocator.cc:115): Net[lo0:127.0.0.x/8:Loopback:id=4]
+232856.947 [4280649] (basic_port_allocator.cc:115): Net[lo0:0:0:0:x:x:x:x:x/128:Loopback:id=5]
+232856.947 [4280649] (basic_port_allocator.cc:899): Allocate ports on utun8 pdp_ip1 pdp_ip0 pdp_ip0 ipsec5 ipsec6 
+232856.947 [4280649] (basic_port_allocator.cc:1496): Net[utun8:fdb4:cf1:6966:x:x:x:x:x/64:VPN/Unknown:id=9]: Allocation Phase=Udp
+232856.947 [4280649] (port.cc:184): Port[4b648f00::1:0:local:Net[utun8:fdb4:cf1:6966:x:x:x:x:x/64:VPN/Unknown:id=9]]: Port created with network cost 50
+232856.947 [4280649] (basic_port_allocator.cc:1012): Adding allocated port for 0
+232856.947 [4280649] (basic_port_allocator.cc:1034): Port[4b648f00:0:1:0:local:Net[utun8:fdb4:cf1:6966:x:x:x:x:x/64:VPN/Unknown:id=9]]: Added port to allocator
+232856.947 [4280649] (basic_port_allocator.cc:1051): Port[4b648f00:0:1:0:local:Net[utun8:fdb4:cf1:6966:x:x:x:x:x/64:VPN/Unknown:id=9]]: Gathered candidate: Cand[:2344757798:1:udp:2121872127:[fdb4:cf1:6966:x:x:x:x:x]:54844:local::0:PIDi:4lTz0bH0fEjzjZntuNB9HtBV:9:50:0]
+232856.947 [4280649] (basic_port_allocator.cc:1084): Port[4b648f00:0:1:0:local:Net[utun8:fdb4:cf1:6966:x:x:x:x:x/64:VPN/Unknown:id=9]]: Port ready.
+232856.947 [4280649] (basic_port_allocator.cc:1195): Port[4b648f00:0:1:0:local:Net[utun8:fdb4:cf1:6966:x:x:x:x:x/64:VPN/Unknown:id=9]]: Port completed gathering candidates.
+232856.947 [4280649] (basic_port_allocator.cc:1496): Net[pdp_ip1:fdde:0:211f:x:x:x:x:x/64:Cellular:id=8]: Allocation Phase=Udp
+232856.947 [4280649] (port.cc:184): Port[4b648000::1:0:local:Net[pdp_ip1:fdde:0:211f:x:x:x:x:x/64:Cellular:id=8]]: Port created with network cost 900
+232856.947 [4280649] (basic_port_allocator.cc:1012): Adding allocated port for 0
+232856.947 [4280649] (basic_port_allocator.cc:1034): Port[4b648000:0:1:0:local:Net[pdp_ip1:fdde:0:211f:x:x:x:x:x/64:Cellular:id=8]]: Added port to allocator
+232856.947 [4280649] (basic_port_allocator.cc:1051): Port[4b648000:0:1:0:local:Net[pdp_ip1:fdde:0:211f:x:x:x:x:x/64:Cellular:id=8]]: Gathered candidate: Cand[:1971534220:1:udp:2122199807:[fdde:0:211f:x:x:x:x:x]:59957:local::0:PIDi:4lTz0bH0fEjzjZntuNB9HtBV:8:900:0]
+232856.947 [4280649] (basic_port_allocator.cc:1084): Port[4b648000:0:1:0:local:Net[pdp_ip1:fdde:0:211f:x:x:x:x:x/64:Cellular:id=8]]: Port ready.
+232856.947 [4280649] (basic_port_allocator.cc:1195): Port[4b648000:0:1:0:local:Net[pdp_ip1:fdde:0:211f:x:x:x:x:x/64:Cellular:id=8]]: Port completed gathering candidates.
+232856.947 [4280649] (basic_port_allocator.cc:1496): Net[pdp_ip0:2a0d:e487:219f:x:x:x:x:x/64:Cellular:id=7]: Allocation Phase=Udp
+232856.947 [4280649] (port.cc:184): Port[4b64ad00::1:0:local:Net[pdp_ip0:2a0d:e487:219f:x:x:x:x:x/64:Cellular:id=7]]: Port created with network cost 900
+232856.947 [4280648] (LibWebRTCRemoteParticipant.cxx:1319): addr:fdb4:cf1:6966::1:54844 skipNetId:9
+232856.947 [4280649] (basic_port_allocator.cc:1012): Adding allocated port for 0
+232856.947 [4280649] (basic_port_allocator.cc:1034): Port[4b64ad00:0:1:0:local:Net[pdp_ip0:2a0d:e487:219f:x:x:x:x:x/64:Cellular:id=7]]: Added port to allocator
+232856.947 [4280648] (rtc_peerconnection_impl.cc:418): OnIceCandidate, mid 0, mline 0, sdpcandidate:2344757798 1 udp 2121872127 fdb4:cf1:6966::1 54844 typ host generation 0 ufrag PIDi network-id 9 network-cost 50
+232856.947 [4280649] (basic_port_allocator.cc:1051): Port[4b64ad00:0:1:0:local:Net[pdp_ip0:2a0d:e487:219f:x:x:x:x:x/64:Cellular:id=7]]: Gathered candidate: Cand[:1833147740:1:udp:2122131711:[2a0d:e487:219f:x:x:x:x:x]:57537:local::0:PIDi:4lTz0bH0fEjzjZntuNB9HtBV:7:900:0]
+232856.947 [4280649] (basic_port_allocator.cc:1084): Port[4b64ad00:0:1:0:local:Net[pdp_ip0:2a0d:e487:219f:x:x:x:x:x/64:Cellular:id=7]]: Port ready.
+232856.947 [4280649] (basic_port_allocator.cc:1195): Port[4b64ad00:0:1:0:local:Net[pdp_ip0:2a0d:e487:219f:x:x:x:x:x/64:Cellular:id=7]]: Port completed gathering candidates.
+232856.947 [4280649] (basic_port_allocator.cc:1496): Net[pdp_ip0:10.143.19.x/32:Cellular:id=6]: Allocation Phase=Udp
+232856.947 [4280649] (port.cc:184): Port[4b649900::1:0:local:Net[pdp_ip0:10.143.19.x/32:Cellular:id=6]]: Port created with network cost 900
+232856.947 [4280649] (basic_port_allocator.cc:1012): Adding allocated port for 0
+232856.947 [4280648] (LibWebRTCRemoteParticipant.cxx:1319): addr:fdde:0:211f:93fc:42f:a09d:7396:862:59957 skipNetId:8
+232856.947 [4280648] (rtc_peerconnection_impl.cc:418): OnIceCandidate, mid 0, mline 0, sdpcandidate:1971534220 1 udp 2122199807 fdde:0:211f:93fc:42f:a09d:7396:862 59957 typ host generation 0 ufrag PIDi network-id 8 network-cost 900
+232856.947 [4280649] (basic_port_allocator.cc:1034): Port[4b649900:0:1:0:local:Net[pdp_ip0:10.143.19.x/32:Cellular:id=6]]: Added port to allocator
+232856.947 [4280649] (basic_port_allocator.cc:1051): Port[4b649900:0:1:0:local:Net[pdp_ip0:10.143.19.x/32:Cellular:id=6]]: Gathered candidate: Cand[:2314713620:1:udp:2122063615:10.143.19.x:56771:local::0:PIDi:4lTz0bH0fEjzjZntuNB9HtBV:6:900:0]
+232856.947 [4280649] (basic_port_allocator.cc:1084): Port[4b649900:0:1:0:local:Net[pdp_ip0:10.143.19.x/32:Cellular:id=6]]: Port ready.
+232856.947 [4280648] (LibWebRTCRemoteParticipant.cxx:1319): addr:2a0d:e487:219f:af4:89a7:670:904f:8ce2:57537 skipNetId:7
+232856.947 [4280648] (rtc_peerconnection_impl.cc:418): OnIceCandidate, mid 0, mline 0, sdpcandidate:1833147740 1 udp 2122131711 2a0d:e487:219f:af4:89a7:670:904f:8ce2 57537 typ host generation 0 ufrag PIDi network-id 7 network-cost 900
+232856.947 [4280649] (basic_port_allocator.cc:1195): Port[4b649900:0:1:0:local:Net[pdp_ip0:10.143.19.x/32:Cellular:id=6]]: Port completed gathering candidates.
+232856.947 [4280649] (basic_port_allocator.cc:1496): Net[ipsec5:fdde:0:211f:x:x:x:x:x/64:VPN/Unknown:id=2]: Allocation Phase=Udp
+232856.947 [4280649] (port.cc:184): Port[4b64a800::1:0:local:Net[ipsec5:fdde:0:211f:x:x:x:x:x/64:VPN/Unknown:id=2]]: Port created with network cost 50
+232856.947 [4280649] (basic_port_allocator.cc:1012): Adding allocated port for 0
+232856.947 [4280649] (basic_port_allocator.cc:1034): Port[4b64a800:0:1:0:local:Net[ipsec5:fdde:0:211f:x:x:x:x:x/64:VPN/Unknown:id=2]]: Added port to allocator
+232856.947 [4280648] (LibWebRTCRemoteParticipant.cxx:1319): addr:10.143.19.226:56771 setPrefferedLocalNetId:6
+232856.947 [4280648] (rtc_peerconnection_impl.cc:418): OnIceCandidate, mid 0, mline 0, sdpcandidate:2314713620 1 udp 2122063615 10.143.19.226 56771 typ host generation 0 ufrag PIDi network-id 6 network-cost 900
+232856.947 [4280649] (basic_port_allocator.cc:1051): Port[4b64a800:0:1:0:local:Net[ipsec5:fdde:0:211f:x:x:x:x:x/64:VPN/Unknown:id=2]]: Gathered candidate: Cand[:1971534220:1:udp:2122003199:[fdde:0:211f:x:x:x:x:x]:60464:local::0:PIDi:4lTz0bH0fEjzjZntuNB9HtBV:2:50:0]
+232856.947 [4280649] (basic_port_allocator.cc:1084): Port[4b64a800:0:1:0:local:Net[ipsec5:fdde:0:211f:x:x:x:x:x/64:VPN/Unknown:id=2]]: Port ready.
+232856.947 [4280649] (basic_port_allocator.cc:1195): Port[4b64a800:0:1:0:local:Net[ipsec5:fdde:0:211f:x:x:x:x:x/64:VPN/Unknown:id=2]]: Port completed gathering candidates.
+232856.947 [4280649] (basic_port_allocator.cc:1496): Net[ipsec6:fdde:0:211f:x:x:x:x:x/64:VPN/Unknown:id=3]: Allocation Phase=Udp
+232856.947 [4280649] (port.cc:184): Port[48e06d00::1:0:local:Net[ipsec6:fdde:0:211f:x:x:x:x:x/64:VPN/Unknown:id=3]]: Port created with network cost 50
+232856.947 [4280649] (basic_port_allocator.cc:1012): Adding allocated port for 0
+232856.947 [4280649] (basic_port_allocator.cc:1034): Port[48e06d00:0:1:0:local:Net[ipsec6:fdde:0:211f:x:x:x:x:x/64:VPN/Unknown:id=3]]: Added port to allocator
+232856.947 [4280649] (basic_port_allocator.cc:1051): Port[48e06d00:0:1:0:local:Net[ipsec6:fdde:0:211f:x:x:x:x:x/64:VPN/Unknown:id=3]]: Gathered candidate: Cand[:1971534220:1:udp:2121937663:[fdde:0:211f:x:x:x:x:x]:50250:local::0:PIDi:4lTz0bH0fEjzjZntuNB9HtBV:3:50:0]
+232856.947 [4280649] (basic_port_allocator.cc:1084): Port[48e06d00:0:1:0:local:Net[ipsec6:fdde:0:211f:x:x:x:x:x/64:VPN/Unknown:id=3]]: Port ready.
+232856.947 [4280648] (LibWebRTCRemoteParticipant.cxx:1319): addr:fdde:0:211f:93fc:42f:a09d:7396:862:60464 skipNetId:2
+232856.947 [4280648] (rtc_peerconnection_impl.cc:418): OnIceCandidate, mid 0, mline 0, sdpcandidate:1971534220 1 udp 2122003199 fdde:0:211f:93fc:42f:a09d:7396:862 60464 typ host generation 0 ufrag PIDi network-id 2 network-cost 50
+232856.947 [4280649] (basic_port_allocator.cc:1195): Port[48e06d00:0:1:0:local:Net[ipsec6:fdde:0:211f:x:x:x:x:x/64:VPN/Unknown:id=3]]: Port completed gathering candidates.
+232856.947 [4280649] (basic_port_allocator.cc:1496): Net[utun8:fdb4:cf1:6966:x:x:x:x:x/64:VPN/Unknown:id=9]: Allocation Phase=Udp
+232856.947 [4280649] (port.cc:184): Port[48e07700::1:0:local:Net[utun8:fdb4:cf1:6966:x:x:x:x:x/64:VPN/Unknown:id=9]]: Port created with network cost 50
+232856.947 [4280649] (basic_port_allocator.cc:1012): Adding allocated port for 0
+232856.947 [4280649] (basic_port_allocator.cc:1034): Port[48e07700:0:2:0:local:Net[utun8:fdb4:cf1:6966:x:x:x:x:x/64:VPN/Unknown:id=9]]: Added port to allocator
+232856.947 [4280648] (LibWebRTCRemoteParticipant.cxx:1319): addr:fdde:0:211f:93fc:42f:a09d:7396:862:50250 skipNetId:3
+232856.947 [4280648] (rtc_peerconnection_impl.cc:418): OnIceCandidate, mid 0, mline 0, sdpcandidate:1971534220 1 udp 2121937663 fdde:0:211f:93fc:42f:a09d:7396:862 50250 typ host generation 0 ufrag PIDi network-id 3 network-cost 50
+232856.948 [4280649] (basic_port_allocator.cc:1051): Port[48e07700:0:2:0:local:Net[utun8:fdb4:cf1:6966:x:x:x:x:x/64:VPN/Unknown:id=9]]: Gathered candidate: Cand[:2344757798:2:udp:2121872126:[fdb4:cf1:6966:x:x:x:x:x]:61486:local::0:PIDi:4lTz0bH0fEjzjZntuNB9HtBV:9:50:0]
+232856.948 [4280649] (basic_port_allocator.cc:1084): Port[48e07700:0:2:0:local:Net[utun8:fdb4:cf1:6966:x:x:x:x:x/64:VPN/Unknown:id=9]]: Port ready.
+232856.948 [4280649] (basic_port_allocator.cc:1195): Port[48e07700:0:2:0:local:Net[utun8:fdb4:cf1:6966:x:x:x:x:x/64:VPN/Unknown:id=9]]: Port completed gathering candidates.
+232856.948 [4280649] (basic_port_allocator.cc:1496): Net[pdp_ip1:fdde:0:211f:x:x:x:x:x/64:Cellular:id=8]: Allocation Phase=Udp
+232856.948 [4280649] (port.cc:184): Port[492f0500::1:0:local:Net[pdp_ip1:fdde:0:211f:x:x:x:x:x/64:Cellular:id=8]]: Port created with network cost 900
+232856.948 [4280649] (basic_port_allocator.cc:1012): Adding allocated port for 0
+232856.948 [4280649] (basic_port_allocator.cc:1034): Port[492f0500:0:2:0:local:Net[pdp_ip1:fdde:0:211f:x:x:x:x:x/64:Cellular:id=8]]: Added port to allocator
+232856.948 [4280649] (basic_port_allocator.cc:1051): Port[492f0500:0:2:0:local:Net[pdp_ip1:fdde:0:211f:x:x:x:x:x/64:Cellular:id=8]]: Gathered candidate: Cand[:1971534220:2:udp:2122199806:[fdde:0:211f:x:x:x:x:x]:63761:local::0:PIDi:4lTz0bH0fEjzjZntuNB9HtBV:8:900:0]
+232856.948 [4280648] (LibWebRTCRemoteParticipant.cxx:1319): addr:fdb4:cf1:6966::1:61486 skipNetId:9
+232856.948 [4280649] (basic_port_allocator.cc:1084): Port[492f0500:0:2:0:local:Net[pdp_ip1:fdde:0:211f:x:x:x:x:x/64:Cellular:id=8]]: Port ready.
+232856.948 [4280648] (rtc_peerconnection_impl.cc:418): OnIceCandidate, mid 0, mline 0, sdpcandidate:2344757798 2 udp 2121872126 fdb4:cf1:6966::1 61486 typ host generation 0 ufrag PIDi network-id 9 network-cost 50
+232856.948 [4280649] (basic_port_allocator.cc:1195): Port[492f0500:0:2:0:local:Net[pdp_ip1:fdde:0:211f:x:x:x:x:x/64:Cellular:id=8]]: Port completed gathering candidates.
+232856.948 [4280649] (basic_port_allocator.cc:1496): Net[pdp_ip0:2a0d:e487:219f:x:x:x:x:x/64:Cellular:id=7]: Allocation Phase=Udp
+232856.948 [4280649] (port.cc:184): Port[493e3200::1:0:local:Net[pdp_ip0:2a0d:e487:219f:x:x:x:x:x/64:Cellular:id=7]]: Port created with network cost 900
+232856.948 [4280649] (basic_port_allocator.cc:1012): Adding allocated port for 0
+232856.948 [4280649] (basic_port_allocator.cc:1034): Port[493e3200:0:2:0:local:Net[pdp_ip0:2a0d:e487:219f:x:x:x:x:x/64:Cellular:id=7]]: Added port to allocator
+232856.948 [4280648] (LibWebRTCRemoteParticipant.cxx:1319): addr:fdde:0:211f:93fc:42f:a09d:7396:862:63761 skipNetId:8
+232856.948 [4280648] (rtc_peerconnection_impl.cc:418): OnIceCandidate, mid 0, mline 0, sdpcandidate:1971534220 2 udp 2122199806 fdde:0:211f:93fc:42f:a09d:7396:862 63761 typ host generation 0 ufrag PIDi network-id 8 network-cost 900
+232856.948 [4280649] (basic_port_allocator.cc:1051): Port[493e3200:0:2:0:local:Net[pdp_ip0:2a0d:e487:219f:x:x:x:x:x/64:Cellular:id=7]]: Gathered candidate: Cand[:1833147740:2:udp:2122131710:[2a0d:e487:219f:x:x:x:x:x]:50388:local::0:PIDi:4lTz0bH0fEjzjZntuNB9HtBV:7:900:0]
+232856.948 [4280649] (basic_port_allocator.cc:1084): Port[493e3200:0:2:0:local:Net[pdp_ip0:2a0d:e487:219f:x:x:x:x:x/64:Cellular:id=7]]: Port ready.
+232856.948 [4280649] (basic_port_allocator.cc:1195): Port[493e3200:0:2:0:local:Net[pdp_ip0:2a0d:e487:219f:x:x:x:x:x/64:Cellular:id=7]]: Port completed gathering candidates.
+232856.948 [4280649] (basic_port_allocator.cc:1496): Net[pdp_ip0:10.143.19.x/32:Cellular:id=6]: Allocation Phase=Udp
+232856.948 [4280649] (port.cc:184): Port[493e0000::1:0:local:Net[pdp_ip0:10.143.19.x/32:Cellular:id=6]]: Port created with network cost 900
+232856.948 [4280649] (basic_port_allocator.cc:1012): Adding allocated port for 0
+232856.948 [4280649] (basic_port_allocator.cc:1034): Port[493e0000:0:2:0:local:Net[pdp_ip0:10.143.19.x/32:Cellular:id=6]]: Added port to allocator
+232856.948 [4280649] (basic_port_allocator.cc:1051): Port[493e0000:0:2:0:local:Net[pdp_ip0:10.143.19.x/32:Cellular:id=6]]: Gathered candidate: Cand[:2314713620:2:udp:2122063614:10.143.19.x:57527:local::0:PIDi:4lTz0bH0fEjzjZntuNB9HtBV:6:900:0]
+232856.948 [4280649] (basic_port_allocator.cc:1084): Port[493e0000:0:2:0:local:Net[pdp_ip0:10.143.19.x/32:Cellular:id=6]]: Port ready.
+232856.948 [4280649] (basic_port_allocator.cc:1195): Port[493e0000:0:2:0:local:Net[pdp_ip0:10.143.19.x/32:Cellular:id=6]]: Port completed gathering candidates.
+232856.948 [4280649] (basic_port_allocator.cc:1496): Net[ipsec5:fdde:0:211f:x:x:x:x:x/64:VPN/Unknown:id=2]: Allocation Phase=Udp
+232856.948 [4280649] (port.cc:184): Port[493e1400::1:0:local:Net[ipsec5:fdde:0:211f:x:x:x:x:x/64:VPN/Unknown:id=2]]: Port created with network cost 50
+232856.948 [4280649] (basic_port_allocator.cc:1012): Adding allocated port for 0
+232856.948 [4280649] (basic_port_allocator.cc:1034): Port[493e1400:0:2:0:local:Net[ipsec5:fdde:0:211f:x:x:x:x:x/64:VPN/Unknown:id=2]]: Added port to allocator
+232856.948 [4280648] (LibWebRTCRemoteParticipant.cxx:1319): addr:2a0d:e487:219f:af4:89a7:670:904f:8ce2:50388 skipNetId:7
+232856.948 [4280649] (basic_port_allocator.cc:1051): Port[493e1400:0:2:0:local:Net[ipsec5:fdde:0:211f:x:x:x:x:x/64:VPN/Unknown:id=2]]: Gathered candidate: Cand[:1971534220:2:udp:2122003198:[fdde:0:211f:x:x:x:x:x]:58119:local::0:PIDi:4lTz0bH0fEjzjZntuNB9HtBV:2:50:0]
+232856.948 [4280648] (rtc_peerconnection_impl.cc:418): OnIceCandidate, mid 0, mline 0, sdpcandidate:1833147740 2 udp 2122131710 2a0d:e487:219f:af4:89a7:670:904f:8ce2 50388 typ host generation 0 ufrag PIDi network-id 7 network-cost 900
+232856.948 [4280649] (basic_port_allocator.cc:1084): Port[493e1400:0:2:0:local:Net[ipsec5:fdde:0:211f:x:x:x:x:x/64:VPN/Unknown:id=2]]: Port ready.
+232856.948 [4280649] (basic_port_allocator.cc:1195): Port[493e1400:0:2:0:local:Net[ipsec5:fdde:0:211f:x:x:x:x:x/64:VPN/Unknown:id=2]]: Port completed gathering candidates.
+232856.948 [4280649] (basic_port_allocator.cc:1496): Net[ipsec6:fdde:0:211f:x:x:x:x:x/64:VPN/Unknown:id=3]: Allocation Phase=Udp
+232856.948 [4280649] (port.cc:184): Port[493e3700::1:0:local:Net[ipsec6:fdde:0:211f:x:x:x:x:x/64:VPN/Unknown:id=3]]: Port created with network cost 50
+232856.948 [4280649] (basic_port_allocator.cc:1012): Adding allocated port for 0
+232856.948 [4280649] (basic_port_allocator.cc:1034): Port[493e3700:0:2:0:local:Net[ipsec6:fdde:0:211f:x:x:x:x:x/64:VPN/Unknown:id=3]]: Added port to allocator
+232856.948 [4280648] (LibWebRTCRemoteParticipant.cxx:1319): addr:10.143.19.226:57527 setPrefferedLocalNetId:6
+232856.948 [4280648] (LibWebRTCRemoteParticipant.cxx:1358): allPortsReady
+232856.948 [4280648] (LibWebRTCRemoteParticipant.cxx:1117): iceGatheringState changed to: 2 cmd:0x14b678600
+232856.948 [4280649] (basic_port_allocator.cc:1051): Port[493e3700:0:2:0:local:Net[ipsec6:fdde:0:211f:x:x:x:x:x/64:VPN/Unknown:id=3]]: Gathered candidate: Cand[:1971534220:2:udp:2121937662:[fdde:0:211f:x:x:x:x:x]:55507:local::0:PIDi:4lTz0bH0fEjzjZntuNB9HtBV:3:50:0]
+232856.948 [4280649] (basic_port_allocator.cc:1084): Port[493e3700:0:2:0:local:Net[ipsec6:fdde:0:211f:x:x:x:x:x/64:VPN/Unknown:id=3]]: Port ready.
+232856.948 [4280649] (basic_port_allocator.cc:1195): Port[493e3700:0:2:0:local:Net[ipsec6:fdde:0:211f:x:x:x:x:x/64:VPN/Unknown:id=3]]: Port completed gathering candidates.
+232856.948 [4280648] (rtc_peerconnection_impl.cc:418): OnIceCandidate, mid 0, mline 0, sdpcandidate:2314713620 2 udp 2122063614 10.143.19.226 57527 typ host generation 0 ufrag PIDi network-id 6 network-cost 900
+232856.948 [4280648] (rtc_peerconnection_impl.cc:418): OnIceCandidate, mid 0, mline 0, sdpcandidate:1971534220 2 udp 2122003198 fdde:0:211f:93fc:42f:a09d:7396:862 58119 typ host generation 0 ufrag PIDi network-id 2 network-cost 50
+232856.948 [4280648] (rtc_peerconnection_impl.cc:418): OnIceCandidate, mid 0, mline 0, sdpcandidate:1971534220 2 udp 2121937662 fdde:0:211f:93fc:42f:a09d:7396:862 55507 typ host generation 0 ufrag PIDi network-id 3 network-cost 50
+232856.948 [4280649] (connection.cc:261): Conn[4c443000:0:Net[pdp_ip0:10.143.19.x/32:Cellular:id=6]:Tj53AXNm:1:0:local:udp:10.143.19.x:56771->ws0I+3l+:1:0:555:local:udp:178.62.70.x:16578|CRWW|-|0|0|2387950976510|-]: Connection created
+232856.948 [4280649] (p2p_transport_channel.cc:1496): Channel[0|1|__]: Created connection with origin: 2, total: 1
+232856.948 [4280649] (p2p_transport_channel.cc:316): Switching selected connection due to: new candidate pairs created from a new remote candidate
+232856.948 [4280649] (p2p_transport_channel.cc:1949): Channel[0|1|__]: New selected connection: Conn[4c443000:0:Net[pdp_ip0:10.143.19.x/32:Cellular:id=6]:Tj53AXNm:1:0:local:udp:10.143.19.x:56771->ws0I+3l+:1:0:555:local:udp:178.62.70.x:16578|CRWW|S|0|0|2387950976510|-]
+232856.948 [4280649] (channel.cc:331): Network route changed for {mid: 0, media_type: audio}
+232856.948 [4280693] (ServerInviteSession.cxx:398): UAS_EarlyOffer: provideAnswer
+232856.948 [4280693] (InviteSession.cxx:2841): Transition UAS_EarlyOffer -> UAS_EarlyProvidedAnswer
+232856.948 [4280649] (jsep_transport_controller.cc:1161):  Transport 0 writability changed to 1.
+232856.948 [4280693] (ServerInviteSession.cxx:672): UAS_EarlyProvidedAnswer: accept(200)
+232856.948 [4280693] (InviteSession.cxx:2841): Transition UAS_EarlyProvidedAnswer -> UAS_Accepted
+232856.948 [4280649] (p2p_transport_channel.cc:2041): Channel[0|1|RW]: Transport channel state changed from 0 to 2
+232856.948 [4280649] (jsep_transport_controller.cc:1223): 0 Transport 1 state changed. Check if state is complete.
+232856.948 [4280649] (jsep_transport_controller.cc:1223): 0 Transport 1 state changed. Check if state is complete.
+232856.948 [4280649] (connection.cc:261): Conn[4c448000:0:Net[pdp_ip0:10.143.19.x/32:Cellular:id=6]:CPbd4wHA:2:0:local:udp:10.143.19.x:57527->uIpq/MEU:2:0:555:local:udp:178.62.70.x:16579|CRWW|-|0|0|2387950976508|-]: Connection created
+232856.948 [4280649] (p2p_transport_channel.cc:1496): Channel[0|2|__]: Created connection with origin: 2, total: 1
+232856.948 [4280649] (p2p_transport_channel.cc:316): Switching selected connection due to: new candidate pairs created from a new remote candidate
+232856.948 [4280649] (p2p_transport_channel.cc:1949): Channel[0|2|__]: New selected connection: Conn[4c448000:0:Net[pdp_ip0:10.143.19.x/32:Cellular:id=6]:CPbd4wHA:2:0:local:udp:10.143.19.x:57527->uIpq/MEU:2:0:555:local:udp:178.62.70.x:16579|CRWW|S|0|0|2387950976508|-]
+232856.948 [4280649] (channel.cc:331): Network route changed for {mid: 0, media_type: audio}
+232856.948 [4280649] (jsep_transport_controller.cc:1161):  Transport 0 writability changed to 1.
+232856.948 [4280649] (channel.cc:557): Channel writable ({mid: 0, media_type: audio}) for the first time
+232856.948 [4280649] (p2p_transport_channel.cc:2041): Channel[0|2|RW]: Transport channel state changed from 0 to 2
+232856.948 [4280649] (jsep_transport_controller.cc:1223): 0 Transport 2 state changed. Check if state is complete.
+232856.948 [4280649] (jsep_transport_controller.cc:1223): 0 Transport 2 state changed. Check if state is complete.
+232856.948 [4280647] (rtp_transport_controller_send.cc:299): Network route changed on transport 0: new_route = [ connected: 1 local: [ 4/6 Cellular turn: 0 ] remote: [ 1/6 Ethernet turn: 0 ] packet_overhead_bytes: 28 ]
+232856.948 [4280647] (call.cc:1249): UpdateAggregateNetworkState: aggregate_state change to up
+232856.948 [4280647] (webrtc_voice_engine.cc:425): WebRtcVoiceEngine::ApplyOptions: AudioOptions {audio_jitter_buffer_max_packets: 200, audio_jitter_buffer_fast_accelerate: 0, audio_jitter_buffer_min_delay_ms: 0, }
+232856.948 [4280647] (webrtc_voice_engine.cc:444): Always disable AEC on iOS. Use built-in instead.
+232856.948 [4280647] (webrtc_voice_engine.cc:454): Always disable AGC on iOS. Use built-in instead.
+232856.948 [4280647] (audio_device_impl.cc:878): BuiltInAECIsAvailable
+232856.948 [4280647] (audio_device_generic.cc:18): BuiltInAECIsAvailable: Not supported on this platform
+232856.948 [4280647] (audio_device_impl.cc:881): output: 0
+232856.948 [4280647] (audio_device_impl.cc:894): BuiltInAGCIsAvailable
+232856.948 [4280647] (audio_device_generic.cc:28): BuiltInAGCIsAvailable: Not supported on this platform
+232856.948 [4280647] (audio_device_impl.cc:897): output: 0
+232856.948 [4280647] (audio_processing_impl.cc:515): AudioProcessing::ApplyConfig: AudioProcessing::Config{ pipeline: { maximum_internal_processing_rate: 48000, multi_channel_render: 0, multi_channel_capture: 0 }, pre_amplifier: { enabled: 0, fixed_gain_factor: 1 },capture_level_adjustment: { enabled: 0, pre_gain_factor: 1, post_gain_factor: 1, analog_mic_gain_emulation: { enabled: 0, initial_level: 255 }}, high_pass_filter: { enabled: 1 }, echo_canceller: { enabled: 0, mobile_mode: 0, enforce_high_pass_filtering: 1 }, noise_suppression: { enabled: 0, level: High }, transient_suppression: { enabled: 1 }, gain_controller1: { enabled: 0, mode: FixedDigital, target_level_dbfs: 3, compression_gain_db: 9, enable_limiter: 1, analog_gain_controller { enabled: 1, startup_min_volume: 0, clipped_level_min: 70, enable_digital_adaptive: 1, clipped_level_step: 15, clipped_ratio_threshold: 0.1, clipped_wait_frames: 300, clipping_predictor:  { enabled: 0, mode: 0, window_length: 5, reference_window_length: 5, reference_window_delay: 5, clipping_threshold: -1, crest_factor_margin: 3, use_predicted_step: 1 }}}, gain_controller2: { enabled: 0, fixed_digital: { gain_db: 0 }, adaptive_digital: { enabled: 0, dry_run: 0, headroom_db: 6, max_gain_db: 30, initial_gain_db: 8, vad_reset_period_ms: 1500, adjacent_speech_frames_threshold: 12, max_gain_change_db_per_second: 3, max_output_noise_level_dbfs: -50 }, input_volume_control : { enabled 0}}
+232856.948 [4280647] (audio_device_impl.cc:793): RecordingIsInitialized
+232856.948 [4280647] (audio_device_impl.cc:855): Recording
+232856.948 [4280647] (audio_device_impl.cc:774): InitRecording
+232856.948 [4280647] (audio_device_impl.cc:793): RecordingIsInitialized
+232856.948 [4280647] (audio_device_impl.cc:830): StartRecording
+232856.948 [4280647] (audio_device_impl.cc:855): Recording
+232856.948 [4280693] (RemoteParticipant.cxx:1603): onConnected: handle=209, SipResp: 200 tid=c571.515e1fe7.0 cseq=3 INVITE contact=1002@78.234.X.X:21880 / 3 from(tu)
+232856.948 [4280647] (audio_device_ios.mm:274): AudioDeviceIOS::StartRecording
+232856.948 [4280693] (RemoteParticipant.cxx:538): RemoteParticipant::stateTransition of handle=209 to state=Connected
+232856.948 [4280647] (audio_device_impl.cc:837): output: 0
+232856.948 [4280647] (channel.cc:859): Changing voice state, recv=1 send=1 for {mid: 0, media_type: audio}
+232856.948 [4280648] (LibWebRTCRemoteParticipant.cxx:1389): CandidatePairChanged localAddr: 10.143.19.226:56771 remoteAddr: 178.62.X.X:16578 component:1
+232856.948 [4280648] (peer_connection.cc:1934): Changing standardized IceConnectionState 0 => 1
+232856.948 [4280648] (peer_connection.cc:1915): Changing IceConnectionState 0 => 1
+232856.948 [4280648] (LibWebRTCRemoteParticipant.cxx:1261): iceConnectionState changed to: 1
+232856.948 [4280648] (LibWebRTCRemoteParticipant.cxx:1389): CandidatePairChanged localAddr: 10.143.19.226:57527 remoteAddr: 178.62.X.X:16579 component:2
+232856.948 [4280648] (peer_connection.cc:2375): Changing to ICE connected state because all transports are writable.
+232856.948 [4280648] (peer_connection.cc:1915): Changing IceConnectionState 1 => 2
+232856.948 [4280648] (LibWebRTCRemoteParticipant.cxx:1261): iceConnectionState changed to: 3
+232856.948 [4280648] (peer_connection.cc:1934): Changing standardized IceConnectionState 1 => 2
+232856.948 [4280693] (RemoteParticipant.cxx:141): reset iceRestart flag
+232856.948 [4280692] (TransportSelector.cxx:1348): TX 'Resp 200/cseq=3/INVITE' to [68.173.X.X:5060 UDP] via [10.143.19.226:5060 UDP]
+232856.948 [4294380] (rtp_transport_controller_send.cc:612): Creating fallback congestion controller
+232856.948 [4294380] (alr_experiment.cc:80): Using ALR experiment settings: pacing factor: 1, max pacer queue length: 2875, ALR bandwidth usage percent: 80, ALR start budget level percent: 40, ALR end budget level percent: -60, ALR experiment group ID: 3
+232856.948 [4294380] (trendline_estimator.cc:184): Using Trendline filter for delay change estimation with settings sort:false,cap:false,beginning_packets:7,end_packets:7,cap_uncertainty:0,window_size:20 and no network state predictor
+232856.948 [4294380] (trendline_estimator.cc:184): Using Trendline filter for delay change estimation with settings sort:false,cap:false,beginning_packets:7,end_packets:7,cap_uncertainty:0,window_size:20 and no network state predictor
+232856.948 [4294380] (aimd_rate_control.cc:112): Using aimd rate control with back off factor 0.85
+232856.948 [4294380] (delay_based_bwe.cc:83): Initialized DelayBasedBwe with separate audio overuse detectionenabled:false,packet_threshold:10,time_threshold:1 s
+232856.948 [4294380] (delay_based_bwe.cc:290): BWE Setting start bitrate to: 300 kbps
+232856.948 [4294380] (probe_controller.cc:305): Measured bitrate: 300 kbps Minimum to probe further: 1260 kbps
+232856.948 [4294380] (bitrate_allocator.cc:393): Current BWE 300000
+232856.948 [4294379] (bitrate_prober.cc:105): Probe cluster (bitrate:min bytes:min packets): (900000:1688:5)
+232856.948 [4294379] (bitrate_prober.cc:105): Probe cluster (bitrate:min bytes:min packets): (1800000:3375:5)
+232857.002 [4280649] (basic_port_allocator.cc:1496): Net[utun8:fdb4:cf1:6966:x:x:x:x:x/64:VPN/Unknown:id=9]: Allocation Phase=Relay
+232857.002 [4280649] (basic_port_allocator.cc:1496): Net[pdp_ip1:fdde:0:211f:x:x:x:x:x/64:Cellular:id=8]: Allocation Phase=Relay
+232857.002 [4280649] (basic_port_allocator.cc:1496): Net[pdp_ip0:2a0d:e487:219f:x:x:x:x:x/64:Cellular:id=7]: Allocation Phase=Relay
+232857.002 [4280649] (basic_port_allocator.cc:1496): Net[pdp_ip0:10.143.19.x/32:Cellular:id=6]: Allocation Phase=Relay
+232857.002 [4280649] (basic_port_allocator.cc:1496): Net[ipsec5:fdde:0:211f:x:x:x:x:x/64:VPN/Unknown:id=2]: Allocation Phase=Relay
+232857.002 [4280649] (basic_port_allocator.cc:1496): Net[ipsec6:fdde:0:211f:x:x:x:x:x/64:VPN/Unknown:id=3]: Allocation Phase=Relay
+232857.002 [4280649] (basic_port_allocator.cc:1496): Net[utun8:fdb4:cf1:6966:x:x:x:x:x/64:VPN/Unknown:id=9]: Allocation Phase=Relay
+232857.002 [4280649] (basic_port_allocator.cc:1496): Net[pdp_ip1:fdde:0:211f:x:x:x:x:x/64:Cellular:id=8]: Allocation Phase=Relay
+232857.002 [4280649] (basic_port_allocator.cc:1496): Net[pdp_ip0:2a0d:e487:219f:x:x:x:x:x/64:Cellular:id=7]: Allocation Phase=Relay
+232857.002 [4280649] (basic_port_allocator.cc:1496): Net[pdp_ip0:10.143.19.x/32:Cellular:id=6]: Allocation Phase=Relay
+232857.002 [4280649] (basic_port_allocator.cc:1496): Net[ipsec5:fdde:0:211f:x:x:x:x:x/64:VPN/Unknown:id=2]: Allocation Phase=Relay
+232857.002 [4280649] (basic_port_allocator.cc:1496): Net[ipsec6:fdde:0:211f:x:x:x:x:x/64:VPN/Unknown:id=3]: Allocation Phase=Relay
+flutter: SIP Service: CallKit call accepted and connected
+flutter: InCallScreen: Setting up call state listener for callId: 209
+232857.053 [4280649] (basic_port_allocator.cc:1496): Net[utun8:fdb4:cf1:6966:x:x:x:x:x/64:VPN/Unknown:id=9]: Allocation Phase=Tcp
+232857.053 [4280649] (basic_port_allocator.cc:1496): Net[pdp_ip1:fdde:0:211f:x:x:x:x:x/64:Cellular:id=8]: Allocation Phase=Tcp
+232857.053 [4280649] (basic_port_allocator.cc:1496): Net[pdp_ip0:2a0d:e487:219f:x:x:x:x:x/64:Cellular:id=7]: Allocation Phase=Tcp
+232857.053 [4280649] (basic_port_allocator.cc:1496): Net[pdp_ip0:10.143.19.x/32:Cellular:id=6]: Allocation Phase=Tcp
+232857.053 [4280649] (basic_port_allocator.cc:1496): Net[ipsec5:fdde:0:211f:x:x:x:x:x/64:VPN/Unknown:id=2]: Allocation Phase=Tcp
+232857.053 [4280649] (basic_port_allocator.cc:1496): Net[ipsec6:fdde:0:211f:x:x:x:x:x/64:VPN/Unknown:id=3]: Allocation Phase=Tcp
+232857.053 [4280649] (basic_port_allocator.cc:1269): All candidates gathered for 0:1:0
+232857.053 [4280649] (p2p_transport_channel.cc:1038): P2PTransportChannel: 0, component 1 gathering complete
+232857.053 [4280649] (basic_port_allocator.cc:1496): Net[utun8:fdb4:cf1:6966:x:x:x:x:x/64:VPN/Unknown:id=9]: Allocation Phase=Tcp
+232857.053 [4280649] (basic_port_allocator.cc:1496): Net[pdp_ip1:fdde:0:211f:x:x:x:x:x/64:Cellular:id=8]: Allocation Phase=Tcp
+232857.053 [4280649] (basic_port_allocator.cc:1496): Net[pdp_ip0:2a0d:e487:219f:x:x:x:x:x/64:Cellular:id=7]: Allocation Phase=Tcp
+232857.053 [4280649] (basic_port_allocator.cc:1496): Net[pdp_ip0:10.143.19.x/32:Cellular:id=6]: Allocation Phase=Tcp
+232857.053 [4280649] (basic_port_allocator.cc:1496): Net[ipsec5:fdde:0:211f:x:x:x:x:x/64:VPN/Unknown:id=2]: Allocation Phase=Tcp
+232857.053 [4280649] (basic_port_allocator.cc:1496): Net[ipsec6:fdde:0:211f:x:x:x:x:x/64:VPN/Unknown:id=3]: Allocation Phase=Tcp
+232857.053 [4280649] (basic_port_allocator.cc:1269): All candidates gathered for 0:2:0
+232857.053 [4280649] (p2p_transport_channel.cc:1038): P2PTransportChannel: 0, component 2 gathering complete
+232857.054 [4280648] (LibWebRTCRemoteParticipant.cxx:1117): iceGatheringState changed to: 2 cmd:0x0
+232857.169 [4280692] (Transport.cxx:403): RX 'Req ACK/cseq=3' from: [68.173.X.X:5060 UDP]
+232857.169 [4280693] (DialogUsageManager.cxx:2102): Handling in-dialog request: SipReq:  ACK 1002@78.234.X.X:21880 tid=c571.415e1fe7.2 cseq=3 ACK contact=68.173.X.X:5060 / 3 from(wire)
+232857.169 [4280693] (ServerInviteSession.cxx:1062): dispatchAccepted: SipReq:  ACK 1002@78.234.X.X:21880 tid=c571.415e1fe7.2 cseq=3 ACK contact=68.173.X.X:5060 / 3 from(wire)
+232857.169 [4280693] (InviteSession.cxx:2841): Transition UAS_Accepted -> InviteSession::Connected
+232857.169 [4280693] (RemoteParticipant.cxx:1610): onConnectedConfirmed: handle=209, SipReq:  ACK 1002@78.234.X.X:21880 tid=c571.415e1fe7.2 cseq=3 ACK contact=68.173.X.X:5060 / 3 from(wire)
+232857.169 [4280693] (SiprixConvManager.cpp:232): onParticipantConnectedConfirmed callId:209
+232857.169 [4280693] (RemoteParticipant.cxx:538): RemoteParticipant::stateTransition of handle=209 to state=Connected
+232857.169 [4280694] (Callbacks.cpp:295): Callback:41 callId:209
+flutter: event OnCallConnected {withVideo: false, from: "Pete" <sip:1001@408708399.testrp.co.uk>, to: sip:1002@408708399.testrp.co.uk, callId: 209}
+flutter: SIP Service: Call connected - callId: 209, from: "Pete" <sip:1001@408708399.testrp.co.uk>, to: sip:1002@408708399.testrp.co.uk, withVideo: false
+flutter: SipService: _updateCurrentCall called - callId: 209, state: AppCallState.answered
+flutter: InCallScreen: Received call state update - callId: 209, state: AppCallState.answered, widgetCallId: 209
+flutter: InCallScreen: Call answered, starting timer
+232857.294 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:532 -[RTCAudioSession handleRouteChangeNotification:]): Audio route changed:
+232857.296 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:545 -[RTCAudioSession handleRouteChangeNotification:]): Audio route changed: CategoryChange to :AVAudioSessionCategoryPlayAndRecord
+232857.296 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:564 -[RTCAudioSession handleRouteChangeNotification:]): Previous route: <AVAudioSessionRouteDescription: 0x14abfce10, 
+inputs = (
+); 
+outputs = (
+    "<AVAudioSessionPortDescription: 0x14abfc8f0, type = Speaker; name = Speaker; UID = Speaker; selectedDataSource = (null)>"
+)>
+Current route:<AVAudioSessionRouteDescription: 0x14abfcf30, 
+inputs = (
+    "<AVAudioSessionPortDescription: 0x14abfcdb0, type = MicrophoneBuiltIn; name = iPhone Microphone; UID = Built-In Microphone; selectedDataSource = Bottom>"
+); 
+outputs = (
+    "<AVAudioSessionPortDescription: 0x14abfcef0, type = Receiver; name = Receiver; UID = Built-In Receiver; selectedDataSource = (null)>"
+)>
+232857.329 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:509 HandleValidRouteChange): RTC_OBJC_TYPE(RTCAudioSession): {
+  category: AVAudioSessionCategoryPlayAndRecord
+  categoryOptions: 3
+  mode: AVAudioSessionModeDefault
+  isActive: 0
+  sampleRate: 48000.00
+  IOBufferDuration: 0.005000
+  outputNumberOfChannels: 1
+  inputNumberOfChannels: 1
+  outputLatency: 0.004500
+  inputLatency: 0.001625
+  outputVolume: 0.950000
+}
+232857.329 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:520 HandleSampleRateChange): Handling sample rate change.
+232857.329 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:524 HandleSampleRateChange): Ignoring sample rate change due to interruption.
+232857.360 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:511 -[RTCAudioSession handleInterruptionNotification:]): Audio session interruption ended.
+232857.360 [4280230] (audio_device_ios.mm:343): AudioDeviceIOS::OnInterruptionEnd
+232857.361 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:487 HandleInterruptionEnd): Interruption ended. IsInterrupted changed from 1 to 0. Updating audio unit state.
+232857.361 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:720 UpdateAudioUnit): Updating audio unit state. CanPlayOrRecord=1 IsInterrupted=0
+232857.361 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:751 UpdateAudioUnit): VPAU state: Initialized
+232857.361 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:774 UpdateAudioUnit): Starting audio unit for UpdateAudioUnit
+232857.382 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:777 UpdateAudioUnit): RTC_OBJC_TYPE(RTCAudioSession): {
+  category: AVAudioSessionCategoryPlayAndRecord
+  categoryOptions: 3
+  mode: AVAudioSessionModeDefault
+  isActive: 1
+  sampleRate: 48000.00
+  IOBufferDuration: 0.005000
+  outputNumberOfChannels: 1
+  inputNumberOfChannels: 1
+  outputLatency: 0.004500
+  inputLatency: 0.001625
+  outputVolume: 0.950000
+}
+232857.382 [4280647] (RTCLogging.mm:33): (voice_processing_audio_unit.mm:336 Start): Starting audio unit.
+232857.510 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:532 -[RTCAudioSession handleRouteChangeNotification:]): Audio route changed:
+232857.510 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:557 -[RTCAudioSession handleRouteChangeNotification:]): Audio route changed: RouteConfigurationChange
+232857.510 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:564 -[RTCAudioSession handleRouteChangeNotification:]): Previous route: <AVAudioSessionRouteDescription: 0x14abfc9d0, 
+inputs = (
+    "<AVAudioSessionPortDescription: 0x14abfce30, type = MicrophoneBuiltIn; name = iPhone Microphone; UID = Built-In Microphone; selectedDataSource = Bottom>"
+); 
+outputs = (
+    "<AVAudioSessionPortDescription: 0x14abfcc90, type = Receiver; name = Receiver; UID = Built-In Receiver; selectedDataSource = (null)>"
+)>
+Current route:<AVAudioSessionRouteDescription: 0x14abfcd10, 
+inputs = (
+    "<AVAudioSessionPortDescription: 0x14abfd060, type = MicrophoneBuiltIn; name = iPhone Microphone; UID = Built-In Microphone; selectedDataSource = (null)>"
+); 
+outputs = (
+    "<AVAudioSessionPortDescription: 0x14abfd0e0, type = Receiver; name = Receiver; UID = Built-In Receiver; selectedDataSource = (null)>"
+)>
+232857.510 [4280230] (RTCLogging.mm:33): (RTCNativeAudioSessionDelegateAdapter.mm:62 -[RTCNativeAudioSessionDelegateAdapter audioSessionDidChangeRoute:reason:previousRoute:]): Ignoring RouteConfigurationChange
+232857.569 [4280692] (Transport.cxx:403): RX 'Req OPTIONS/cseq=1' from: [68.173.X.X:5060 UDP]
+232857.569 [4280693] (UserAgent.cxx:462): getIncomingConversationProfile: comparing requestUri=sip:1002@78.234.X.X:21880;transport=udp to contactUri=sip:1002@78.234.X.X:21880;transport=udp - MATCHED!
+232857.569 [4280693] (UserAgent.cxx:462): getIncomingConversationProfile: comparing requestUri=sip:1002@78.234.X.X:21880;transport=udp to contactUri=sip:1002@78.234.X.X:21880;transport=udp - MATCHED!
+232857.569 [4280693] (ConversationManager.cxx:1407): onReceivedRequest(ServerOutOfDialogReqHandle): SipReq:  OPTIONS 1002@78.234.X.X:21880 tid=0c145b7 cseq=1 OPTIONS / 1 from(wire)
+232857.569 [4280692] (TransportSelector.cxx:1348): TX 'Resp 200/cseq=1/OPTIONS' to [68.173.X.X:5060 UDP] via [10.143.19.226:5060 UDP]
+232857.639 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:856 -[RTCAudioSession observeValueForKeyPath:ofObject:change:context:]): OutputVolumeDidChange to 1.000000
+232857.749 [4280647] (RTCLogging.mm:33): (voice_processing_audio_unit.mm:343 Start): Started audio unit
+232857.749 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:630 HandleOutputVolumeChange): Output volume change detected.
+232857.755 [4294438] (RTCLogging.mm:33): (audio_device_ios.mm:444 OnGetPlayoutData): Possible playout audio glitch detected.
+  Time since last OnGetPlayoutData was 2475 ms.
+
+232857.755 [4294438] (RTCLogging.mm:33): (audio_device_ios.mm:453 OnGetPlayoutData): Glitch warning is ignored. Probably caused by device switch.
+232857.765 [4294381] (rtp_sender_audio.cc:313): First audio RTP packet sent to pacer
+232857.843 [4280648] (LibWebRTCRemoteParticipant.cxx:1435): OnFirstPacketReceived call:209
+232857.843 [4280647] (webrtc_voice_engine.cc:2196): Creating unsignaled receive stream for SSRC=2176746494
+232857.843 [4280647] (webrtc_voice_engine.cc:1908): AddRecvStream: {ssrcs:[2176746494];ssrc_groups:;stream_ids:;}
+232857.843 [4280647] (delay_manager.cc:62): Delay manager config: quantile=0.95 forget_factor=0.983 start_forget_weight=2 resample_interval_ms=500 use_reorder_optimizer=1 reorder_forget_factor=0.9993 ms_per_loss_percent=20
+232857.843 [4280647] (decision_logic.cc:78): NetEq decision logic config: enable_stable_playout_delay=0 reinit_after_expands=100 packet_history_size_ms=2000 deceleration_target_level_offset_ms=85
+232857.843 [4280647] (neteq_impl.cc:139): NetEq config: sample_rate_hz=48000, enable_post_decode_vad=true, max_packets_in_buffer=200, min_delay_ms=0, enable_fast_accelerate=false, enable_muted_state=true, enable_rtx_handling=false
+232857.843 [4280647] (audio_receive_stream.cc:120): AudioReceiveStreamImpl: 2176746494
+232857.843 [4280647] (audio_device_impl.cc:824): Playing
+232857.843 [4280647] (webrtc_voice_engine.cc:2018): WRVMC::SetOutputVolume({ssrc=2176746494}, {volume=1.00})
+232857.843 [4280647] (webrtc_voice_engine.cc:2028): WRVMC::SetOutputVolume => (stream with SSRC 2176746494 now uses volume 1.00)
+232857.843 [4280647] (webrtc_voice_engine.cc:2067): SetBaseMinimumPlayoutDelayMs() to 0 for recv stream with ssrc 2176746494
+232857.974 [4294380] (probe_controller.cc:442): kWaitingForProbingResult: timeout
+232858.340 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:856 -[RTCAudioSession observeValueForKeyPath:ofObject:change:context:]): OutputVolumeDidChange to 0.950000
+232858.340 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:630 HandleOutputVolumeChange): Output volume change detected.
+232858.641 [4280692] (Transport.cxx:403): RX 'Req INVITE/cseq=4' from: [68.173.X.X:5060 UDP]
+232858.641 [4280693] (UserAgent.cxx:462): getIncomingConversationProfile: comparing requestUri=sip:1002@78.234.X.X:21880;transport=udp to contactUri=sip:1002@78.234.X.X:21880;transport=udp - MATCHED!
+232858.641 [4280693] (DialogUsageManager.cxx:2102): Handling in-dialog request: SipReq:  INVITE 1002@78.234.X.X:21880 tid=9571.90c282d3.0 cseq=4 INVITE contact=68.173.X.X:5060 / 4 from(wire)
+232858.641 [4280693] (InviteSession.cxx:2841): Transition InviteSession::Connected -> InviteSession::ReceivedReinvite
+232858.641 [4280693] (RemoteParticipant.cxx:1719): onOffer: handle=209
+232858.641 [4280693] (rtc_peerconnection_impl.cc:549):  Received session description :v=0
+o=1001 5016 66 IN IP4 178.62.X.X
+s=Mapping
+c=IN IP4 178.62.X.X
+t=0 0
+m=audio 16392 RTP/AVP 0 101
+a=rtpmap:0 PCMU/8000
+a=rtpmap:101 telephone-event/8000
+a=fmtp:101 0-16
+a=sendrecv
+a=rtcp:16393
+a=ptime:20
+a=ice-ufrag:okL5
+
+232858.641 [4280648] (sdp_offer_answer.cc:3756): SetRemoteDescription: Remote media section at i=0 is missing an a=mid line. Filling in the value '0' from the matching local media section.
+232858.641 [4280649] (p2p_transport_channel.cc:523): Received remote ICE parameters: ufrag=okL5, renomination disabled
+232858.641 [4280649] (p2p_transport_channel.cc:523): Received remote ICE parameters: ufrag=okL5, renomination disabled
+232858.641 [4280648] (sdp_offer_answer.cc:2684): Session: 3138032245276429570 Old state: stable New state: have-remote-offer
+232858.641 [4280647] (channel.cc:927): Setting remote voice description for {mid: 0, media_type: audio}
+232858.641 [4280647] (webrtc_voice_engine.cc:1308): WebRtcVoiceMediaChannel::SetSendParameters: {codecs: [AudioCodec[0:PCMU:8000:0:1], AudioCodec[101:telephone-event:8000:0:1]], extensions: [], extmap-allow-mixed: false, max_bandwidth_bps: -1, mid: 0, options: AudioOptions {}}
+232858.641 [4280647] (audio_send_stream.cc:233): AudioSendStream::ConfigureStream: {rtp: {ssrc: 3028670453, mid: 0, extmap-allow-mixed: false, extensions: [], c_name: 3vdG+a8YSQinEnxp}, rtcp_report_interval_ms: 5000, send_transport: (Transport), min_bitrate_bps: 64000, max_bitrate_bps: 64000, has audio_network_adaptor_config: false, has_dscp: false, send_codec_spec: {nack_enabled: false, transport_cc_enabled: false, enable_non_sender_rtt: false, cng_payload_type: <unset>, red_payload_type: <unset>, payload_type: 0, format: {name: PCMU, clockrate_hz: 8000, num_channels: 1, parameters: {ptime: 20}}}}
+232858.641 [4280647] (audio_device_impl.cc:855): Recording
+232858.641 [4280647] (webrtc_voice_engine.cc:2290): WebRtcVoiceMediaChannel::SetMaxSendBitrate.
+232858.641 [4280647] (webrtc_voice_engine.cc:1494): Setting voice channel options: AudioOptions {}
+232858.641 [4280647] (webrtc_voice_engine.cc:425): WebRtcVoiceEngine::ApplyOptions: AudioOptions {audio_jitter_buffer_max_packets: 200, audio_jitter_buffer_fast_accelerate: 0, audio_jitter_buffer_min_delay_ms: 0, }
+232858.641 [4280647] (webrtc_voice_engine.cc:444): Always disable AEC on iOS. Use built-in instead.
+232858.641 [4280647] (webrtc_voice_engine.cc:454): Always disable AGC on iOS. Use built-in instead.
+232858.641 [4280647] (audio_device_impl.cc:878): BuiltInAECIsAvailable
+232858.641 [4280647] (audio_device_generic.cc:18): BuiltInAECIsAvailable: Not supported on this platform
+232858.641 [4280647] (audio_device_impl.cc:881): output: 0
+232858.641 [4280647] (audio_device_impl.cc:894): BuiltInAGCIsAvailable
+232858.641 [4280647] (audio_device_generic.cc:28): BuiltInAGCIsAvailable: Not supported on this platform
+232858.641 [4280647] (audio_device_impl.cc:897): output: 0
+232858.641 [4280647] (audio_processing_impl.cc:515): AudioProcessing::ApplyConfig: AudioProcessing::Config{ pipeline: { maximum_internal_processing_rate: 48000, multi_channel_render: 0, multi_channel_capture: 0 }, pre_amplifier: { enabled: 0, fixed_gain_factor: 1 },capture_level_adjustment: { enabled: 0, pre_gain_factor: 1, post_gain_factor: 1, analog_mic_gain_emulation: { enabled: 0, initial_level: 255 }}, high_pass_filter: { enabled: 1 }, echo_canceller: { enabled: 0, mobile_mode: 0, enforce_high_pass_filtering: 1 }, noise_suppression: { enabled: 0, level: High }, transient_suppression: { enabled: 1 }, gain_controller1: { enabled: 0, mode: FixedDigital, target_level_dbfs: 3, compression_gain_db: 9, enable_limiter: 1, analog_gain_controller { enabled: 1, startup_min_volume: 0, clipped_level_min: 70, enable_digital_adaptive: 1, clipped_level_step: 15, clipped_ratio_threshold: 0.1, clipped_wait_frames: 300, clipping_predictor:  { enabled: 0, mode: 0, window_length: 5, reference_window_length: 5, reference_window_delay: 5, clipping_threshold: -1, crest_factor_margin: 3, use_predicted_step: 1 }}}, gain_controller2: { enabled: 0, fixed_digital: { gain_db: 0 }, adaptive_digital: { enabled: 0, dry_run: 0, headroom_db: 6, max_gain_db: 30, initial_gain_db: 8, vad_reset_period_ms: 1500, adjacent_speech_frames_threshold: 12, max_gain_change_db_per_second: 3, max_output_noise_level_dbfs: -50 }, input_volume_control : { enabled 0}}
+232858.641 [4280647] (webrtc_voice_engine.cc:1508): Set voice channel options. Current options: AudioOptions {audio_jitter_buffer_max_packets: 200, audio_jitter_buffer_fast_accelerate: 0, audio_jitter_buffer_min_delay_ms: 0, }
+232858.641 [4280647] (channel.cc:859): Changing voice state, recv=1 send=1 for {mid: 0, media_type: audio}
+232858.641 [4280648] (peer_connection.cc:2207): Non-rejected SCTP m= section is needed to get the SSL Role of the SCTP transport.
+232858.641 [4280648] (sdp_offer_answer.cc:1972): Processing the MSIDs for MID=0 (streams=[]).
+232858.641 [4280648] (rtc_peerconnection_impl.cc:186): OnSuccess
+232858.642 [4280649] (p2p_transport_channel.cc:512): Set ICE ufrag: PIDi pwd: 4lTz0bH0fEjzjZntuNB9HtBV on transport 0
+232858.642 [4280649] (p2p_transport_channel.cc:512): Set ICE ufrag: PIDi pwd: 4lTz0bH0fEjzjZntuNB9HtBV on transport 0
+232858.642 [4280649] (dtls_transport.cc:281): DtlsTransport[0|1|RW]: Other side didn't support DTLS.
+232858.642 [4280649] (dtls_transport.cc:281): DtlsTransport[0|2|RW]: Other side didn't support DTLS.
+232858.642 [4280648] (rtp_transceiver.cc:465): Changing transceiver (MID=0) current direction from kSendRecv to kSendRecv.
+232858.642 [4280648] (sdp_offer_answer.cc:2684): Session: 3138032245276429570 Old state: have-remote-offer New state: stable
+232858.642 [4280647] (webrtc_voice_engine.cc:1354): WebRtcVoiceMediaChannel::SetRecvParameters: {codecs: [AudioCodec[0:PCMU:8000:0:1], AudioCodec[101:telephone-event:8000:0:1]], extensions: []}
+232858.642 [4280647] (webrtc_voice_engine.cc:1518): Setting receive voice codecs.
+232858.642 [4280647] (audio_device_impl.cc:813): StopPlayout
+232858.642 [4280647] (audio_device_ios.mm:243): AudioDeviceIOS::StopPlayout
+232858.642 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:265 StopPlayout): Average number of playout callbacks between glitches: 100000
+232858.642 [4280647] (audio_device_buffer.cc:147): total playout time: 4510
+232858.642 [4280647] (audio_device_impl.cc:817): output: 0
+232858.642 [4280647] (audio_device_impl.cc:824): Playing
+232858.642 [4280647] (audio_device_impl.cc:761): InitPlayout
+232858.642 [4280647] (audio_device_impl.cc:787): PlayoutIsInitialized
+232858.642 [4280647] (audio_device_impl.cc:799): StartPlayout
+232858.642 [4280647] (audio_device_impl.cc:824): Playing
+232858.642 [4280647] (audio_device_ios.mm:218): AudioDeviceIOS::StartPlayout
+232858.642 [4280647] (audio_device_impl.cc:806): output: 0
+232858.642 [4280647] (channel.cc:859): Changing voice state, recv=1 send=1 for {mid: 0, media_type: audio}
+232858.642 [4280648] (peer_connection.cc:2207): Non-rejected SCTP m= section is needed to get the SSL Role of the SCTP transport.
+232858.642 [4280648] (rtc_peerconnection_impl.cc:186): OnSuccess
+232858.643 [4280649] (connection.cc:261): Conn[4c449800:0:Net[pdp_ip0:10.143.19.x/32:Cellular:id=6]:Tj53AXNm:1:0:local:udp:10.143.19.x:56771->BaEq5dP7:1:0:555:local:udp:178.62.70.x:16392|CRWW|-|0|0|2387950976510|-]: Connection created
+232858.643 [4280693] (ServerInviteSession.cxx:398): InviteSession::ReceivedReinvite: provideAnswer
+232858.643 [4280693] (InviteSession.cxx:2841): Transition InviteSession::ReceivedReinvite -> InviteSession::Connected
+232858.643 [4280649] (p2p_transport_channel.cc:1496): Channel[0|1|RW]: Created connection with origin: 2, total: 2
+232858.643 [4280649] (p2p_transport_channel.cc:316): Switching selected connection due to: new candidate pairs created from a new remote candidate
+232858.643 [4280649] (p2p_transport_channel.cc:1946): Channel[0|1|RW]: Previous selected connection: Conn[4c443000:0:Net[pdp_ip0:10.143.19.x/32:Cellular:id=6]:Tj53AXNm:1:0:local:udp:10.143.19.x:56771->ws0I+3l+:1:0:555:local:udp:178.62.70.x:16578|CRWW|-|0|0|2387950976510|-]
+232858.643 [4280649] (p2p_transport_channel.cc:1949): Channel[0|1|RW]: New selected connection: Conn[4c449800:0:Net[pdp_ip0:10.143.19.x/32:Cellular:id=6]:Tj53AXNm:1:0:local:udp:10.143.19.x:56771->BaEq5dP7:1:0:555:local:udp:178.62.70.x:16392|CRWW|S|0|0|2387950976510|-]
+232858.643 [4280649] (channel.cc:331): Network route changed for {mid: 0, media_type: audio}
+232858.643 [4280649] (p2p_transport_channel.cc:2041): Channel[0|1|RW]: Transport channel state changed from 2 to 1
+232858.643 [4280649] (jsep_transport_controller.cc:1223): 0 Transport 1 state changed. Check if state is complete.
+232858.643 [4280693] (InviteSession.cxx:564): Sending SipResp: 200 tid=9571.90c282d3.0 cseq=4 INVITE contact=1002@78.234.X.X:21880 / 4 from(tu)
+232858.643 [4280649] (connection.cc:261): Conn[4c448c00:0:Net[pdp_ip0:10.143.19.x/32:Cellular:id=6]:CPbd4wHA:2:0:local:udp:10.143.19.x:57527->LwpppcZL:2:0:555:local:udp:178.62.70.x:16393|CRWW|-|0|0|2387950976508|-]: Connection created
+232858.643 [4280649] (p2p_transport_channel.cc:1496): Channel[0|2|RW]: Created connection with origin: 2, total: 2
+232858.643 [4280649] (p2p_transport_channel.cc:316): Switching selected connection due to: new candidate pairs created from a new remote candidate
+232858.643 [4280649] (p2p_transport_channel.cc:1946): Channel[0|2|RW]: Previous selected connection: Conn[4c448000:0:Net[pdp_ip0:10.143.19.x/32:Cellular:id=6]:CPbd4wHA:2:0:local:udp:10.143.19.x:57527->uIpq/MEU:2:0:555:local:udp:178.62.70.x:16579|CRWW|-|0|0|2387950976508|-]
+232858.643 [4280649] (p2p_transport_channel.cc:1949): Channel[0|2|RW]: New selected connection: Conn[4c448c00:0:Net[pdp_ip0:10.143.19.x/32:Cellular:id=6]:CPbd4wHA:2:0:local:udp:10.143.19.x:57527->LwpppcZL:2:0:555:local:udp:178.62.70.x:16393|CRWW|S|0|0|2387950976508|-]
+232858.643 [4280649] (channel.cc:331): Network route changed for {mid: 0, media_type: audio}
+232858.643 [4280649] (p2p_transport_channel.cc:2041): Channel[0|2|RW]: Transport channel state changed from 2 to 1
+232858.643 [4280649] (jsep_transport_controller.cc:1223): 0 Transport 2 state changed. Check if state is complete.
+232858.643 [4280648] (LibWebRTCRemoteParticipant.cxx:1389): CandidatePairChanged localAddr: 10.143.19.226:56771 remoteAddr: 178.62.X.X:16392 component:1
+232858.643 [4280648] (LibWebRTCRemoteParticipant.cxx:1389): CandidatePairChanged localAddr: 10.143.19.226:57527 remoteAddr: 178.62.X.X:16393 component:2
+232858.643 [4280692] (TransportSelector.cxx:1348): TX 'Resp 200/cseq=4/INVITE' to [68.173.X.X:5060 UDP] via [10.143.19.226:5060 UDP]
+232858.830 [4280692] (Transport.cxx:403): RX 'Req ACK/cseq=4' from: [68.173.X.X:5060 UDP]
+232858.830 [4280693] (DialogUsageManager.cxx:2102): Handling in-dialog request: SipReq:  ACK 1002@78.234.X.X:21880 tid=9571.80c282d3.2 cseq=4 ACK contact=68.173.X.X:5060 / 4 from(wire)
+232906.673 [4280692] (Transport.cxx:403): RX 'Req BYE/cseq=5' from: [68.173.X.X:5060 UDP]
+232906.673 [4280693] (UserAgent.cxx:462): getIncomingConversationProfile: comparing requestUri=sip:1002@78.234.X.X:21880;transport=udp to contactUri=sip:1002@78.234.X.X:21880;transport=udp - MATCHED!
+232906.674 [4280693] (DialogUsageManager.cxx:2102): Handling in-dialog request: SipReq:  BYE 1002@78.234.X.X:21880 tid=a571.48b7d982.0 cseq=5 BYE contact=68.173.X.X:5060 / 5 from(wire)
+232906.674 [4280693] (InviteSession.cxx:2238): Received SipReq:  BYE 1002@78.234.X.X:21880 tid=a571.48b7d982.0 cseq=5 BYE contact=68.173.X.X:5060 / 5 from(wire)
+232906.674 [4280693] (InviteSession.cxx:2841): Transition InviteSession::Connected -> InviteSession::Terminated
+232906.674 [4280693] (RemoteParticipant.cxx:538): RemoteParticipant::stateTransition of handle=209 to state=Terminating
+232906.674 [4280693] (RemoteParticipant.cxx:1628): onTerminated: handle=209, received a BYE from peer
+232906.674 [4280693] (SiprixConvManager.cpp:164): onParticipantTerminated callId:209, statusCode:0
+232906.674 [4280694] (Callbacks.cpp:280): Callback:42 callId:209 statusCode:0 sendToApp:1
+flutter: event OnCallTerminated {statusCode: 0, callId: 209}
+flutter: SIP Service: Direct call terminated - callId: 209, statusCode: 0
+flutter: SipService: _updateCurrentCall called - callId: 209, state: AppCallState.ended
+232906.676 [4280692] (TransportSelector.cxx:1348): TX 'Resp 200/cseq=5/BYE' to [68.173.X.X:5060 UDP] via [10.143.19.226:5060 UDP]
+232906.677 [4280647] (audio_device_impl.cc:926): GetPlayoutUnderrunCount
+flutter: InCallScreen: Received call state update - callId: 209, state: AppCallState.ended, widgetCallId: 209
+232906.677 [4280647] (audio_device_impl.cc:929): output: -1
+flutter: InCallScreen: Call ended: Navigating back to keypad
+flutter: SIP Service: Ended CallKit call for SIP callId: 209
+232906.679 [4280648] (LibWebRTCRemoteParticipant.cxx:1491): Call 209 report: {"type":,"ssrc":2176746494,"mediaType":"audio","jitter":0.002,"packetsLost":3,"packetsReceived":432,"packetsDiscarded":0,"fecPacketsReceived":0,"fecPacketsDiscarded":0,"bytesReceived":69120,"headerBytesReceived":5184,"totalSamplesReceived":70560,"totalSamplesDuration":8.819999999999856
+232906.679 [4280648] (LibWebRTCRemoteParticipant.cxx:1491): Call 209 report: {"type":,"ssrc":3028670453,"mediaType":"audio","packetsSent":444,"retransmittedPacketsSent":0,"bytesSent":71040,"headerBytesSent":5328,"retransmittedBytesSent":0,"targetBitrate":64000,"totalPacketSendDelay":0,"nackCount":0
+Requested transaction successfully: endCall
+232906.680 [4280693] (rtc_peerconnection_impl.cc:669): Close
+232906.680 [4280647] (audio_device_impl.cc:844): StopRecording
+232906.680 [4280647] (audio_device_ios.mm:297): AudioDeviceIOS::StopRecording
+232906.680 [4280647] (audio_device_buffer.cc:179): total recording time: 9732
+232906.680 [4280647] (audio_device_impl.cc:848): output: 0
+232906.680 [4280647] (webrtc_voice_engine.cc:2044): SetDefaultOutputVolume() to 0 for recv stream with ssrc 2176746494
+232906.681 [4280647] (channel.cc:536): Channel disabled: {mid: 0, media_type: audio}
+232906.681 [4280647] (audio_device_impl.cc:813): StopPlayout
+232906.681 [4280647] (audio_device_ios.mm:243): AudioDeviceIOS::StopPlayout
+232906.681 [4280647] (audio_device_ios.mm:911): AudioDeviceIOS::ShutdownPlayOrRecord
+232906.681 [4280647] (RTCLogging.mm:33): (voice_processing_audio_unit.mm:351 Stop): Stopping audio unit.
+232906.681 [4294379] (packet_router.cc:156): Failed to send packet, matching RTP module not found or transport error. SSRC = 3028670453, sequence number 0
+flutter: SIP Service: CallKit event: Event.actionCallEnded
+232906.698 [4280647] (RTCLogging.mm:33): (voice_processing_audio_unit.mm:358 Stop): Stopped audio unit
+232906.698 [4280647] (RTCLogging.mm:33): (voice_processing_audio_unit.mm:367 Uninitialize): Unintializing audio unit.
+232906.702 [4280647] (RTCLogging.mm:33): (voice_processing_audio_unit.mm:374 Uninitialize): Uninitialized audio unit.
+232906.702 [4280647] (RTCLogging.mm:33): (voice_processing_audio_unit.mm:477 DisposeAudioUnit): Disposing audio unit.
+232906.844 [4280647] (RTCLogging.mm:33): (RTCAudioSession.mm:227 -[RTCAudioSession removeDelegate:]): Removing delegate: (0x1482d4530)
+232906.844 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:843 UnconfigureAudioSession): Unconfiguring audio session.
+232906.844 [4280647] (RTCLogging.mm:33): (RTCAudioSession.mm:775 -[RTCAudioSession unconfigureWebRTCSession:]): Unconfiguring audio session for WebRTC.
+232906.873 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:532 -[RTCAudioSession handleRouteChangeNotification:]): Audio route changed:
+232906.873 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:557 -[RTCAudioSession handleRouteChangeNotification:]): Audio route changed: RouteConfigurationChange
+232906.898 [4280647] (RTCLogging.mm:33): (RTCAudioSession.mm:656 -[RTCAudioSession decrementActivationCount]): Decrementing activation count.
+232906.898 [4280647] (RTCLogging.mm:33): (RTCAudioSession.mm:407 -[RTCAudioSession setActive:error:]): Number of current activations: 0
+232906.898 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:854 UnconfigureAudioSession): Unconfigured audio session.
+232906.899 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:564 -[RTCAudioSession handleRouteChangeNotification:]): Previous route: <AVAudioSessionRouteDescription: 0x14abfc4e0, 
+inputs = (
+    "<AVAudioSessionPortDescription: 0x14abfced0, type = MicrophoneBuiltIn; name = iPhone Microphone; UID = Built-In Microphone; selectedDataSource = (null)>"
+); 
+outputs = (
+    "<AVAudioSessionPortDescription: 0x14abfcdb0, type = Receiver; name = Receiver; UID = Built-In Receiver; selectedDataSource = (null)>"
+)>
+Current route:<AVAudioSessionRouteDescription: 0x14abfca90, 
+inputs = (
+    "<AVAudioSessionPortDescription: 0x14abfc970, type = MicrophoneBuiltIn; name = iPhone Microphone; UID = Built-In Microphone; selectedDataSource = Bottom>"
+); 
+outputs = (
+    "<AVAudioSessionPortDescription: 0x14abfd080, type = Receiver; name = Receiver; UID = Built-In Receiver; selectedDataSource = (null)>"
+)>
+232906.899 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:265 StopPlayout): Average number of playout callbacks between glitches: 100000
+232906.899 [4280647] (audio_device_buffer.cc:147): total playout time: 8257
+232906.899 [4280647] (audio_device_impl.cc:817): output: 0
+232906.899 [4280647] (channel.cc:859): Changing voice state, recv=0 send=0 for {mid: 0, media_type: audio}
+232906.899 [4280647] (webrtc_voice_engine.cc:1882): RemoveSendStream: 3028670453
+232906.899 [4280647] (audio_send_stream.cc:183): ~AudioSendStream: 3028670453
+232906.899 [4280647] (webrtc_voice_engine.cc:1958): RemoveRecvStream: 2176746494
+232906.899 [4280647] (call.cc:1249): UpdateAggregateNetworkState: aggregate_state change to down
+232906.899 [4280647] (audio_receive_stream.cc:149): ~AudioReceiveStreamImpl: 2176746494
+232906.899 [4280648] (peer_connection.cc:566): Session: 3138032245276429570 is destroyed.
+232906.899 [4294380] (control_handler.cc:80): Bitrate estimate state changed, BWE: 300 kbps.
+232906.899 [4294379] (pacing_controller.cc:121): PacedSender paused.
+232906.899 [4280693] (LibWebRTCRemoteParticipant.cxx:115): LibWebRTCRemoteParticipant destroyed, handle=209
+232906.899 [4280693] (RemoteParticipant.cxx:107): RemoteParticipant destroyed, handle=209
+232906.899 [4280693] (SiprixConvManager.cpp:151): onParticipantDestroyed callId:209
+232906.899 [4280693] (ConversationManager.cxx:787): participant unregistered, handle=209
+232906.899 [4280693] (ConversationManager.cxx:348): Switch to call: 0
+232906.900 [4280693] (RemoteParticipantDialogSet.cxx:57): RemoteParticipantDialogSet destroyed
+232906.900 [4280647] (audio_device_impl.cc:813): StopPlayout
+232906.900 [4280647] (audio_device_ios.mm:243): AudioDeviceIOS::StopPlayout
+232906.900 [4280647] (audio_device_impl.cc:817): output: 0
+232906.900 [4280694] (Callbacks.cpp:280): Callback:42 callId:209 statusCode:0 sendToApp:0
+232906.900 [4280694] (Callbacks.cpp:243): Callback:47 callId:0
+232906.900 [4280693] (ConversationManager.cxx:348): Switch to call: 0
+232906.900 [4280647] (audio_device_impl.cc:813): StopPlayout
+flutter: event OnCallSwitched {callId: 0}
+232906.900 [4280647] (audio_device_ios.mm:243): AudioDeviceIOS::StopPlayout
+232906.900 [4280647] (audio_device_impl.cc:817): output: 0
+232906.900 [4280694] (Callbacks.cpp:243): Callback:47 callId:0
+flutter: SIP Service: Direct call switched - callId: 0
+flutter: SipService: _updateCurrentCall called - callId: 209, state: AppCallState.ended
+flutter: InCallScreen: Received call state update - callId: 209, state: AppCallState.ended, widgetCallId: 209
+flutter: InCallScreen: Call ended: Navigation already in progress, skipping
+flutter: event OnCallSwitched {callId: 0}
+flutter: SIP Service: Direct call switched - callId: 0
+flutter: SipService: _updateCurrentCall called - callId: 209, state: AppCallState.ended
+flutter: InCallScreen: Received call state update - callId: 209, state: AppCallState.ended, widgetCallId: 209
+flutter: InCallScreen: Call ended: Navigation already in progress, skipping
+232906.969 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:532 -[RTCAudioSession handleRouteChangeNotification:]): Audio route changed:
+232906.969 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:545 -[RTCAudioSession handleRouteChangeNotification:]): Audio route changed: CategoryChange to :AVAudioSessionCategoryPlayAndRecord
+232906.970 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:564 -[RTCAudioSession handleRouteChangeNotification:]): Previous route: <AVAudioSessionRouteDescription: 0x14abfcc50, 
+inputs = (
+    "<AVAudioSessionPortDescription: 0x14abfced0, type = MicrophoneBuiltIn; name = iPhone Microphone; UID = Built-In Microphone; selectedDataSource = Bottom>"
+); 
+outputs = (
+    "<AVAudioSessionPortDescription: 0x14abfcdb0, type = Receiver; name = Receiver; UID = Built-In Receiver; selectedDataSource = (null)>"
+)>
+Current route:<AVAudioSessionRouteDescription: 0x14abfc910, 
+inputs = (
+); 
+outputs = (
+    "<AVAudioSessionPortDescription: 0x14abfc990, type = Speaker; name = Speaker; UID = Speaker; selectedDataSource = (null)>"
+)>
+flutter: SIP Service: CallKit event: Event.actionCallToggleAudioSession
+flutter: SipService: _updateCurrentCall called - callId: null, state: null
+flutter: SipService: _updateCurrentCall called - callId: null, state: null
+flutter: SipService: _updateCurrentCall called - callId: null, state: null

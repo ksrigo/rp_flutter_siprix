@@ -1,0 +1,36 @@
+232853.736 [4280692] (Transport.cxx:403): RX 'Req INVITE/cseq=3' from: [68.173.X.X:5060 UDP]
+
+flutter: event OnCallIncoming {accId: 1, callId: 209, withVideo: false, from: "John" <sip:1001...
+232853.737 [4280692] (TransportSelector.cxx:1348): TX 'Resp 180/cseq=3/INVITE' to [68.173.X.X:5060 UDP] via [10.143.19.226:5060 UDP]
+
+232853.737 [4280647] (audio_device_ios.mm:858): AudioDeviceIOS::InitPlayOrRecord
+232854.007 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:658 SetupAudioBuffersForActiveAudioSession): RTC_OBJC_TYPE(RTCAudioSession): {
+232854.327 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:509 HandleValidRouteChange): RTC_OBJC_TYPE(RTCAudioSession): {
+232855.510 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:532 -[RTCAudioSession handleRouteChangeNotification:]): Audio route changed:
+232855.518 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:474 HandleInterruptionBegin): Stopping the audio unit due to interruption begin.
+
+flutter: Answer call: Accepting call with ID 209
+flutter: SipService: _updateCurrentCall called - callId: 209, state: AppCallState.answered                         <<< Actual state is 'answering', it become 'answered' when ACK received
+232856.925 [4280230] (SiprixModule.cpp:946): accept callId:209 withVideo:0
+
+232856.948 [4280692] (TransportSelector.cxx:1348): TX 'Resp 200/cseq=3/INVITE' to [68.173.X.X:5060 UDP] via [10.143.19.226:5060 UDP]
+232857.169 [4280692] (Transport.cxx:403): RX 'Req ACK/cseq=3' from: [68.173.X.X:5060 UDP]
+232857.169 [4280694] (Callbacks.cpp:295): Callback:41 callId:209
+flutter: event OnCallConnected {withVideo: false, from: "Pete" <sip:1001..>, to: sip:1002.., callId: 209}
+
+232857.296 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:545 -[RTCAudioSession handleRouteChangeNotification:]): Audio route changed: CategoryChange to :AVAudioSessionCategoryPlayAndRecord
+232857.360 [4280230] (RTCLogging.mm:33): (RTCAudioSession.mm:511 -[RTCAudioSession handleInterruptionNotification:]): Audio session interruption ended.
+232857.361 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:720 UpdateAudioUnit): Updating audio unit state. CanPlayOrRecord=1 IsInterrupted=0
+232857.361 [4280647] (RTCLogging.mm:33): (audio_device_ios.mm:774 UpdateAudioUnit): Starting audio unit for UpdateAudioUnit
+
+232857.765 [4294381] (rtp_sender_audio.cc:313): First audio RTP packet sent to pacer
+232857.843 [4280648] (LibWebRTCRemoteParticipant.cxx:1435): OnFirstPacketReceived call:209
+
+
+232906.673 [4280692] (Transport.cxx:403): RX 'Req BYE/cseq=5' from: [68.173.X.X:5060 UDP]
+flutter: SIP Service: Ended CallKit call for SIP callId: 209
+232906.679 [4280648] Call 209 report: {"type":,"ssrc":2176746494,"mediaType":"audio","jitter":0.002,"packetsLost":3,"packetsReceived":432,"packetsDiscarded":0,"fecPacketsReceived":0,"fecPacketsDiscarded":0,"bytesReceived":69120,"headerBytesReceived":5184,"totalSamplesReceived":70560,"totalSamplesDuration":8.819999999999856
+232906.679 [4280648] Call 209 report: {"type":,"ssrc":3028670453,"mediaType":"audio","packetsSent":444,"retransmittedPacketsSent":0,"bytesSent":71040,"headerBytesSent":5328,"retransmittedBytesSent":0,"targetBitrate":64000,"totalPacketSendDelay":0,"nackCount":0
+
+232906.698 [4280647] (RTCLogging.mm:33): (voice_processing_audio_unit.mm:358 Stop): Stopped audio unit
+232906.844 [4280647] (RTCLogging.mm:33): (RTCAudioSession.mm:775 -[RTCAudioSession unconfigureWebRTCSession:]): Unconfiguring audio session for WebRTC.
