@@ -884,3 +884,47 @@ SDP has 127.0.0.1 and 10.31.124.203. Can siprix detect it's behind a NAT and add
 ---
 
 On incoming call, siprix send 200 OK with a=mid and a=msid and a=rtcp-mux. Can we disable them?
+
+---
+
+We are working on a softphone for IOS/Android using flutter and siprix SDK. You can pubspec for other dependances.
+On a incoming call, I have callkit shows up. Currently it shows Ringplus Audio just below "Srigo" 1001@1XXXX.ringplus.co.uk. I need to show only the name eg: Srigo (without double quotes). If name doesnt exist show only caller number.
+
+---
+
+I have place callkit_notification.PNG in mockup folder look how it shows up.
+logs:
+flutter: SIP Service: Incoming call - callId: 205, from: "Test" <sip:1003@408708399.ringplus.co.uk>, to: sip:1002@408708399.ringplus.co.uk, withVideo: false
+flutter: SIP Service: Raw from header: "Test" <sip:1003@408708399.ringplus.co.uk>
+flutter: SIP Service: Parsed name: "Test", number: "1003"
+flutter: SIP Service: Parsed caller - name: Test, number: 1003
+flutter: SipService: \_updateCurrentCall called - callId: 205, state: AppCallState.ringing
+flutter: SIP Service: CallKit display - callerName: "Test", callerNumber: "1003"
+flutter: SIP Service: CallKit will display: "Test"
+flutter: SIP Service: CallKit incoming call displayed - no app UI needed
+
+check for documentation here: https://docs.siprix-voip.com/rst/flutter.html, https://docs.siprix-voip.com/rst/api.html, https://pub.dev/documentation/siprix_voip_sdk/latest/, https://github.com/siprix/FlutterPluginFederated/.
+
+flutter: SIP Service: Incoming call - callId: 207, from: "Test" <sip:1003@408708399.ringplus.co.uk>, to: sip:1002@408708399.ringplus.co.uk, withVideo: false
+flutter: SIP Service: Raw from header: "Test" <sip:1003@408708399.ringplus.co.uk>
+flutter: SIP Service: Raw name before quote removal: ""Test""
+flutter: SIP Service: Raw name after quote removal: "Test"
+flutter: SIP Service: Parsed name: "Test", number: "1003"
+flutter: SIP Service: Parsed caller - name: Test, number: 1003
+flutter: SipService: \_updateCurrentCall called - callId: 207, state: AppCallState.ringing
+flutter: SIP Service: CallKit display - callerName: "Test", callerNumber: "1003"
+flutter: SIP Service: CallKit will display: "Test" (cleaned from: "Test")
+flutter: SIP Service: CallKit params - nameCaller: "Test", handle: "1003", appName: "RingPlus"
+flutter: SIP Service: CallKit incoming call displayed - no app UI needed
+
+Don't show URI after CallerName.
+
+---
+
+We now need to show avatar on callkit incoming notification. It has to have same style as the one on OnCallScreen, We need to display contact photo if calling number is found in our COntact list (not yet implemented) and if the photo is defined. if the number is not known then show an avatar with Contact Icon inside (same as the on on call screen)
+
+---
+
+On incoming call, on call screen shows up when we accept the call. But sometimes when the call is connected timer starts show up but sometimes it only show Connecting...
+
+---

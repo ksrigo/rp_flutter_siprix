@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/services/sip_service.dart';
 import '../../../../core/services/navigation_service.dart';
+import '../../../../core/services/contact_service.dart';
 
 class InCallScreen extends ConsumerStatefulWidget {
   final String callId;
@@ -26,22 +27,27 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
   bool _isOnHold = false;
   bool _showKeypad = false;
   Timer? _callTimer;
+  Timer? _fallbackTimer;
   int _callDuration = 0;
   StreamSubscription<CallInfo?>? _callStateSubscription;
   AppCallState _currentCallState = AppCallState.connecting;
   bool _isCallAnswered = false;
   CallInfo? _currentCallInfo;
   bool _isNavigatingAway = false;
+  ContactInfo? _contactInfo;
 
   @override
   void initState() {
     super.initState();
     _listenToCallStateChanges();
+    _loadContactInfo();
+    _checkInitialCallState();
   }
 
   @override
   void dispose() {
     _callTimer?.cancel();
+    _fallbackTimer?.cancel();
     _callStateSubscription?.cancel();
     super.dispose();
   }
@@ -54,10 +60,73 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
     });
   }
 
+  void _startFallbackTimer() {
+    // Start a fallback timer that will automatically start the call timer
+    // if the call hasn't been marked as answered within 3 seconds
+    _fallbackTimer = Timer(const Duration(seconds: 3), () {
+      if (!_isCallAnswered && mounted) {
+        debugPrint('InCallScreen: Fallback timer triggered - starting call timer');
+        setState(() {
+          _isCallAnswered = true;
+          _currentCallState = AppCallState.answered;
+        });
+        _startCallTimer();
+      }
+    });
+    debugPrint('InCallScreen: Started fallback timer (3 seconds)');
+  }
+
   String _formatCallDuration() {
     final minutes = (_callDuration / 60).floor().toString().padLeft(2, '0');
     final seconds = (_callDuration % 60).toString().padLeft(2, '0');
     return '$minutes:$seconds';
+  }
+
+  void _loadContactInfo() async {
+    try {
+      final phoneNumber = widget.phoneNumber ?? _getPhoneNumber();
+      if (phoneNumber.isNotEmpty && phoneNumber != 'Unknown') {
+        debugPrint('InCallScreen: Loading contact info for: $phoneNumber');
+        
+        // Check if ContactService has permission before attempting lookup
+        if (!ContactService.instance.hasPermission) {
+          debugPrint('InCallScreen: ContactService does not have permission, skipping lookup');
+          return;
+        }
+        
+        final contactInfo = await ContactService.instance.findContactByPhoneNumber(phoneNumber);
+        if (mounted) {
+          setState(() {
+            _contactInfo = contactInfo;
+          });
+          debugPrint('InCallScreen: Contact info loaded: ${contactInfo?.displayName ?? 'No contact found'}');
+        }
+      }
+    } catch (e) {
+      debugPrint('InCallScreen: Error loading contact info: $e');
+      // Don't crash if contact loading fails
+    }
+  }
+
+  void _checkInitialCallState() {
+    // Check if there's already an active call when this screen loads
+    final currentCall = SipService.instance.currentCall;
+    if (currentCall != null) {
+      debugPrint('InCallScreen: Found existing call on init - state: ${currentCall.state}');
+      
+      setState(() {
+        _currentCallState = currentCall.state;
+        _currentCallInfo = currentCall;
+        _isMuted = currentCall.isMuted ?? false;
+      });
+      
+      // If the call is already answered, start the timer immediately
+      if (currentCall.state == AppCallState.answered && !_isCallAnswered) {
+        _isCallAnswered = true;
+        _startCallTimer();
+        debugPrint('InCallScreen: Call was already answered on init, starting timer');
+      }
+    }
   }
 
   void _listenToCallStateChanges() {
@@ -73,16 +142,23 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
           _isMuted = callInfo.isMuted ?? false;
         });
         
-        // Start timer when call is answered
-        if (callInfo.state == AppCallState.answered && !_isCallAnswered) {
+        // Start timer when call is answered or connected
+        if ((callInfo.state == AppCallState.answered) && !_isCallAnswered) {
           _isCallAnswered = true;
+          _fallbackTimer?.cancel(); // Cancel fallback timer if running
           _startCallTimer();
           debugPrint('InCallScreen: Call answered, starting timer');
+        }
+        
+        // Start fallback timer for cases where call might be connected but state isn't updated
+        if (callInfo.state == AppCallState.ringing && _fallbackTimer == null) {
+          _startFallbackTimer();
         }
         
         // Stop timer if call ends or fails
         if (callInfo.state == AppCallState.ended || callInfo.state == AppCallState.failed) {
           _callTimer?.cancel();
+          _fallbackTimer?.cancel();
           
           // Prevent multiple navigation attempts
           if (!_isNavigatingAway) {
@@ -210,12 +286,16 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
           child: CircleAvatar(
             radius: 71, // Back to original size since no nested container
             backgroundColor: const Color(0xFFE6E6FA),
-            backgroundImage: null, // TODO: Add contact photo support
-            child: Icon(
-              Icons.person,
-              size: 60,
-              color: const Color(0xFF6B46C1),
-            ),
+            backgroundImage: _contactInfo?.hasPhoto == true && _contactInfo?.photo != null
+                ? MemoryImage(_contactInfo!.photo!)
+                : null,
+            child: _contactInfo?.hasPhoto == true && _contactInfo?.photo != null
+                ? null
+                : const Icon(
+                    Icons.person,
+                    size: 60,
+                    color: Color(0xFF6B46C1),
+                  ),
           ),
         ),
         
@@ -252,7 +332,11 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
   }
   
   String _getDisplayName() {
-    // Priority: widget contactName > currentCallInfo remoteName > phoneNumber
+    // Priority: contact service info > widget contactName > currentCallInfo remoteName > phoneNumber
+    if (_contactInfo?.displayName != null && _contactInfo!.displayName.isNotEmpty) {
+      return _contactInfo!.displayName;
+    }
+    
     if (widget.contactName != null && widget.contactName!.isNotEmpty) {
       return widget.contactName!;
     }
