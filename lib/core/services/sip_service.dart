@@ -455,13 +455,16 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       ));
 
       // Navigate to OnCallScreen when call is connected/answered
-      if (_currentCall!.isIncoming) {
+      // But only if this wasn't handled by CallKit (to avoid duplicate navigation)
+      if (_currentCall!.isIncoming && !_isNavigatingFromCallKit) {
         debugPrint('SIP Service: Incoming call connected, navigating to OnCallScreen');
         NavigationService.goToInCall(
           _currentCall!.id,
           phoneNumber: _currentCall!.remoteNumber,
           contactName: _currentCall!.remoteName != _currentCall!.remoteNumber ? _currentCall!.remoteName : null,
         );
+      } else if (_currentCall!.isIncoming) {
+        debugPrint('SIP Service: Incoming call connected, but navigation already handled by CallKit');
       } else {
         debugPrint('SIP Service: Outgoing call connected, OnCallScreen should already be visible');
       }
@@ -1325,6 +1328,12 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         break;
       case AppLifecycleState.resumed:
         debugPrint('SIP Service: App resumed');
+        // Disable stale call detection for now as it's too aggressive
+        // and interferes with active calls when app comes from background
+        // TODO: Implement more sophisticated stale call detection
+        // Future.delayed(const Duration(seconds: 2), () {
+        //   _checkForStaleCallStates();
+        // });
         break;
       case AppLifecycleState.inactive:
         debugPrint('SIP Service: App inactive');
@@ -1335,6 +1344,63 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       case AppLifecycleState.hidden:
         debugPrint('SIP Service: App hidden');
         break;
+    }
+  }
+
+  /// Check for stale call states when app resumes (fixes CallKit termination issues)
+  void _checkForStaleCallStates() {
+    try {
+      debugPrint('SIP Service: Checking for stale call states after app resume');
+      
+      // Check if we have a current call but no active CallKit calls
+      if (_currentCall != null) {
+        // Get the current active calls from Siprix
+        final activeCallsCount = _callsModel?.length ?? 0;
+        final switchedCallId = _callsModel?.switchedCallId ?? 0;
+        
+        debugPrint('SIP Service: Current call state: ${_currentCall!.state}, Active Siprix calls: $activeCallsCount, Switched call ID: $switchedCallId');
+        
+        // If we have a current call in our state but no active calls in Siprix,
+        // this indicates a stale state (likely from CallKit termination while app was backgrounded)
+        // Be more conservative - only trigger if there are truly no active calls
+        if (activeCallsCount == 0) {
+          
+          debugPrint('SIP Service: Detected stale call state - cleaning up');
+          
+          // Force end the current call
+          _updateCurrentCall(_currentCall?.copyWith(state: AppCallState.ended));
+          
+          // Clear any remaining CallKit mappings
+          _callKitToSipMapping.clear();
+          _acceptedCallKitIds.clear();
+          
+          // Reset hangup flag
+          _isHangingUp = false;
+          
+          // Clear the call after a brief delay to allow UI to update
+          Timer(const Duration(milliseconds: 500), () {
+            _updateCurrentCall(null);
+            debugPrint('SIP Service: Stale call state cleaned up');
+          });
+          
+          // Navigate to keypad if we're currently on OnCallScreen
+          Future.delayed(const Duration(milliseconds: 100), () {
+            if (!_isNavigatingFromCallKit) {
+              _isNavigatingFromCallKit = true;
+              NavigationService.goToKeypad();
+              Future.delayed(const Duration(milliseconds: 500), () {
+                _isNavigatingFromCallKit = false;
+              });
+            }
+          });
+        } else {
+          debugPrint('SIP Service: Call state appears valid');
+        }
+      } else {
+        debugPrint('SIP Service: No current call to check');
+      }
+    } catch (e) {
+      debugPrint('SIP Service: Error checking stale call states: $e');
     }
   }
 
@@ -1552,6 +1618,9 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         case Event.actionCallDecline:
           _handleCallKitDecline(event.body);
           break;
+        case Event.actionCallEnded:
+          _handleCallKitEnded(event.body);
+          break;
         case Event.actionCallTimeout:
           _handleCallKitTimeout(event.body);
           break;
@@ -1682,6 +1751,67 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
+  void _handleCallKitEnded(dynamic body) async {
+    try {
+      final String callKitId = body['id'];
+      final String? sipCallId = _callKitToSipMapping[callKitId];
+
+      debugPrint('SIP Service: CallKit call ended - callKitId: $callKitId, sipCallId: $sipCallId');
+
+      if (sipCallId != null) {
+        debugPrint('SIP Service: CallKit ended for SIP call: $sipCallId');
+
+        // Set hangup flag to prevent state conflicts
+        _isHangingUp = true;
+
+        // Remove the mapping first to prevent double cleanup in hangupCall
+        _callKitToSipMapping.remove(callKitId);
+        _acceptedCallKitIds.remove(callKitId);
+
+        // End the SIP call
+        await hangupCall(sipCallId);
+
+        // Add small delay before navigation to prevent GlobalKey conflicts
+        await Future.delayed(const Duration(milliseconds: 100));
+
+        // Navigate back to keypad (with debouncing)
+        if (!_isNavigatingFromCallKit) {
+          _isNavigatingFromCallKit = true;
+          NavigationService.goToKeypad();
+          // Reset flag after a delay to allow future navigation
+          Future.delayed(const Duration(milliseconds: 500), () {
+            _isNavigatingFromCallKit = false;
+          });
+        }
+
+        debugPrint('SIP Service: CallKit call ended successfully');
+      } else {
+        debugPrint('SIP Service: No SIP call found for ended CallKit call: $callKitId');
+        
+        // Still clean up any remaining state
+        _callKitToSipMapping.remove(callKitId);
+        _acceptedCallKitIds.remove(callKitId);
+        
+        // If we have a current call that matches this scenario, end it
+        if (_currentCall != null) {
+          debugPrint('SIP Service: Force ending current call due to CallKit termination');
+          _updateCurrentCall(_currentCall?.copyWith(state: AppCallState.ended));
+          
+          // Navigate back to keypad
+          if (!_isNavigatingFromCallKit) {
+            _isNavigatingFromCallKit = true;
+            NavigationService.goToKeypad();
+            Future.delayed(const Duration(milliseconds: 500), () {
+              _isNavigatingFromCallKit = false;
+            });
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('SIP Service: Error handling CallKit ended: $e');
+    }
+  }
+
   void _handleCallKitTimeout(dynamic body) async {
     try {
       final String callKitId = body['id'];
@@ -1718,6 +1848,9 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
   // End CallKit call when SIP call terminates
   Future<void> _endCallKitCall(String sipCallId) async {
     try {
+      debugPrint('SIP Service: Attempting to end CallKit call for SIP callId: $sipCallId');
+      debugPrint('SIP Service: Current CallKit mappings: $_callKitToSipMapping');
+      
       // Find the CallKit UUID for this SIP call
       String? callKitId;
       for (final entry in _callKitToSipMapping.entries) {
@@ -1728,11 +1861,14 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       }
 
       if (callKitId != null) {
+        debugPrint('SIP Service: Found CallKit UUID: $callKitId for SIP callId: $sipCallId');
         await FlutterCallkitIncoming.endCall(callKitId);
         _callKitToSipMapping.remove(callKitId);
         _acceptedCallKitIds.remove(callKitId);
-        debugPrint(
-            'SIP Service: Ended CallKit call for SIP callId: $sipCallId');
+        debugPrint('SIP Service: Successfully ended CallKit call and cleaned up mappings');
+      } else {
+        debugPrint('SIP Service: No CallKit UUID found for SIP callId: $sipCallId');
+        debugPrint('SIP Service: Available mappings: $_callKitToSipMapping');
       }
     } catch (e) {
       debugPrint('SIP Service: Error ending CallKit call: $e');

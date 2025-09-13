@@ -928,3 +928,130 @@ We now need to show avatar on callkit incoming notification. It has to have same
 On incoming call, on call screen shows up when we accept the call. But sometimes when the call is connected timer starts show up but sometimes it only show Connecting...
 
 ---
+
+Mute button not working on incoming call on the call screen:
+
+flutter: Mute call: 205, mute: true
+flutter: Mute: Active call object: null, switched ID: 0, total calls: 0
+flutter: Mute: All mute attempts failed
+flutter: Mute call failed: Exception: No active call found for muting (all methods failed)
+flutter: InCallScreen: Mute operation failed, reverting UI state: Exception: No active call found for muting (all methods failed)
+
+---
+
+When we accept the call on Callkit, it should take use to OnCallScreen.
+
+---
+
+In the callkit incoming calls notfification shows only Caller Name or Caller Number if Caller Name is not available.
+
+---
+
+Sometimes Callkit shows up as a full screen on incoming, sometimes It shows as a notification. In the first I have no audio, second case I have audio
+
+---
+
+234459.332 [4971242] (RTCLogging.mm:33): (RTCAudioSession.mm:407 -[RTCAudioSession setActive:error:]): Number of current activations: 1
+234459.341 [4971242] (RTCLogging.mm:33): (RTCAudioSession.mm:724 -[RTCAudioSession configureWebRTCSession:]): Failed to set WebRTC audio configuration: The operation couldn’t be completed. (OSStatus error -50.)
+234459.341 [4971242] (RTCLogging.mm:33): (audio_device_ios.mm:836 ConfigureAudioSessionLocked): Failed to configure audio session.
+234459.341 [4971242] (RTCLogging.mm:33): (voice_processing_audio_unit.mm:477 DisposeAudioUnit): Disposing audio unit.
+
+---
+
+Remove fallback logic of starting timer after 3s on the OnCallScreen
+
+---
+
+We only need to start timer when OnConnectedConfirmed till then show Connecting:
+
+235937.199 [4991257] (InviteSession.cxx:2841): Transition UAS_Accepted -> InviteSession::Connected
+235937.199 [4991257] (RemoteParticipant.cxx:1610): onConnectedConfirmed: handle=208, SipReq: ACK 1002@192.168.0.163:5060 tid=2ed5.65d81271.2 cseq=751 ACK contact=68.183.254.236:5060 / 751 from(wire)
+235937.199 [4991257] (SiprixConvManager.cpp:232): onParticipantConnectedConfirmed callId:208
+235937.199 [4991257] (RemoteParticipant.cxx:538): RemoteParticipant::stateTransition of handle=208 to state=Connected
+235937.200 [4991256] (Transport.cxx:403): RX 'Req ACK/cseq=751' from: [68.183.254.236:5060 UDP]
+235937.200 [4991258] (Callbacks.cpp:295): Callback:41 callId:208
+235937.200 [4991257] (DialogUsageManager.cxx:2102): Handling in-dialog request: SipReq: ACK 1002@192.168.0.163:5060 tid=2ed5.65d81271.2 cseq=751 ACK contact=68.183.254.236:5060 / 751 from(wire)
+flutter: event OnCallConnected {from: "RP 1003" <sip:1003@408708399.ringplus.co.uk>, withVideo: false, callId: 208, to: sip:1002@408708399.ringplus.co.uk}
+flutter: SIP Service: Call connected - callId: 208, from: "RP 1003" <sip:1003@408708399.ringplus.co.uk>, to: sip:1002@408708399.ringplus.co.uk, withVideo: false
+flutter: SipService: \_updateCurrentCall called - callId: 208, state: AppCallState.answered
+flutter: SIP Service: Incoming call connected, navigating to OnCallScreen
+flutter: InCallScreen: Received call state update - callId: 208, state: AppCallState.answered, widgetCallId: 208
+
+Check this and see different pages if needed: docs: https://docs.siprix-voip.com/index.html
+Check if there is event called OnCallSwitched, to start the timer on the on call screen. If not do not start the timer till the call is connected. Instead show Connecting
+
+OnCallSwitched doesnt seem to start when Audio starts. Let change to show timer only when the call is answered event.
+
+---
+
+When the phone is locked and if we get an incoming call and answer it and hangup, callkit close up but if we open the app, oncallscreen shows up as the call is active and we need to hangup on it, to have SIP BYE sent.
+
+---
+
+When the app is in background (Phone not locked). When I get incoming call and accept it. It opens the app and on callscreen shows up and disappear before showing keypad screen while the call is active.
+
+---
+
+Problem persists, when the app is in background and accept an incoming call, the app opens and on call screen shows up for around 1secs and go back to keypad. Hanging up the call from the caller doesnt close the callkit screen in the background. Seems like the event is not sent to callkit to cut the call.
+
+Logs:
+flutter: event OnCallIncoming {from: "Ravi" <sip:1001@408708399.ringplus.co.uk>, to: sip:1002@408708399.ringplus.co.uk, accId: 1, callId: 207, withVideo: false}
+flutter: SIP Service: Incoming call - callId: 207, from: "Ravi" <sip:1001@408708399.ringplus.co.uk>, to: sip:1002@408708399.ringplus.co.uk, withVideo: false
+flutter: SIP Service: Raw from header: "Ravi" <sip:1001@408708399.ringplus.co.uk>
+flutter: SIP Service: Raw name before quote removal: ""Ravi""
+flutter: SIP Service: Raw name after quote removal: "Ravi"
+flutter: SIP Service: Parsed name: "Ravi", number: "1001"
+flutter: SIP Service: Parsed caller - name: Ravi, number: 1001
+flutter: SIP Service: Stored Siprix call ID for operations: 207
+flutter: SipService: \_updateCurrentCall called - callId: 207, state: AppCallState.ringing
+flutter: SIP Service: CallKit display - callerName: "Ravi", callerNumber: "1001"
+flutter: SIP Service: CallKit will display: "Ravi" (cleaned from: "Ravi")
+flutter: SIP Service: CallKit params - nameCaller: "Ravi", handle: "Ravi", appName: "RingPlus"
+flutter: SIP Service: CallKit incoming call displayed - no app UI needed
+flutter: event OnCallSwitched {callId: 207}
+flutter: SIP Service: Direct call switched - callId: 207
+flutter: SIP Service: Direct call switched to active call: 207
+flutter: SIP Service: CallKit incoming call shown with UUID: b4a3486c-f670-4882-9dd4-0a42a19b3ba4, SIP callId: 207
+flutter: SIP Service: CallKit event: Event.actionCallIncoming
+flutter: SIP Service: CallKit incoming call displayed successfully
+flutter: SIP Service: CallKit event: Event.actionCallAccept
+flutter: SIP Service: CallKit accept for SIP call: 207
+flutter: SIP Service: Before CallKit accept - checking system audio state
+flutter: SIP Service: CallKit accept with audio fix for SIP call: 207
+flutter: SIP Service: Audio session state before accept
+flutter: Answer call: 207
+flutter: Answer call: Accepting call with ID 207
+flutter: Answer call: Successfully accepted call via SDK
+flutter: SipService: \_updateCurrentCall called - callId: 207, state: AppCallState.answered
+flutter: event OnCallConnected {from: "Ravi" <sip:1001@408708399.ringplus.co.uk>, withVideo: false, callId: 207, to: sip:1002@408708399.ringplus.co.uk}
+flutter: SIP Service: Call connected - callId: 207, from: "Ravi" <sip:1001@408708399.ringplus.co.uk>, to: sip:1002@408708399.ringplus.co.uk, withVideo: false
+flutter: SipService: \_updateCurrentCall called - callId: 207, state: AppCallState.answered
+flutter: SIP Service: Incoming call connected, navigating to OnCallScreen
+flutter: SIP Service: App hidden
+flutter: SIP Service: App inactive
+flutter: SIP Service: CallKit event: Event.actionCallToggleAudioSession
+flutter: SIP Service: CallKit accept with audio fix completed
+flutter: InCallScreen: Setting up call state listener for callId: 207
+flutter: InCallScreen: Loading contact info for: 1001
+flutter: InCallScreen: ContactService does not have permission, skipping lookup
+flutter: InCallScreen: Found existing call on init - state: AppCallState.answered
+flutter: InCallScreen: Call was already answered on init, starting timer
+flutter: SIP Service: CallKit event: Event.actionCallAccept
+flutter: SIP Service: CallKit call b4a3486c-f670-4882-9dd4-0a42a19b3ba4 already accepted, ignoring duplicate accept event
+flutter: SIP Service: CallKit call accepted and connected
+flutter: SIP Service: App resumed
+flutter: SIP Service: Checking for stale call states after app resume
+flutter: SIP Service: Current call state: AppCallState.answered, Active Siprix calls: 0, Switched call ID: 0
+flutter: SIP Service: Detected stale call state - cleaning up
+flutter: SipService: \_updateCurrentCall called - callId: 207, state: AppCallState.ended
+flutter: InCallScreen: Received call state update - callId: 207, state: AppCallState.ended, widgetCallId: 207
+flutter: InCallScreen: Call ended: Navigating back to keypad
+flutter: SipService: \_updateCurrentCall called - callId: null, state: null
+flutter: SIP Service: Stale call state cleaned up
+flutter: InCallScreen: Received call state update - callId: null, state: null, widgetCallId: 207
+flutter: event OnCallTerminated {statusCode: 0, callId: 207}
+flutter: SIP Service: Direct call terminated - callId: 207, statusCode: 0
+flutter: event OnCallSwitched {callId: 0}
+flutter: SIP Service: Direct call switched - callId: 0
+flutter: event OnCallSwitched {callId: 0}
+flutter: SIP Service: Direct call switched - callId: 0
