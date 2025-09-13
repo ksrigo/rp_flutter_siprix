@@ -72,6 +72,7 @@ class CallInfo {
   final bool isOnHold;
   final bool isMuted;
   final bool isSpeakerOn;
+  final bool isConnectedWithAudio;
 
   CallInfo({
     required this.id,
@@ -83,6 +84,7 @@ class CallInfo {
     this.isOnHold = false,
     this.isMuted = false,
     this.isSpeakerOn = false,
+    this.isConnectedWithAudio = false,
   });
 
   CallInfo copyWith({
@@ -95,6 +97,7 @@ class CallInfo {
     bool? isOnHold,
     bool? isMuted,
     bool? isSpeakerOn,
+    bool? isConnectedWithAudio,
   }) {
     return CallInfo(
       id: id ?? this.id,
@@ -106,6 +109,7 @@ class CallInfo {
       isOnHold: isOnHold ?? this.isOnHold,
       isMuted: isMuted ?? this.isMuted,
       isSpeakerOn: isSpeakerOn ?? this.isSpeakerOn,
+      isConnectedWithAudio: isConnectedWithAudio ?? this.isConnectedWithAudio,
     );
   }
 }
@@ -179,13 +183,13 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       initData.enableVideoCall =
           false; // Disable video - reduces WebRTC SDP attributes
 
-      // Enable Siprix built-in CallKit to avoid audio session conflicts
+      // Try disabling Siprix CallKit again and use custom CallKit with better audio handling
       if (Platform.isIOS) {
-        initData.enableCallKit = true; // Enable to prevent WebRTC audio conflicts
+        initData.enableCallKit = false; // Disable to use custom CallKit with clean display
         initData.enablePushKit =
             false; // Disabled - no push notification infrastructure yet
         initData.unregOnDestroy = false;
-        debugPrint('SIP Service: Enabled Siprix built-in CallKit to prevent audio session conflicts');
+        debugPrint('SIP Service: Disabled Siprix CallKit to use custom CallKit with clean caller display');
       }
 
       _siprixSdk = SiprixVoipSdk();
@@ -216,6 +220,14 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
 
       debugPrint('SIP Service: Call and push listeners configured');
 
+      // Set up contact name resolution callback after SDK is fully initialized
+      if (_callsModel != null) {
+        _callsModel!.onResolveContactName = _resolveContactNameForCallKit;
+        debugPrint('SIP Service: Contact name resolution callback set on CallsModel');
+      } else {
+        debugPrint('SIP Service: Warning - CallsModel is null, cannot set contact name callback');
+      }
+
       debugPrint('SIP Service: Siprix SDK initialized successfully');
 
       // Add app lifecycle observer (not available on web)
@@ -238,8 +250,8 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         await _autoRegister(credentials);
       }
 
-      // Disable custom CallKit listeners since we're using Siprix built-in CallKit
-      // _initializeCallKitListeners();
+      // Re-enable custom CallKit listeners
+      _initializeCallKitListeners();
 
       // Initialize contact service for avatar generation (non-blocking)
       ContactService.instance.initialize().catchError((e) {
@@ -290,12 +302,49 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
           _updateCurrentCall(null);
         });
       }
+    } else {
+      debugPrint('SIP Service: Call switched to active call: $callId');
     }
   }
 
   void _onNewIncomingCall() {
     debugPrint('SIP Service: New incoming call received');
     // TODO: Handle incoming calls
+  }
+
+  /// Resolve contact name for CallKit display - called by Siprix for incoming/outgoing calls
+  String _resolveContactNameForCallKit(String extension) {
+    try {
+      debugPrint('🔥 SIP Service: CALLBACK TRIGGERED - Resolving contact name for CallKit display: "$extension"');
+      
+      // Use our existing parsing logic to handle full SIP headers
+      final callerInfo = _parseCallerInfo(extension);
+      final callerName = callerInfo['name'] ?? 'Unknown';
+      final callerNumber = callerInfo['number'] ?? 'Unknown';
+      
+      debugPrint('🔥 SIP Service: Parsed for CallKit - name: "$callerName", number: "$callerNumber"');
+      
+      // Return the name if it's meaningful, otherwise return the number
+      String result;
+      if (callerName != 'Unknown' && callerName != callerNumber) {
+        result = callerName;
+        debugPrint('🔥 SIP Service: Returning caller name for CallKit: "$result"');
+      } else {
+        result = callerNumber;
+        debugPrint('🔥 SIP Service: Returning caller number for CallKit: "$result"');
+      }
+      
+      return result;
+      
+      // Future enhancement: integrate with ContactService
+      // final contactInfo = await ContactService.instance.findContactByPhoneNumber(callerNumber);
+      // if (contactInfo != null && contactInfo.displayName != callerNumber) {
+      //   return contactInfo.displayName;
+      // }
+    } catch (e) {
+      debugPrint('🔥 SIP Service: Error resolving contact name: $e');
+      return extension; // Return original if there's an error
+    }
   }
 
   void _onNetworkChanged() {
@@ -355,6 +404,8 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
     } else {
       // Update the stored call ID with the new active call
       _currentSiprixCallId = callId;
+      
+      debugPrint('SIP Service: Direct call switched to active call: $callId');
     }
   }
 
@@ -394,12 +445,13 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       return;
     }
 
-    // Call is now connected/answered - this is when we should start the timer
+    // Call is connected - start timer immediately
     if (_currentCall != null) {
       _updateCurrentCall(_currentCall?.copyWith(
         state: AppCallState.answered,
-        // Update the start time to now for accurate call duration
+        // Start timer when call is connected/answered
         startTime: DateTime.now(),
+        isConnectedWithAudio: true,
       ));
 
       // Navigate to OnCallScreen when call is connected/answered
@@ -451,8 +503,9 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
 
     _updateCurrentCall(callInfo);
 
-    // Siprix built-in CallKit will handle the incoming call display
-    debugPrint('SIP Service: Siprix built-in CallKit will handle incoming call display');
+    // Show CallKit incoming call with system ringtone and vibration
+    // CallKit will handle the UI - no need to navigate to incoming_call_screen
+    _showCallKitIncomingCall(callId.toString(), callerName, callerNumber);
 
     debugPrint(
         'SIP Service: CallKit incoming call displayed - no app UI needed');
@@ -788,8 +841,14 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       try {
         // Use Siprix SDK accept method (audio-only for now)
         debugPrint('Answer call: Accepting call with ID $intCallId');
+        
+        // Accept call immediately - audio session is now always active
         await _siprixSdk!.accept(intCallId, false); // false = audio only
         debugPrint('Answer call: Successfully accepted call via SDK');
+        
+        // Brief pause to ensure call state is fully established
+        await Future.delayed(const Duration(milliseconds: 50));
+        
       } catch (e) {
         debugPrint('Answer call: Siprix accept failed: $e');
         // Don't rethrow to prevent UI crash, just log the error
@@ -1401,16 +1460,16 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         ),
         ios: const IOSParams(
           iconName: 'AppIcon',
-          handleType: 'phoneNumber',
+          handleType: 'generic', // Use generic for better CallKit display consistency
           supportsVideo: false,
           maximumCallGroups: 1,
           maximumCallsPerCallGroup: 1,
-          audioSessionMode: 'default', // Use default mode to avoid conflicts
+          audioSessionMode: 'voiceChat', // Use voiceChat mode optimized for VoIP calls
           audioSessionActive:
-              false, // Let system handle audio session
+              true, // Activate immediately to ensure audio works in all modes
           audioSessionPreferredSampleRate:
-              44100.0, // Standard iOS sample rate
-          audioSessionPreferredIOBufferDuration: 0.02, // More conservative buffer
+              48000.0, // Use 48kHz for better CallKit compatibility
+          audioSessionPreferredIOBufferDuration: 0.01, // 10ms buffer for stable audio
           supportsDTMF: true,
           supportsHolding: true,
           supportsGrouping: false,
@@ -1427,6 +1486,12 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
 
       debugPrint(
           'SIP Service: CallKit incoming call shown with UUID: $uuid, SIP callId: $callId');
+      
+      // Add a slight delay to ensure CallKit is properly activated
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      // Log CallKit state for debugging full-screen vs banner issues
+      debugPrint('SIP Service: CallKit incoming call displayed successfully');
           
       // Clean up old avatars periodically
       AvatarService.instance.cleanupOldAvatars();
@@ -1519,8 +1584,9 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
 
         // CallKit handles all audio session and device management automatically
 
-        // Answer the SIP call
-        await answerCall(sipCallId);
+        // Enhanced CallKit accept with audio debugging
+        debugPrint('SIP Service: Before CallKit accept - checking system audio state');
+        await _handleCallKitAcceptWithAudioFix(sipCallId);
 
         // Mark CallKit call as connected
         await FlutterCallkitIncoming.setCallConnected(callKitId);
@@ -1548,6 +1614,33 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       }
     } catch (e) {
       debugPrint('SIP Service: Error handling CallKit accept: $e');
+    }
+  }
+
+  /// Enhanced CallKit call acceptance with audio session debugging and fixes
+  Future<void> _handleCallKitAcceptWithAudioFix(String sipCallId) async {
+    try {
+      debugPrint('SIP Service: CallKit accept with audio fix for SIP call: $sipCallId');
+      
+      // Log current audio session state for debugging
+      debugPrint('SIP Service: Audio session state before accept');
+      
+      // Answer the SIP call with optimized timing
+      await answerCall(sipCallId);
+      
+      // Additional audio session verification after call acceptance
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      debugPrint('SIP Service: CallKit accept with audio fix completed');
+      
+    } catch (e) {
+      debugPrint('SIP Service: Error in CallKit accept with audio fix: $e');
+      // Fallback to regular answer call
+      try {
+        await answerCall(sipCallId);
+      } catch (fallbackError) {
+        debugPrint('SIP Service: Fallback answerCall also failed: $fallbackError');
+      }
     }
   }
 

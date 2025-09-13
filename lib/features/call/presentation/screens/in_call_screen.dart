@@ -27,7 +27,6 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
   bool _isOnHold = false;
   bool _showKeypad = false;
   Timer? _callTimer;
-  Timer? _fallbackTimer;
   int _callDuration = 0;
   StreamSubscription<CallInfo?>? _callStateSubscription;
   AppCallState _currentCallState = AppCallState.connecting;
@@ -47,7 +46,6 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
   @override
   void dispose() {
     _callTimer?.cancel();
-    _fallbackTimer?.cancel();
     _callStateSubscription?.cancel();
     super.dispose();
   }
@@ -60,21 +58,6 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
     });
   }
 
-  void _startFallbackTimer() {
-    // Start a fallback timer that will automatically start the call timer
-    // if the call hasn't been marked as answered within 3 seconds
-    _fallbackTimer = Timer(const Duration(seconds: 3), () {
-      if (!_isCallAnswered && mounted) {
-        debugPrint('InCallScreen: Fallback timer triggered - starting call timer');
-        setState(() {
-          _isCallAnswered = true;
-          _currentCallState = AppCallState.answered;
-        });
-        _startCallTimer();
-      }
-    });
-    debugPrint('InCallScreen: Started fallback timer (3 seconds)');
-  }
 
   String _formatCallDuration() {
     final minutes = (_callDuration / 60).floor().toString().padLeft(2, '0');
@@ -142,23 +125,16 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
           _isMuted = callInfo.isMuted ?? false;
         });
         
-        // Start timer when call is answered or connected
-        if ((callInfo.state == AppCallState.answered) && !_isCallAnswered) {
+        // Start timer when call is answered
+        if (callInfo.state == AppCallState.answered && !_isCallAnswered) {
           _isCallAnswered = true;
-          _fallbackTimer?.cancel(); // Cancel fallback timer if running
           _startCallTimer();
           debugPrint('InCallScreen: Call answered, starting timer');
-        }
-        
-        // Start fallback timer for cases where call might be connected but state isn't updated
-        if (callInfo.state == AppCallState.ringing && _fallbackTimer == null) {
-          _startFallbackTimer();
         }
         
         // Stop timer if call ends or fails
         if (callInfo.state == AppCallState.ended || callInfo.state == AppCallState.failed) {
           _callTimer?.cancel();
-          _fallbackTimer?.cancel();
           
           // Prevent multiple navigation attempts
           if (!_isNavigatingAway) {
@@ -365,7 +341,7 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
     String displayText;
     Color textColor = Colors.white.withValues(alpha: 0.9);
     
-    // Once the call has been answered, always show the timer
+    // Show timer once the call is answered
     if (_isCallAnswered) {
       switch (_currentCallState) {
         case AppCallState.held:
