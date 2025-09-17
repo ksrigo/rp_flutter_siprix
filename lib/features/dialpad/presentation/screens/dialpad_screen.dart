@@ -222,14 +222,11 @@ class _DialpadScreenState extends ConsumerState<DialpadScreen> {
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
-                      gradient: _dialedNumber.isNotEmpty 
-                          ? const LinearGradient(
-                              colors: [Color(0xFF7C3AED), Color(0xFF8B5CF6)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            )
-                          : null,
-                      color: _dialedNumber.isEmpty ? const Color(0xFFCCCCCC) : null,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF7C3AED), Color(0xFF8B5CF6)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
                       shape: BoxShape.circle,
                     ),
                     child: Material(
@@ -237,10 +234,13 @@ class _DialpadScreenState extends ConsumerState<DialpadScreen> {
                       child: InkWell(
                         borderRadius: BorderRadius.circular(40),
                         onTap: _dialedNumber.isNotEmpty ? _onCallPressed : null,
-                        child: const Icon(
-                          Icons.call,
-                          color: Colors.white,
-                          size: 32,
+                        child: Opacity(
+                          opacity: _dialedNumber.isNotEmpty ? 1.0 : 0.5,
+                          child: const Icon(
+                            Icons.call,
+                            color: Colors.white,
+                            size: 32,
+                          ),
                         ),
                       ),
                     ),
@@ -255,10 +255,6 @@ class _DialpadScreenState extends ConsumerState<DialpadScreen> {
                           ? Container(
                               width: 48,
                               height: 48,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF0F0F0),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
                               child: Material(
                                 color: Colors.transparent,
                                 child: InkWell(

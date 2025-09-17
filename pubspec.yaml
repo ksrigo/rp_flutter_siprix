@@ -1,10 +1,10 @@
-name: ringplus_pbx
+name: Ringplus
 description: A production-ready multitenant PBX softphone built with Flutter + WebRTC
-publish_to: 'none'
+publish_to: "none"
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: ">=3.0.0 <4.0.0"
   flutter: ">=3.10.0"
 
 dependencies:
@@ -14,10 +14,11 @@ dependencies:
     sdk: flutter
 
   # Core SIP VoIP SDK
-  siprix_voip_sdk: 1.0.25  # Pinned to avoid Android compilation issues with 1.0.26
+  siprix_voip_sdk: 1.0.25 # Pinned to avoid Android compilation issues with 1.0.26
 
-  # Push notifications - temporarily commented out for build fix
-  # firebase_messaging: ^14.7.9
+  # Push notifications for Android incoming calls
+  firebase_core: ^2.24.2
+  firebase_messaging: ^14.7.9
   # flutter_voip_kit: ^0.0.6  # Removed - using Siprix built-in PushKit instead
 
   # Incoming call UI - using Siprix built-in CallKit instead
@@ -67,7 +68,7 @@ dependencies:
 
   # Development and debugging
   logger: ^2.0.2+1
-  
+
   # JWT token handling
   dart_jsonwebtoken: ^2.12.1
 
@@ -87,20 +88,19 @@ flutter:
     - assets/images/
     - assets/icons/
     - assets/sounds/
-
 # fonts:
-    # - family: Roboto
-    #   fonts:
-    #     - asset: assets/fonts/Roboto-Regular.ttf
-    #     - asset: assets/fonts/Roboto-Medium.ttf
-    #       weight: 500
-    #     - asset: assets/fonts/Roboto-Bold.ttf
-    #       weight: 700
-    # - family: SFProDisplay
-    #   fonts:
-    #     - asset: assets/fonts/SFProDisplay-Regular.ttf
-    #     - asset: assets/fonts/SFProDisplay-Medium.ttf
-    #       weight: 500
-    #     - asset: assets/fonts/SFProDisplay-Bold.ttf
-    #       weight: 700
+# - family: Roboto
+#   fonts:
+#     - asset: assets/fonts/Roboto-Regular.ttf
+#     - asset: assets/fonts/Roboto-Medium.ttf
+#       weight: 500
+#     - asset: assets/fonts/Roboto-Bold.ttf
+#       weight: 700
+# - family: SFProDisplay
+#   fonts:
+#     - asset: assets/fonts/SFProDisplay-Regular.ttf
+#     - asset: assets/fonts/SFProDisplay-Medium.ttf
+#       weight: 500
+#     - asset: assets/fonts/SFProDisplay-Bold.ttf
+#       weight: 700
 

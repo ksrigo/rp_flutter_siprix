@@ -1055,3 +1055,468 @@ flutter: event OnCallSwitched {callId: 0}
 flutter: SIP Service: Direct call switched - callId: 0
 flutter: event OnCallSwitched {callId: 0}
 flutter: SIP Service: Direct call switched - callId: 0
+
+---
+
+Almost everything works fine except, when the app is in background we accpet an incoming call, the app opens properlya and show the on call screen properly but there is no audio in both way. When the call is answered when the app is opened or when the phone is locked(callkit): Audio works fine.
+
+logs:
+
+flutter: event OnCallIncoming {withVideo: false, accId: 1, callId: 214, to: sip:1002@408708399.ringplus.co.uk, from: "Ravi" <sip:1001@408708399.ringplus.co.uk>}
+flutter: SIP Service: Incoming call - callId: 214, from: "Ravi" <sip:1001@408708399.ringplus.co.uk>, to: sip:1002@408708399.ringplus.co.uk, withVideo: false
+flutter: SIP Service: Raw from header: "Ravi" <sip:1001@408708399.ringplus.co.uk>
+flutter: SIP Service: Raw name before quote removal: ""Ravi""
+flutter: SIP Service: Raw name after quote removal: "Ravi"
+flutter: SIP Service: Parsed name: "Ravi", number: "1001"
+flutter: SIP Service: Parsed caller - name: Ravi, number: 1001
+flutter: SIP Service: Stored Siprix call ID for operations: 214
+flutter: SipService: \_updateCurrentCall called - callId: 214, state: AppCallState.ringing
+flutter: SIP Service: CallKit display - callerName: "Ravi", callerNumber: "1001"
+flutter: SIP Service: CallKit will display: "Ravi" (cleaned from: "Ravi")
+flutter: SIP Service: CallKit params - nameCaller: "Ravi", handle: "Ravi", appName: "RingPlus"
+flutter: SIP Service: CallKit incoming call displayed - no app UI needed
+flutter: event OnCallSwitched {callId: 214}
+flutter: SIP Service: Direct call switched - callId: 214
+flutter: SIP Service: Direct call switched to active call: 214
+flutter: SIP Service: CallKit incoming call shown with UUID: 8e0113c1-4f73-48c1-a58e-ba2af1954024, SIP callId: 214
+flutter: SIP Service: CallKit event: Event.actionCallIncoming
+flutter: SIP Service: CallKit incoming call displayed successfully
+flutter: SIP Service: CallKit event: Event.actionCallAccept
+flutter: SIP Service: CallKit accept for SIP call: 214
+flutter: SIP Service: Before CallKit accept - checking system audio state
+flutter: SIP Service: CallKit accept with audio fix for SIP call: 214
+flutter: SIP Service: Audio session state before accept
+flutter: Answer call: 214
+flutter: Answer call: Accepting call with ID 214
+flutter: Answer call: Successfully accepted call via SDK
+flutter: SipService: \_updateCurrentCall called - callId: 214, state: AppCallState.answered
+flutter: event OnCallConnected {withVideo: false, from: "Ravi" <sip:1001@408708399.ringplus.co.uk>, to: sip:1002@408708399.ringplus.co.uk, callId: 214}
+flutter: SIP Service: Call connected - callId: 214, from: "Ravi" <sip:1001@408708399.ringplus.co.uk>, to: sip:1002@408708399.ringplus.co.uk, withVideo: false
+flutter: SipService: \_updateCurrentCall called - callId: 214, state: AppCallState.answered
+flutter: SIP Service: Incoming call connected, navigating to OnCallScreen
+flutter: SIP Service: CallKit accept with audio fix completed
+flutter: SIP Service: CallKit call accepted and connected
+flutter: SIP Service: App hidden
+flutter: SIP Service: App inactive
+flutter: InCallScreen: Setting up call state listener for callId: 214
+flutter: InCallScreen: Loading contact info for: 1001
+flutter: InCallScreen: ContactService does not have permission, skipping lookup
+flutter: InCallScreen: Found existing call on init - state: AppCallState.answered
+flutter: InCallScreen: Call was already answered on init, starting timer
+flutter: SIP Service: CallKit event: Event.actionCallAccept
+flutter: SIP Service: CallKit call 8e0113c1-4f73-48c1-a58e-ba2af1954024 already accepted, ignoring duplicate accept event
+flutter: SIP Service: App resumed
+flutter: event OnCallTerminated {callId: 214, statusCode: 0}
+flutter: SIP Service: Direct call terminated - callId: 214, statusCode: 0
+flutter: SIP Service: Attempting to end CallKit call for SIP callId: 214
+flutter: SIP Service: Current CallKit mappings: {8e0113c1-4f73-48c1-a58e-ba2af1954024: 214}
+flutter: SIP Service: Found CallKit UUID: 8e0113c1-4f73-48c1-a58e-ba2af1954024 for SIP callId: 214
+flutter: SipService: \_updateCurrentCall called - callId: 214, state: AppCallState.ended
+flutter: InCallScreen: Received call state update - callId: 214, state: AppCallState.ended, widgetCallId: 214
+flutter: InCallScreen: Call ended: Navigating back to keypad
+flutter: SIP Service: Successfully ended CallKit call and cleaned up mappings
+flutter: SIP Service: CallKit event: Event.actionCallEnded
+flutter: SIP Service: CallKit call ended - callKitId: 8e0113c1-4f73-48c1-a58e-ba2af1954024, sipCallId: null
+flutter: SIP Service: No SIP call found for ended CallKit call: 8e0113c1-4f73-48c1-a58e-ba2af1954024
+flutter: SIP Service: Force ending current call due to CallKit termination
+flutter: SipService: \_updateCurrentCall called - callId: 214, state: AppCallState.ended
+flutter: InCallScreen: Received call state update - callId: 214, state: AppCallState.ended, widgetCallId: 214
+flutter: InCallScreen: Call ended: Navigation already in progress, skipping
+flutter: event OnCallSwitched {callId: 0}
+flutter: SIP Service: Direct call switched - callId: 0
+flutter: SipService: \_updateCurrentCall called - callId: 214, state: AppCallState.ended
+flutter: InCallScreen: Received call state update - callId: 214, state: AppCallState.ended, widgetCallId: 214
+flutter: InCallScreen: Call ended: Navigation already in progress, skipping
+flutter: event OnCallSwitched {callId: 0}
+flutter: SIP Service: Direct call switched - callId: 0
+flutter: SipService: \_updateCurrentCall called - callId: 214, state: AppCallState.ended
+
+---
+
+Second time App crashed when tried to answer a call when app was in the backrgound. First time it worked fine.
+
+flutter: SIP Service: CallKit incoming call shown with UUID: e019f63b-2fcd-49f1-a021-5308ee1e3974, SIP callId: 204
+104633.436 [5199555] (RTCLogging.mm:33): (RTCAudioSession+Configuration.mm:103 -[RTCAudioSession(Configuration) setConfiguration:active:shouldSetActive:error:]): Set preferred sample rate to: 48000.00
+104633.436 [5199555] (RTCLogging.mm:33): (RTCAudioSession+Configuration.mm:118 -[RTCAudioSession(Configuration) setConfiguration:active:shouldSetActive:error:]): Set preferred IO buffer duration to: 0.020000
+104633.439 [5199555] (RTCLogging.mm:33): (RTCAudioSession.mm:397 -[RTCAudioSession setActive:error:]): Failed to setActive:1. Error: Session activation failed
+104633.439 [5199555] (RTCLogging.mm:33): (RTCAudioSession.mm:407 -[RTCAudioSession setActive:error:]): Number of current activations: 0
+104633.439 [5199555] (RTCLogging.mm:33): (RTCAudioSession+Configuration.mm:126 -[RTCAudioSession(Configuration) setConfiguration:active:shouldSetActive:error:]): Failed to setActive to 1: Session activation failed
+104633.439 [5199555] (RTCLogging.mm:33): (RTCAudioSession.mm:724 -[RTCAudioSession configureWebRTCSession:]): Failed to set WebRTC audio configuration: Session activation failed
+104633.439 [5199555] (RTCLogging.mm:33): (audio_device_ios.mm:836 ConfigureAudioSessionLocked): Failed to configure audio session.
+104633.439 [5199555] (RTCLogging.mm:33): (voice_processing_audio_unit.mm:477 DisposeAudioUnit): Disposing audio unit.
+104633.439 [5199555] (audio_device_ios.mm:183): InitPlayout: InitPlayOrRecord failed for InitPlayout!
+
+Logs:
+flutter: event OnCallIncoming {to: sip:1002@408708399.ringplus.co.uk, withVideo: false, callId: 203, accId: 1, from: "Ravi" <sip:1001@408708399.ringplus.co.uk>}
+flutter: SIP Service: Incoming call - callId: 203, from: "Ravi" <sip:1001@408708399.ringplus.co.uk>, to: sip:1002@408708399.ringplus.co.uk, withVideo: false
+flutter: SIP Service: Raw from header: "Ravi" <sip:1001@408708399.ringplus.co.uk>
+flutter: SIP Service: Raw name before quote removal: ""Ravi""
+flutter: SIP Service: Raw name after quote removal: "Ravi"
+flutter: SIP Service: Parsed name: "Ravi", number: "1001"
+flutter: SIP Service: Parsed caller - name: Ravi, number: 1001
+flutter: SIP Service: Stored Siprix call ID for operations: 203
+flutter: SipService: \_updateCurrentCall called - callId: 203, state: AppCallState.ringing
+flutter: SIP Service: CallKit display - callerName: "Ravi", callerNumber: "1001"
+flutter: SIP Service: CallKit will display: "Ravi" (cleaned from: "Ravi")
+flutter: SIP Service: CallKit params - nameCaller: "Ravi", handle: "Ravi", appName: "RingPlus"
+flutter: SIP Service: CallKit incoming call displayed - no app UI needed
+flutter: event OnCallSwitched {callId: 203}
+flutter: SIP Service: Direct call switched - callId: 203
+flutter: SIP Service: Direct call switched to active call: 203
+flutter: SIP Service: CallKit incoming call shown with UUID: 8ba8816e-88c8-4d90-8d95-017bbd28d6cc, SIP callId: 203
+flutter: SIP Service: CallKit incoming call displayed successfully
+flutter: SIP Service: CallKit event: Event.actionCallIncoming
+flutter: SIP Service: CallKit event: Event.actionCallAccept
+flutter: SIP Service: CallKit accept for SIP call: 203
+flutter: SIP Service: Before CallKit accept - checking system audio state
+flutter: SIP Service: CallKit accept with audio fix for SIP call: 203
+flutter: SIP Service: Audio session state before accept
+flutter: SIP Service: Ensuring audio session is active for background call accept
+flutter: SIP Service: Audio session activation attempted
+flutter: Answer call: 203
+flutter: Answer call: Accepting call with ID 203
+flutter: Answer call: Successfully accepted call via SDK
+flutter: event OnCallConnected {from: "Ravi" <sip:1001@408708399.ringplus.co.uk>, withVideo: false, to: sip:1002@408708399.ringplus.co.uk, callId: 203}
+flutter: SIP Service: Call connected - callId: 203, from: "Ravi" <sip:1001@408708399.ringplus.co.uk>, to: sip:1002@408708399.ringplus.co.uk, withVideo: false
+flutter: SipService: \_updateCurrentCall called - callId: 203, state: AppCallState.answered
+flutter: SIP Service: Incoming call connected, navigating to OnCallScreen
+flutter: SipService: \_updateCurrentCall called - callId: 203, state: AppCallState.answered
+flutter: SIP Service: CallKit event: Event.actionCallToggleAudioSession
+flutter: SIP Service: Verifying audio session after call acceptance
+flutter: SIP Service: Audio session verification completed
+flutter: SIP Service: CallKit accept with audio fix completed
+flutter: SIP Service: CallKit call accepted and connected
+flutter: event OnCallTerminated {callId: 203, statusCode: 0}
+flutter: SIP Service: Direct call terminated - callId: 203, statusCode: 0
+flutter: SIP Service: Attempting to end CallKit call for SIP callId: 203
+flutter: SIP Service: Current CallKit mappings: {8ba8816e-88c8-4d90-8d95-017bbd28d6cc: 203}
+flutter: SIP Service: Found CallKit UUID: 8ba8816e-88c8-4d90-8d95-017bbd28d6cc for SIP callId: 203
+flutter: SipService: \_updateCurrentCall called - callId: 203, state: AppCallState.ended
+flutter: SIP Service: Successfully ended CallKit call and cleaned up mappings
+flutter: SIP Service: CallKit event: Event.actionCallEnded
+flutter: SIP Service: CallKit call ended - callKitId: 8ba8816e-88c8-4d90-8d95-017bbd28d6cc, sipCallId: null
+flutter: SIP Service: No SIP call found for ended CallKit call: 8ba8816e-88c8-4d90-8d95-017bbd28d6cc
+flutter: SIP Service: Force ending current call due to CallKit termination
+flutter: SipService: \_updateCurrentCall called - callId: 203, state: AppCallState.ended
+flutter: event OnCallSwitched {callId: 0}
+flutter: SIP Service: Direct call switched - callId: 0
+flutter: SipService: \_updateCurrentCall called - callId: 203, state: AppCallState.ended
+flutter: event OnCallSwitched {callId: 0}
+flutter: SIP Service: Direct call switched - callId: 0
+flutter: SipService: \_updateCurrentCall called - callId: 203, state: AppCallState.ended
+flutter: SIP Service: CallKit event: Event.actionCallToggleAudioSession
+flutter: SipService: \_updateCurrentCall called - callId: null, state: null
+flutter: SipService: \_updateCurrentCall called - callId: null, state: null
+flutter: SipService: \_updateCurrentCall called - callId: null, state: null
+flutter: event OnCallIncoming {withVideo: false, callId: 204, accId: 1, from: "Ravi" <sip:1001@408708399.ringplus.co.uk>, to: sip:1002@408708399.ringplus.co.uk}
+flutter: SIP Service: Incoming call - callId: 204, from: "Ravi" <sip:1001@408708399.ringplus.co.uk>, to: sip:1002@408708399.ringplus.co.uk, withVideo: false
+
+---
+
+First try after the changes:
+Incoming call while app in foreground, screens shows properly but not audio both way.
+Logs:
+flutter: SIP Service: Call connected - callId: 201, from: "Ravi" <sip:1001@408708399.ringplus.co.uk>, to: sip:1002@408708399.ringplus.co.uk, withVideo: false
+flutter: SipService: \_updateCurrentCall called - callId: 201, state: AppCallState.answered
+flutter: SIP Service: Incoming call connected, navigating to OnCallScreen
+105210.915 [5208101] (RTCLogging.mm:33): (RTCAudioSession.mm:511 -[RTCAudioSession handleInterruptionNotification:]): Audio session interruption ended.
+105210.915 [5208101] (audio_device_ios.mm:343): AudioDeviceIOS::OnInterruptionEnd
+105210.915 [5208647] (RTCLogging.mm:33): (audio_device_ios.mm:487 HandleInterruptionEnd): Interruption ended. IsInterrupted changed from 0 to 0. Updating audio unit state.
+105210.915 [5208647] (RTCLogging.mm:33): (audio_device_ios.mm:720 UpdateAudioUnit): Updating audio unit state. CanPlayOrRecord=1 IsInterrupted=0
+105210.915 [5208647] (RTCLogging.mm:33): (audio_device_ios.mm:745 UpdateAudioUnit): VPAU state: Uninitialized
+105210.915 [5208647] (RTCLogging.mm:33): (audio_device_ios.mm:764 UpdateAudioUnit): Initializing audio unit for UpdateAudioUnit
+105210.915 [5208647] (RTCLogging.mm:33): (audio_device_ios.mm:805 ConfigureAudioSession): Configuring audio session.
+105210.915 [5208647] (RTCLogging.mm:33): (audio_device_ios.mm:807 ConfigureAudioSession): Audio session already configured.
+105210.915 [5208647] (audio_device_ios.mm:653): AudioDeviceIOS::SetupAudioBuffersForActiveAudioSession
+105210.918 [5208649] (basic_port_allocator.cc:1496): Net[en0:2a01:e0a:bb4:x:x:x:x:x/64:Wifi:id=2]: Allocation Phase=Relay
+105210.919 [5208649] (basic_port_allocator.cc:1496): Net[en0:192.168.0.x/24:Wifi:id=1]: Allocation Phase=Relay
+105210.919 [5208649] (basic_port_allocator.cc:1496): Net[utun7:fdd9:8d06:7057:x:x:x:x:x/64:VPN/Unknown:id=11]: Allocation Phase=Relay
+105210.919 [5208649] (basic_port_allocator.cc:1496): Net[pdp_ip1:fdde:0:4ae:x:x:x:x:x/64:Cellular:id=10]: Allocation Phase=Relay
+105210.919 [5208649] (basic_port_allocator.cc:1496): Net[pdp_ip0:2a0d:e487:4af:x:x:x:x:x/64:Cellular:id=9]: Allocation Phase=Relay
+105210.919 [5208649] (basic_port_allocator.cc:1496): Net[pdp_ip0:10.158.13.x/32:Cellular:id=8]: Allocation Phase=Relay
+105210.919 [5208649] (basic_port_allocator.cc:1496): Net[ipsec5:fdde:0:4ae:x:x:x:x:x/64:VPN/Unknown:id=4]: Allocation Phase=Relay
+105210.919 [5208649] (basic_port_allocator.cc:1496): Net[en0:2a01:e0a:bb4:x:x:x:x:x/64:Wifi:id=2]: Allocation Phase=Relay
+
+Have you check this doc: https://docs.siprix-voip.com/rst/ioscallkit.html#working-in-background to see if it helps with siprix and callkit integration?
+
+---
+
+Callkit not showing up on incoming call:
+flutter: event OnCallIncoming {accId: 1, callId: 211, withVideo: false, from: "Ravi" <sip:1001@408708399.ringplus.co.uk>, to: sip:1002@408708399.ringplus.co.uk}
+flutter: SIP Service: Incoming call - callId: 211, from: "Ravi" <sip:1001@408708399.ringplus.co.uk>, to: sip:1002@408708399.ringplus.co.uk, withVideo: false
+flutter: SIP Service: Raw from header: "Ravi" <sip:1001@408708399.ringplus.co.uk>
+flutter: SIP Service: Raw name before quote removal: ""Ravi""
+flutter: SIP Service: Raw name after quote removal: "Ravi"
+flutter: SIP Service: Parsed name: "Ravi", number: "1001"
+flutter: SIP Service: Parsed caller - name: Ravi, number: 1001
+flutter: SIP Service: Stored Siprix call ID for operations: 211
+flutter: SipService: \_updateCurrentCall called - callId: 211, state: AppCallState.ringing
+flutter: SIP Service: Updating Siprix CallKit display - Name: Ravi, Handle: 1001
+flutter: SIP Service: CallKit incoming call displayed - no app UI needed
+flutter: event OnCallSwitched {callId: 211}
+flutter: SIP Service: Direct call switched - callId: 211
+flutter: SIP Service: Direct call switched to active call: 211
+flutter: SIP Service: Failed to update Siprix CallKit display: PlatformException(-, Bad argument. Map with fields expected, null, null)
+
+Use siprix CallKit for foreground call for now. Just let make foreground calls work with it. Don't use custom callkit.
+
+---
+
+Check these docs:
+
+- https://github.com/siprix/FlutterPluginFederated/issues/33
+- https://github.com/siprix/FlutterPluginFederated/issues/24
+- https://raw.githubusercontent.com/siprix/FlutterPluginFederated/refs/heads/main/siprix_voip_sdk/example/lib/main.dart
+- https://raw.githubusercontent.com/siprix/FlutterPluginFederated/refs/heads/main/siprix_voip_sdk/example/lib/accouns_model_app.dart
+- https://raw.githubusercontent.com/siprix/FlutterPluginFederated/refs/heads/main/siprix_voip_sdk/example/lib/calls_model_app.dart
+- https://pub.dev/packages/siprix_voip_sdk/example
+- https://pub.dev/documentation/siprix_voip_sdk/latest/
+  Check all the link first to understad.
+  Seems like we need to enable pushkit for incoming calls.
+
+---
+
+On incoming call, callkit is not showing up. I can see mic is enabled during call ringing but no UI shows up.
+flutter: event OnCallIncoming {from: "Ravi" <sip:1001@408708399.ringplus.co.uk>, callId: 213, to: sip:1002@408708399.ringplus.co.uk, accId: 1, withVideo: false}
+flutter: SIP Service: Incoming call - callId: 213, from: "Ravi" <sip:1001@408708399.ringplus.co.uk>, to: sip:1002@408708399.ringplus.co.uk, withVideo: false
+flutter: SIP Service: Raw from header: "Ravi" <sip:1001@408708399.ringplus.co.uk>
+flutter: SIP Service: Raw name before quote removal: ""Ravi""
+flutter: SIP Service: Raw name after quote removal: "Ravi"
+flutter: SIP Service: Parsed name: "Ravi", number: "1001"
+flutter: SIP Service: Parsed caller - name: Ravi, number: 1001
+flutter: SIP Service: Stored Siprix call ID for operations: 213
+flutter: SipService: \_updateCurrentCall called - callId: 213, state: AppCallState.ringing
+flutter: SIP Service: No matching CallKit UUID found for SIP call 213
+flutter: SIP Service: CallKit incoming call displayed - no app UI needed
+flutter: event OnCallSwitched {callId: 213}
+flutter: SIP Service: Direct call switched - callId: 213
+flutter: SIP Service: Direct call switched to active call: 213
+flutter: SIP Service: App inactive
+flutter: SIP Service: App resumed
+flutter: SIP Service: App inactive
+flutter: SIP Service: App resumed
+flutter: event OnCallTerminated {statusCode: 0, callId: 213}
+flutter: SIP Service: Direct call terminated - callId: 213, statusCode: 0
+flutter: SIP Service: Cleaned up call matchers for terminated call 213
+flutter: SIP Service: Attempting to end CallKit call for SIP callId: 213
+flutter: SIP Service: Current CallKit mappings: {}
+flutter: SIP Service: No CallKit UUID found for SIP callId: 213
+flutter: SIP Service: Available mappings: {}
+flutter: SipService: \_updateCurrentCall called - callId: 213, state: AppCallState.ended
+flutter: event OnCallSwitched {callId: 0}
+flutter: SIP Service: Direct call switched - callId: 0
+flutter: SipService: \_updateCurrentCall called - callId: 213, state: AppCallState.ended
+flutter: event OnCallSwitched {callId: 0}
+flutter: SIP Service: Direct call switched - callId: 0
+flutter: SipService: \_updateCurrentCall called - callId: 213, state: AppCallState.ended
+flutter: SipService: \_updateCurrentCall called - callId: null, state: null
+flutter: SIP Service: Call cleanup completed - audio session should be free
+flutter: SipService: \_updateCurrentCall called - callId: null, state: null
+flutter: SipService: \_updateCurrentCall called - callId: null, state: null
+
+---
+
+Clean up the code to remove custom callkit code and enable incoming call using siprix builtin pushnotification and callkit as suggested in the docs and issues. I will implement on opensips pushnotifications.
+
+---
+
+I cant see:
+Token for pushnotification.
+Logs:
+flutter: SIP Service: Call and push listeners configured
+flutter: SIP Service: Contact name resolution callback set on CallsModel
+flutter: SIP Service: Siprix SDK initialized successfully
+flutter: SIP Service: Added app lifecycle observer
+flutter: SIP Service: Initializing network monitoring...
+flutter: SIP Service: Initial connectivity: ConnectivityResult.wifi
+flutter: SIP Service: Network monitoring initialized successfully
+flutter: SIP Service: Network change detected - From: ConnectivityResult.wifi To: ConnectivityResult.wifi
+flutter: SIP Service: Network connectivity restored
+flutter: We have stored SIP credentials
+flutter: Register: Starting registration for Ravi
+flutter: Register: name=Ravi, username=1002, domain=408708399.ringplus.co.uk, proxy=proxy.ringplus.co.uk
+flutter: Register: password length=14
+flutter: Register: Authentication settings - AuthId: 1002, Proxy: proxy.ringplus.co.uk, Force Proxy: true
+flutter: Register: Display Name: Ravi, Server: 408708399.ringplus.co.uk
+flutter: Register: Account configured - server: 408708399.ringplus.co.uk, ext: 1002
+flutter: SIP Service: No PushKit token available yet
+
+---
+
+Im running into this error when running on Android physical device:
+
+Launching lib/main.dart on 2312DRA50G in debug mode...
+
+FAILURE: Build failed with an exception.
+
+- What went wrong:
+  A problem occurred configuring project ':contacts_service'.
+
+  > Could not create an instance of type com.android.build.api.variant.impl.LibraryVariantBuilderImpl.
+  > Namespace not specified. Specify a namespace in the module's build file: /Users/srigo/.pub-cache/hosted/pub.dev/contacts_service-0.6.3/android/build.gradle. See https://d.android.com/r/tools/upgrade-assistant/set-namespace for information about setting the namespace.
+
+       If you've specified the package attribute in the source AndroidManifest.xml, you can use the AGP Upgrade Assistant to migrate to the namespace value in the build file. Refer to https://d.android.com/r/tools/upgrade-assistant/agp-upgrade-assistant for general information about using the AGP Upgrade Assistant.
+
+- Try:
+  > Run with --stacktrace option to get the stack trace.
+  > Run with --info or --debug option to get more log output.
+  > Run with --scan to get full insights.
+  > Get more help at https://help.gradle.org.
+
+BUILD FAILED in 1m 56s
+Running Gradle task 'assembleDebug'... 116.8s
+Error: Gradle task assembleDebug failed with exit code 1
+
+Remove contact_services in favor of flutter_contacts or disable it for now.
+
+---
+
+We are having Permission issue:
+
+I/flutter (31595): Register: Using TCP transport for Android to avoid UDP port binding issues
+D/permissions_handler(31595): No permissions found in manifest for: []2
+I/flutter (31595): ContactService: Current permission status: PermissionStatus.denied
+I/flutter (31595): Register: Authentication settings - AuthId: 1002, Proxy: proxy.ringplus.co.uk, Force Proxy: true
+I/flutter (31595): Register: Display Name: Ravi, Server: 408708399.ringplus.co.uk
+I/flutter (31595): Register: Account configured - server: 408708399.ringplus.co.uk, ext: 1002
+D/permissions_handler(31595): No permissions found in manifest for: []2
+I/flutter (31595): ContactService: Permission request result: PermissionStatus.denied
+I/flutter (31595): ContactService: Permission denied - PermissionStatus.denied
+I/siprix (31595): (SiprixModule.cpp:682): Added account: 1002@408708399.ringplus.co.uk/proxy.ringplus.co.uk|5060 id:1
+I/siprix (31595): (UserAgent.cxx:622): addTransportImpl: TCP/V4 port:5060 key:51
+I/siprix (31595): (Connection.cxx:45): Connection created fd=0
+I/siprix (31595): (TcpTransport.cxx:39): Creating TCP transport host= port=5060 ipv4=1
+I/SiprixVoipSdkPlugin(31595): handleAccountAdd id:1 err:0/Success
+I/siprix (31595): (TransportSelector.cxx:278): added transport for tuple=[0.0.0.0:5060 TCP], key=51
+I/flutter (31595): SIP Service: Models changed - checking status...
+I/siprix (31595): (DetermineSourceInterface.cxx:54): determine src for target: [68.183.254.236:5060 TCP targetDomain=proxy.ringplus.co.uk]
+W/siprix (31595): (InternalTransport.cxx:121): Creating fd=244 V4/UDP
+W/siprix (31595): (DetermineSourceInterface.cxx:60): Success: [192.168.0.76:0 TCP targetDomain=proxy.ringplus.co.uk]
+I/siprix (31595): (UserAgent.cxx:1036): handleDetermineSrcInterface: 192.168.0.76 isSame:0 netSwitchMode:0
+W/siprix (31595): (TransportSelector.cxx:1348): TX 'Req REGISTER/cseq=2556' to [68.183.254.236:5060 TCP] via [192.168.0.76:5060 TCP]
+W/siprix (31595): (InternalTransport.cxx:121): Creating fd=251 V4/TCP
+W/siprix (31595): (TcpBaseTransport.cxx:275): Error in binding to source interface address. Err:1 'Operation not permitted'
+I/siprix (31595): (TransactionState.cxx:2411): Try sending request to a different dns result
+I/siprix (31595): (TransactionState.cxx:2433): No DNS results remain.
+I/siprix (31595): (TransactionState.cxx:2237): Ran out of dns entries for proxy.ringplus.co.uk. Send 503
+
+Just use UDP and define a range of 5 random ports above 20000, to be picked randomly when extension register.
+
+---
+
+in sip_service.dart, remove account.port = port or set to 0 (for random port builtin siprix) and update account.sipProxy = proxy to concat proxy+":"+port.
+Remove rest of the logic you have implemented for port issue.
+
+---
+
+We are working on Android and testing outgoing call. Call works fine. Mute button works. But Speaker button doesnt works it seems we have disabled it for IOS:
+I/flutter ( 3923): Audio device selection disabled - CallKit handles all audio management
+
+We need to make the speaker button simpler: We click on it enable the speaker when we click it again disable the Speaker (for Earpiece).
+
+---
+
+On keypad screen, I want the call button be always purple even if there is no number dialed but jst disabled it if there is no number dialed. I also need you to remove the gray color background on the delete dialed number button.
+
+---
+
+We need now to work on incoming call for Android. We need to make sure to handle incoming calls when the app is in foreground, in background or not running. I believe for last 2 cases, we need to use FCM for push notification to wakeup the app and make it register to get the incoming call.
+We also need to add X-Token header on the SIP register for adding Firebase token.
+
+Android FCM Incoming Call Integration - Complete ✅
+
+Key Features Implemented:
+
+1. Firebase Cloud Messaging (FCM) Integration
+
+   - Added firebase_core: ^2.24.2 and firebase_messaging: ^14.7.9 dependencies
+   - Comprehensive FCM initialization for Android devices
+   - Token generation and refresh handling
+
+2. X-Token Header in SIP REGISTER
+
+   - FCM token automatically included in SIP REGISTER requests via X-Token header
+   - Enables server-side push notification routing for incoming calls
+   - Token refresh automatically updates SIP registration
+
+3. Multi-State Incoming Call Handling
+
+   - Foreground: Direct FCM message handling with immediate call screen navigation
+   - Background: FCM background message processing with app wake-up
+   - Terminated: FCM message triggers app launch and SIP re-registration
+
+4. Notification Flow
+
+   - Push notification wakes up app → SIP service initializes → Registers with token → Receives incoming call
+   - Proper navigation to incoming call screen with caller details
+   - Fallback navigation to keypad if call data incomplete
+
+5. Code Integration Points
+
+   - lib/core/services/notification_service.dart: Complete FCM implementation
+   - lib/core/services/sip_service.dart: X-Token header integration in registration
+   - lib/core/services/navigation_service.dart: Call screen navigation methods
+
+Server Requirements:
+
+- Configure Firebase project with Android app
+- Server must send FCM push notifications for incoming calls with payload:
+  {
+  "type": "incoming_call",
+  "call_id": "unique_call_id",
+  "caller_name": "John Doe",
+  "caller_number": "+1234567890"
+  }
+
+---
+
+FCM token is not available. Do we need to register the app to Firebase project?
+I/flutter ( 7558): Register: No FCM token available yet
+
+🔥 Firebase Setup Instructions
+
+Package Name: com.ringplus.app (from your build.gradle.kts)
+
+Step 1: Create Firebase Project
+
+1. Go to https://console.firebase.google.com
+2. Create new project: "RingPlus PBX"
+3. Enable Google Analytics (recommended)
+
+Step 2: Add Android App
+
+1. Click "Add app" → Android icon
+2. Package name: com.ringplus.app
+3. App nickname: "RingPlus PBX Android"
+4. SHA-1 certificate: Generate using:
+   keytool -list -v -keystore ~/.android/debug.keystore -alias ringplus_app -storepass android -keypass android
+
+srigo@Srigos-MacBook-Pro ~ % keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
+Alias name: androiddebugkey
+Creation date: 30 June 2023
+Entry type: PrivateKeyEntry
+Certificate chain length: 1
+Certificate[1]:
+Owner: C=US, O=Android, CN=Android Debug
+Issuer: C=US, O=Android, CN=Android Debug
+Serial number: 1
+Valid from: Fri Jun 30 14:19:11 CEST 2023 until: Sun Jun 22 14:19:11 CEST 2053
+Certificate fingerprints:
+SHA1: C1:2D:B6:D3:40:01:32:D1:2F:50:24:13:0B:31:A7:E3:9C:7F:0A:1A
+SHA256: 52:83:92:C9:E3:3C:0F:C9:AB:3E:D7:8F:A0:3C:F7:4C:39:B0:7E:EB:F3:D4:83:A1:4A:3E:41:6F:DC:85:8C:AD
+Signature algorithm name: SHA256withRSA
+Subject Public Key Algorithm: 2048-bit RSA key
+Version: 1
+
+Step 3: Download & Install google-services.json
+
+1. Download google-services.json from Firebase Console
+2. Place it in: /Users/srigo/Documents/MyDocs/Ringplus/App/flutter_siprix/android/app/
+3. Replace the template file I created
+
+Step 4: Enable Cloud Messaging
+
+1. In Firebase Console → Project Settings → Cloud Messaging
+2. Note your Server Key (for backend push notifications)
+
+Step 5: Test FCM Token Generation

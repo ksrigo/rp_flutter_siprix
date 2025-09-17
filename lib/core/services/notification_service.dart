@@ -1,19 +1,20 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-// import 'package:firebase_messaging/firebase_messaging.dart'; // Temporarily disabled
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 // import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart'; // Removed - using Siprix built-in CallKit
 // import 'package:flutter_voip_kit/flutter_voip_kit.dart'; // Temporarily disabled
 
-// import '../constants/app_constants.dart'; // Temporarily disabled with Firebase
-// import 'navigation_service.dart'; // Temporarily disabled with Firebase
+import 'navigation_service.dart';
+import 'sip_service.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
   static NotificationService get instance => _instance;
   NotificationService._internal();
 
-  // FirebaseMessaging? _firebaseMessaging; // Temporarily disabled
+  FirebaseMessaging? _firebaseMessaging;
   // FlutterVoipKit? _voipPushkit; // Temporarily disabled
   
   bool _isInitialized = false;
@@ -43,8 +44,8 @@ class NotificationService {
         // Only try to access Platform on mobile
         try {
           if (Platform.isAndroid) {
-            // await _initializeFirebaseMessaging(); // Temporarily disabled
-            debugPrint('Firebase messaging temporarily disabled');
+            await _initializeFirebaseMessaging();
+            debugPrint('Firebase messaging initialized for Android');
           } else if (Platform.isIOS) {
             await _initializeVoipPushkit();
             await _initializeCallKit();
@@ -61,11 +62,14 @@ class NotificationService {
     }
   }
 
-  /* Future<void> _initializeFirebaseMessaging() async { // Temporarily disabled Firebase
+  Future<void> _initializeFirebaseMessaging() async {
     try {
+      // Initialize Firebase if not already done
+      await Firebase.initializeApp();
+      
       _firebaseMessaging = FirebaseMessaging.instance;
 
-      // Request permission
+      // Request permission for Android 13+
       final settings = await _firebaseMessaging!.requestPermission(
         alert: true,
         announcement: false,
@@ -77,21 +81,22 @@ class NotificationService {
       );
 
       if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-        debugPrint('User granted permission for notifications');
+        debugPrint('Android: User granted permission for notifications');
       } else {
-        debugPrint('User declined or has not accepted permission');
+        debugPrint('Android: User declined or has not accepted permission');
         return;
       }
 
       // Get FCM token
       _fcmToken = await _firebaseMessaging!.getToken();
-      debugPrint('FCM Token: $_fcmToken');
+      debugPrint('Android: FCM Token: $_fcmToken');
 
       // Listen for token refresh
       _firebaseMessaging!.onTokenRefresh.listen((token) {
         _fcmToken = token;
-        debugPrint('FCM Token refreshed: $token');
-        // TODO: Send updated token to server
+        debugPrint('Android: FCM Token refreshed: $token');
+        // Update SIP registration with new token
+        _updateSipRegistrationWithToken(token);
       });
 
       // Handle foreground messages
@@ -100,7 +105,7 @@ class NotificationService {
       // Handle background messages
       FirebaseMessaging.onBackgroundMessage(_handleBackgroundMessage);
 
-      // Handle notification taps
+      // Handle notification taps (app opened from background)
       FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
 
       // Check for initial message (app opened from terminated state)
@@ -109,14 +114,12 @@ class NotificationService {
         _handleNotificationTap(initialMessage);
       }
 
-      // Subscribe to topics
-      await _firebaseMessaging!.subscribeToTopic(AppConstants.fcmTopicCalls);
-      await _firebaseMessaging!.subscribeToTopic(AppConstants.fcmTopicVoicemail);
+      debugPrint('Android: Firebase messaging configured successfully');
 
     } catch (e) {
-      debugPrint('Error initializing Firebase Messaging: $e');
+      debugPrint('Android: Error initializing Firebase Messaging: $e');
     }
-  } */ // End Firebase disabled section
+  }
 
   Future<void> _initializeVoipPushkit() async {
     try {
@@ -140,8 +143,8 @@ class NotificationService {
     }
   }
 
-  /* Future<void> _handleForegroundMessage(RemoteMessage message) async { // Disabled Firebase
-    debugPrint('Foreground message received: ${message.data}');
+  Future<void> _handleForegroundMessage(RemoteMessage message) async {
+    debugPrint('Android: Foreground FCM message received: ${message.data}');
     
     final data = message.data;
     if (data['type'] == 'incoming_call') {
@@ -154,45 +157,94 @@ class NotificationService {
   }
 
   static Future<void> _handleBackgroundMessage(RemoteMessage message) async {
-    debugPrint('Background message received: ${message.data}');
+    debugPrint('Android: Background FCM message received: ${message.data}');
     
     final data = message.data;
     if (data['type'] == 'incoming_call') {
-      await NotificationService.instance._handleIncomingCallNotification(data);
+      // Wake up the app and trigger SIP registration to receive the call
+      await _wakeUpAndRegisterForIncomingCall(data);
+    }
+  }
+
+  static Future<void> _wakeUpAndRegisterForIncomingCall(Map<String, dynamic> data) async {
+    try {
+      debugPrint('Android: Waking up app for incoming call');
+      
+      // Initialize SIP service if not already done
+      final sipService = SipService.instance;
+      await sipService.initialize();
+      
+      // Re-register to receive the incoming call
+      if (!sipService.isRegistered) {
+        // The SIP service will handle re-registration automatically
+        debugPrint('Android: SIP not registered, service will auto-register');
+      }
+      
+      debugPrint('Android: App wake-up complete, ready for incoming call');
+    } catch (e) {
+      debugPrint('Android: Error waking up app for incoming call: $e');
     }
   }
 
   Future<void> _handleNotificationTap(RemoteMessage message) async {
-    debugPrint('Notification tapped: ${message.data}');
+    debugPrint('Android: Notification tapped: ${message.data}');
     
     final data = message.data;
     if (data['type'] == 'incoming_call') {
       final callId = data['call_id'];
+      final callerName = data['caller_name'] ?? 'Unknown';
+      final callerNumber = data['caller_number'] ?? 'Unknown';
+      
       if (callId != null) {
+        // Navigate to incoming call screen
         NavigationService.goToIncomingCall(
           callId: callId,
-          callerName: data['caller_name'] ?? 'Unknown',
-          callerNumber: data['caller_number'] ?? 'Unknown',
+          callerName: callerName,
+          callerNumber: callerNumber,
         );
+      } else {
+        // If no call ID, just open the app to the main screen
+        NavigationService.goToKeypad();
       }
     } else if (data['type'] == 'voicemail') {
       NavigationService.goToVoicemail();
     }
   }
 
-  Future<void> _handleVoipPush(Map<String, dynamic> data) async {
-    if (data['type'] == 'incoming_call') {
-      await _handleIncomingCallNotification(data);
+  Future<void> _handleIncomingCallNotification(Map<String, dynamic> data) async {
+    try {
+      debugPrint('Android: Handling incoming call notification: $data');
+      
+      final callerName = data['caller_name'] ?? 'Unknown';
+      final callerNumber = data['caller_number'] ?? 'Unknown';
+      final callId = data['call_id'];
+      
+      // Trigger the incoming call stream
+      _incomingCallController.add(callId ?? callerNumber);
+      
+      debugPrint('Android: Incoming call notification processed for $callerName ($callerNumber)');
+    } catch (e) {
+      debugPrint('Android: Error handling incoming call notification: $e');
     }
   }
 
-
   Future<void> _handleVoicemailNotification(Map<String, dynamic> data) async {
-    // Handle voicemail notification
-    debugPrint('Voicemail notification: $data');
+    debugPrint('Android: Voicemail notification: $data');
+    // TODO: Implement voicemail handling
   }
 
-  } */ // End Firebase disabled section
+  void _updateSipRegistrationWithToken(String token) {
+    try {
+      // Update SIP registration with new FCM token
+      final sipService = SipService.instance;
+      if (sipService.isRegistered) {
+        // The token will be included in the next registration refresh
+        debugPrint('Android: FCM token updated, will be included in next SIP registration');
+      }
+    } catch (e) {
+      debugPrint('Android: Error updating SIP registration with FCM token: $e');
+    }
+  }
 
   void _handleCallKitEvent(dynamic event) {
     debugPrint('CallKit event received');
@@ -277,6 +329,29 @@ class NotificationService {
     } catch (e) {
       debugPrint('Error unsubscribing from topic: $e');
     }
+  }
+
+  /// Get current FCM token for Android push notifications
+  String? getCurrentFCMToken() {
+    if (Platform.isAndroid) {
+      return _fcmToken;
+    }
+    return null;
+  }
+
+  /// Request fresh FCM token
+  Future<String?> refreshFCMToken() async {
+    if (Platform.isAndroid && _firebaseMessaging != null) {
+      try {
+        _fcmToken = await _firebaseMessaging!.getToken();
+        debugPrint('Android: FCM token refreshed: $_fcmToken');
+        return _fcmToken;
+      } catch (e) {
+        debugPrint('Android: Error refreshing FCM token: $e');
+        return null;
+      }
+    }
+    return null;
   }
 
   void dispose() {

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "47383828393",
+    "project_id": "ringplus-87a35",
+    "storage_bucket": "ringplus-87a35.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:47383828393:android:12e484fab16952cf0e56b8",
+        "android_client_info": {
+          "package_name": "com.ringplus.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAkrApvVSjqRticGuuOKpMRMnINzlq94Sk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

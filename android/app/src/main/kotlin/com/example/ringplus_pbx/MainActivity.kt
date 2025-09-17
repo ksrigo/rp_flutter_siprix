@@ -1,4 +1,4 @@
-package com.example.ringplus_pbx
+package com.ringplus.app
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -415,10 +415,7 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
               isActive: _isMuted,
               onPressed: _isCallAnswered && _isCallActive() ? _toggleMute : null,
             ),
-            _buildAudioControlButton(
-              label: 'Audio',
-              onPressed: _isCallAnswered ? _toggleSpeaker : null,
-            ),
+            _buildSpeakerButton(),
             _buildControlButton(
               icon: _isOnHold ? Icons.play_arrow : Icons.pause,
               label: _isOnHold ? 'Resume' : 'Hold',
@@ -735,8 +732,33 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
   }
 
   void _toggleSpeaker() {
-    // Show audio output options instead of just toggling speaker
-    _showAudioOutputOptions();
+    // Simple toggle between speaker and earpiece
+    final currentCall = SipService.instance.currentCall;
+    if (currentCall != null) {
+      final newSpeakerState = !currentCall.isSpeakerOn;
+      SipService.instance.setSpeaker(widget.callId, newSpeakerState);
+      debugPrint('Speaker toggled to: $newSpeakerState');
+    }
+  }
+
+  Widget _buildSpeakerButton() {
+    final sipService = SipService.instance;
+    
+    return ListenableBuilder(
+      listenable: sipService,
+      builder: (context, child) {
+        final currentCall = sipService.currentCall;
+        final isSpeakerOn = currentCall?.isSpeakerOn ?? false;
+        final isEnabled = _isCallAnswered;
+        
+        return _buildControlButton(
+          icon: isSpeakerOn ? Icons.volume_up : Icons.volume_down,
+          label: isSpeakerOn ? 'Speaker' : 'Earpiece',
+          isActive: isSpeakerOn,
+          onPressed: isEnabled ? _toggleSpeaker : null,
+        );
+      },
+    );
   }
 
   void _toggleKeypad() {

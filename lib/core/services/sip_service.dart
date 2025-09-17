@@ -13,6 +13,7 @@ import '../constants/app_constants.dart';
 import '../../shared/services/storage_service.dart';
 import 'navigation_service.dart';
 import 'contact_service.dart';
+import 'notification_service.dart';
 
 enum AudioDeviceCategory {
   earpiece,
@@ -172,22 +173,25 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       InitData initData = InitData();
       initData.license = ""; // TODO: Add license key here or use trial mode
       initData.singleCallMode = false; // Allow multiple calls
-      
+
       // Share UDP transport for efficiency
       initData.shareUdpTransport = true;
-      
+
       // Platform-specific initialization
       if (Platform.isIOS) {
         // iOS-specific settings - these work reliably on iOS
-        initData.enableVideoCall = false; // Disable video - reduces WebRTC SDP attributes
+        initData.enableVideoCall =
+            false; // Disable video - reduces WebRTC SDP attributes
         initData.enableCallKit = true; // Enable Siprix built-in CallKit
         initData.enablePushKit = true; // Enable PushKit for background calls
         initData.unregOnDestroy = false;
-        debugPrint('SIP Service: Enabled Siprix built-in CallKit and PushKit for iOS');
+        debugPrint(
+            'SIP Service: Enabled Siprix built-in CallKit and PushKit for iOS');
       } else if (Platform.isAndroid) {
         // Android-specific settings - skip problematic video configuration
         // Note: Skip enableVideoCall on Android to avoid native library issues
-        debugPrint('SIP Service: Configured Siprix for Android (video disabled)');
+        debugPrint(
+            'SIP Service: Configured Siprix for Android (video disabled)');
       }
 
       _siprixSdk = SiprixVoipSdk();
@@ -221,9 +225,11 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       // Set up contact name resolution callback after SDK is fully initialized
       if (_callsModel != null) {
         _callsModel!.onResolveContactName = _resolveContactNameForCallKit;
-        debugPrint('SIP Service: Contact name resolution callback set on CallsModel');
+        debugPrint(
+            'SIP Service: Contact name resolution callback set on CallsModel');
       } else {
-        debugPrint('SIP Service: Warning - CallsModel is null, cannot set contact name callback');
+        debugPrint(
+            'SIP Service: Warning - CallsModel is null, cannot set contact name callback');
       }
 
       debugPrint('SIP Service: Siprix SDK initialized successfully');
@@ -252,7 +258,8 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
 
       // Try to get PushKit token after SDK initialization (tokens may not be immediately available)
       if (Platform.isIOS) {
-        debugPrint('SIP Service: iOS detected - starting PushKit token retrieval process');
+        debugPrint(
+            'SIP Service: iOS detected - starting PushKit token retrieval process');
         _checkIOSCapabilities();
         debugIOSPushConfiguration();
         _scheduleTokenRetry();
@@ -263,7 +270,8 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         debugPrint('SIP Service: Contact service initialization failed: $e');
         return false; // Return false to indicate initialization failed
       });
-      debugPrint('SIP Service: Contact service initialization started in background');
+      debugPrint(
+          'SIP Service: Contact service initialization started in background');
 
       debugPrint('SIP Service: Initialization complete');
     } catch (e) {
@@ -320,27 +328,31 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
   /// Resolve contact name for CallKit display - called by Siprix for incoming/outgoing calls
   String _resolveContactNameForCallKit(String extension) {
     try {
-      debugPrint('🔥 SIP Service: CALLBACK TRIGGERED - Resolving contact name for CallKit display: "$extension"');
-      
+      debugPrint(
+          '🔥 SIP Service: CALLBACK TRIGGERED - Resolving contact name for CallKit display: "$extension"');
+
       // Use our existing parsing logic to handle full SIP headers
       final callerInfo = _parseCallerInfo(extension);
       final callerName = callerInfo['name'] ?? 'Unknown';
       final callerNumber = callerInfo['number'] ?? 'Unknown';
-      
-      debugPrint('🔥 SIP Service: Parsed for CallKit - name: "$callerName", number: "$callerNumber"');
-      
+
+      debugPrint(
+          '🔥 SIP Service: Parsed for CallKit - name: "$callerName", number: "$callerNumber"');
+
       // Return the name if it's meaningful, otherwise return the number
       String result;
       if (callerName != 'Unknown' && callerName != callerNumber) {
         result = callerName;
-        debugPrint('🔥 SIP Service: Returning caller name for CallKit: "$result"');
+        debugPrint(
+            '🔥 SIP Service: Returning caller name for CallKit: "$result"');
       } else {
         result = callerNumber;
-        debugPrint('🔥 SIP Service: Returning caller number for CallKit: "$result"');
+        debugPrint(
+            '🔥 SIP Service: Returning caller number for CallKit: "$result"');
       }
-      
+
       return result;
-      
+
       // Future enhancement: integrate with ContactService
       // final contactInfo = await ContactService.instance.findContactByPhoneNumber(callerNumber);
       // if (contactInfo != null && contactInfo.displayName != callerNumber) {
@@ -386,10 +398,11 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         _updateCurrentCall(null);
         // Clear hangup flag after call is terminated
         _isHangingUp = false;
-        
+
         // Add extra delay to ensure audio session is fully cleaned up
         // This helps prevent WebRTC conflicts on subsequent calls
-        debugPrint('SIP Service: Call cleanup completed - audio session should be free');
+        debugPrint(
+            'SIP Service: Call cleanup completed - audio session should be free');
       });
     } else {
       // Clear hangup flag immediately if there's no current call
@@ -402,7 +415,7 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
     if (callId == 0) {
       // No active calls - clear the stored call ID
       _currentSiprixCallId = null;
-      
+
       if (_currentCall != null) {
         _updateCurrentCall(_currentCall?.copyWith(state: AppCallState.ended));
         Timer(const Duration(milliseconds: 800), () {
@@ -412,7 +425,7 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
     } else {
       // Update the stored call ID with the new active call
       _currentSiprixCallId = callId;
-      
+
       debugPrint('SIP Service: Direct call switched to active call: $callId');
     }
   }
@@ -465,14 +478,18 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       // Navigate to OnCallScreen when call is connected/answered
       // Built-in Siprix CallKit handles CallKit UI, we handle app navigation
       if (_currentCall!.isIncoming) {
-        debugPrint('SIP Service: Incoming call connected, navigating to OnCallScreen');
+        debugPrint(
+            'SIP Service: Incoming call connected, navigating to OnCallScreen');
         NavigationService.goToInCall(
           _currentCall!.id,
           phoneNumber: _currentCall!.remoteNumber,
-          contactName: _currentCall!.remoteName != _currentCall!.remoteNumber ? _currentCall!.remoteName : null,
+          contactName: _currentCall!.remoteName != _currentCall!.remoteNumber
+              ? _currentCall!.remoteName
+              : null,
         );
       } else {
-        debugPrint('SIP Service: Outgoing call connected, OnCallScreen should already be visible');
+        debugPrint(
+            'SIP Service: Outgoing call connected, OnCallScreen should already be visible');
       }
     }
   }
@@ -480,16 +497,18 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
   // Handle incoming push notifications for CallKit
   void _onIncomingPush(String callkitUuid, Map<String, dynamic> payload) {
     if (!Platform.isIOS) return;
-    
+
     try {
-      debugPrint('SIP Service: Incoming push - CallKit UUID: $callkitUuid, Payload: $payload');
-      
+      debugPrint(
+          'SIP Service: Incoming push - CallKit UUID: $callkitUuid, Payload: $payload');
+
       // Extract caller details from payload
       String callerName = payload['callerName'] ?? 'Incoming Call';
       String callerNumber = payload['callerNumber'] ?? '';
-      
-      debugPrint('SIP Service: Push notification - Name: $callerName, Number: $callerNumber');
-      
+
+      debugPrint(
+          'SIP Service: Push notification - Name: $callerName, Number: $callerNumber');
+
       // Update CallKit call details with push notification information
       try {
         _siprixSdk?.updateCallKitCallDetails(
@@ -499,11 +518,11 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
           callerNumber,
           false, // withVideo
         );
-        debugPrint('SIP Service: Updated CallKit details from push notification');
+        debugPrint(
+            'SIP Service: Updated CallKit details from push notification');
       } catch (e) {
         debugPrint('SIP Service: Failed to update CallKit details: $e');
       }
-      
     } catch (e) {
       debugPrint('SIP Service: Error handling incoming push: $e');
     }
@@ -530,7 +549,8 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
 
     // Store the Siprix call ID for later operations
     _currentSiprixCallId = callId;
-    debugPrint('SIP Service: Stored Siprix call ID for operations: $_currentSiprixCallId');
+    debugPrint(
+        'SIP Service: Stored Siprix call ID for operations: $_currentSiprixCallId');
 
     // Create call info for incoming call
     final callInfo = CallInfo(
@@ -544,12 +564,43 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
 
     _updateCurrentCall(callInfo);
 
-    // Siprix built-in CallKit will handle incoming call display automatically
-
-    debugPrint(
-        'SIP Service: CallKit incoming call displayed - no app UI needed');
+    // Handle incoming calls differently per platform
+    if (Platform.isAndroid) {
+      // Android: Show our custom incoming call screen
+      _showIncomingCallScreen(callId.toString(), callerName, callerNumber);
+      debugPrint(
+          'SIP Service: Android - Custom incoming call screen displayed');
+    } else if (Platform.isIOS) {
+      // iOS: Let Siprix built-in CallKit handle the incoming call display
+      debugPrint(
+          'SIP Service: iOS - Siprix CallKit will handle incoming call display');
+      // CallKit integration is handled automatically by Siprix SDK
+    }
   }
 
+  /// Android-specific method to show custom incoming call screen
+  /// iOS uses Siprix built-in CallKit instead
+  void _showIncomingCallScreen(
+      String callId, String callerName, String callerNumber) {
+    try {
+      debugPrint(
+          'SIP Service: Android - Showing custom incoming call screen for call: $callId');
+
+      // Navigate to our custom incoming call screen for Android
+      // This provides a consistent UI experience across the app
+      NavigationService.goToIncomingCall(
+        callId: callId,
+        callerName: callerName,
+        callerNumber: callerNumber,
+      );
+
+      debugPrint(
+          'SIP Service: Android - Successfully navigated to incoming call screen');
+    } catch (e) {
+      debugPrint(
+          'SIP Service: Android - Error showing incoming call screen: $e');
+    }
+  }
 
   Map<String, String> _parseCallerInfo(String fromHeader) {
     // Parse SIP from header like: "Srigo" <sip:1001@408708399.ringplus.co.uk>
@@ -574,7 +625,7 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         if (nameMatch != null) {
           String rawName = nameMatch.group(1)?.trim() ?? '';
           debugPrint('SIP Service: Raw name before quote removal: "$rawName"');
-          
+
           // Simple quote removal - just remove all quote characters
           String previousName;
           do {
@@ -582,12 +633,13 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
             rawName = rawName.replaceAll('"', '').replaceAll("'", '');
           } while (previousName != rawName);
           rawName = rawName.trim();
-          
+
           debugPrint('SIP Service: Raw name after quote removal: "$rawName"');
           if (rawName.isNotEmpty && rawName != number) {
             name = rawName;
           } else {
-            name = number; // Fallback to number if name is empty or same as number
+            name =
+                number; // Fallback to number if name is empty or same as number
           }
         }
       } else {
@@ -663,7 +715,7 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       account.forceSipProxy = true; // Force using proxy for all requests
       account.rewriteContactIp = true; // Enable IP rewrite for NAT handling
       account.keepAliveTime = 30; // Keep alive packets every 30 seconds
-      
+
       // Transport configuration
       account.transport = SipTransport.udp; // Use UDP as configured on server
 
@@ -683,6 +735,10 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       //   SiprixVoipSdk.kAudioCodecPCMA, // G.711 A-law
       //   SiprixVoipSdk.kAudioCodecDTMF, // DTMF/telephone-event
       // ];
+      account.aCodecs = [
+        SiprixVoipSdk.kAudioCodecPCMU,
+        SiprixVoipSdk.kAudioCodecDTMF
+      ];
 
       // Additional media/RTP configurations for better timing
       account.expireTime = 300; // Registration expiry time
@@ -690,6 +746,17 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       // Add custom authentication headers if needed
       if (account.xheaders == null) {
         account.xheaders = <String, String>{};
+      }
+
+      // Add FCM token for Android push notifications
+      if (Platform.isAndroid) {
+        final fcmToken = NotificationService.instance.getCurrentFCMToken();
+        if (fcmToken != null) {
+          account.xheaders!['X-Token'] = fcmToken;
+          debugPrint('Register: Added FCM token to X-Token header');
+        } else {
+          debugPrint('Register: No FCM token available yet');
+        }
       }
       // Add any custom headers that might help with proxy authentication
       account.xheaders!['User-Agent'] = 'RingPlus-Siprix/1.0';
@@ -714,19 +781,23 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
           debugPrint('SIP Service: Requesting PushKit token...');
           final pushToken = await _siprixSdk!.getPushKitToken();
           debugPrint('SIP Service: PushKit token response: $pushToken');
-          
+
           if (pushToken != null && pushToken.isNotEmpty) {
             // Add push token to SIP headers for OpenSIPS integration
             account.xheaders ??= <String, String>{};
             account.xheaders!['X-Push-Token'] = pushToken;
-            debugPrint('SIP Service: ✅ Added PushKit token to account headers: $pushToken');
+            debugPrint(
+                'SIP Service: ✅ Added PushKit token to account headers: $pushToken');
           } else {
-            debugPrint('SIP Service: ❌ No PushKit token available yet - Check iOS capabilities configuration');
-            debugPrint('SIP Service: Required: Background Modes (Voice over IP) + Push Notifications capabilities');
+            debugPrint(
+                'SIP Service: ❌ No PushKit token available yet - Check iOS capabilities configuration');
+            debugPrint(
+                'SIP Service: Required: Background Modes (Voice over IP) + Push Notifications capabilities');
           }
         } catch (e) {
           debugPrint('SIP Service: ❌ Failed to get PushKit token: $e');
-          debugPrint('SIP Service: This might indicate missing iOS capabilities or certificates');
+          debugPrint(
+              'SIP Service: This might indicate missing iOS capabilities or certificates');
         }
       }
 
@@ -905,24 +976,27 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       try {
         // Use Siprix SDK accept method (audio-only for now)
         debugPrint('Answer call: Accepting call with ID $intCallId');
-        
+
         // Only add defensive delay for potential background scenarios
         // Reduce delay to minimize audio session interruption
         await Future.delayed(const Duration(milliseconds: 50));
-        
+
         // Accept call with proper error handling for WebRTC issues
         await _siprixSdk!.accept(intCallId, false); // false = audio only
         debugPrint('Answer call: Successfully accepted call via SDK');
-        
+
         // Brief pause to ensure call state is fully established
         await Future.delayed(const Duration(milliseconds: 100));
-        
       } catch (e) {
-        debugPrint('Answer call: Siprix accept failed (possibly WebRTC audio issue): $e');
-        
+        debugPrint(
+            'Answer call: Siprix accept failed (possibly WebRTC audio issue): $e');
+
         // If WebRTC audio session fails, try to recover
-        if (e.toString().contains('audio') || e.toString().contains('WebRTC') || e.toString().contains('Session')) {
-          debugPrint('Answer call: Detected audio session error, attempting recovery');
+        if (e.toString().contains('audio') ||
+            e.toString().contains('WebRTC') ||
+            e.toString().contains('Session')) {
+          debugPrint(
+              'Answer call: Detected audio session error, attempting recovery');
           try {
             // Add more delay and try again
             await Future.delayed(const Duration(milliseconds: 500));
@@ -1136,9 +1210,11 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       // Primary method: Use the stored Siprix call ID
       if (_currentSiprixCallId != null && _currentSiprixCallId! > 0) {
         try {
-          debugPrint('Mute: Using direct SDK with stored call ID: $_currentSiprixCallId');
+          debugPrint(
+              'Mute: Using direct SDK with stored call ID: $_currentSiprixCallId');
           await _siprixSdk!.muteMic(_currentSiprixCallId!, mute);
-          debugPrint('Mute: Successfully ${mute ? 'muted' : 'unmuted'} microphone via SDK with stored ID');
+          debugPrint(
+              'Mute: Successfully ${mute ? 'muted' : 'unmuted'} microphone via SDK with stored ID');
           muteSuccess = true;
         } catch (e) {
           debugPrint('Mute: Direct SDK with stored ID failed: $e');
@@ -1151,13 +1227,15 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         final switchedCallId = _callsModel!.switchedCallId;
         final callsCount = _callsModel!.length;
 
-        debugPrint('Mute: Fallback - Active call object: ${activeCall != null ? activeCall.myCallId : 'null'}, switched ID: $switchedCallId, total calls: $callsCount');
+        debugPrint(
+            'Mute: Fallback - Active call object: ${activeCall != null ? activeCall.myCallId : 'null'}, switched ID: $switchedCallId, total calls: $callsCount');
 
         // Try the switched call if available
         if (activeCall != null && switchedCallId != 0) {
           try {
             await activeCall.muteMic(mute);
-            debugPrint('Mute: Successfully ${mute ? 'muted' : 'unmuted'} via call object');
+            debugPrint(
+                'Mute: Successfully ${mute ? 'muted' : 'unmuted'} via call object');
             muteSuccess = true;
           } catch (e) {
             debugPrint('Mute: Call object method failed: $e');
@@ -1168,7 +1246,8 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         if (!muteSuccess && switchedCallId != 0) {
           try {
             await _siprixSdk!.muteMic(switchedCallId, mute);
-            debugPrint('Mute: Successfully ${mute ? 'muted' : 'unmuted'} via SDK with switched ID');
+            debugPrint(
+                'Mute: Successfully ${mute ? 'muted' : 'unmuted'} via SDK with switched ID');
             muteSuccess = true;
           } catch (e) {
             debugPrint('Mute: SDK with switched ID failed: $e');
@@ -1193,7 +1272,48 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> setSpeaker(String callId, bool speaker) async {
     try {
       debugPrint('Set speaker: $callId, speaker: $speaker');
-      // TODO: Implement with correct Siprix API
+
+      if (Platform.isIOS) {
+        // On iOS with CallKit, don't interfere with audio routing
+        debugPrint('iOS CallKit: Audio routing handled by system');
+        _updateCurrentCall(_currentCall?.copyWith(isSpeakerOn: speaker));
+        return;
+      }
+
+      // On Android, use Siprix API to control speaker
+      if (_siprixSdk != null && _devicesModel != null) {
+        final devices = _devicesModel!.playout;
+
+        // Find speaker device
+        MediaDevice? targetDevice;
+        for (final device in devices) {
+          final name = device.name.toLowerCase();
+          if (speaker) {
+            // Looking for speaker
+            if (name.contains('speaker') || name.contains('loud')) {
+              targetDevice = device;
+              break;
+            }
+          } else {
+            // Looking for earpiece
+            if (name.contains('earpiece') ||
+                name.contains('receiver') ||
+                (!name.contains('speaker') && !name.contains('bluetooth'))) {
+              targetDevice = device;
+              break;
+            }
+          }
+        }
+
+        if (targetDevice != null) {
+          await _siprixSdk!.setPlayoutDevice(targetDevice.index);
+          debugPrint('Android: Set audio device to ${targetDevice.name}');
+        } else {
+          debugPrint(
+              'Android: Could not find ${speaker ? "speaker" : "earpiece"} device');
+        }
+      }
+
       _updateCurrentCall(_currentCall?.copyWith(isSpeakerOn: speaker));
     } catch (e) {
       debugPrint('Set speaker failed: $e');
@@ -1281,12 +1401,33 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> setAudioOutputDevice(int deviceIndex) async {
     try {
-      debugPrint(
-          'Audio device selection disabled - CallKit handles all audio management');
-      // CallKit manages all audio devices automatically
-      // Custom audio device selection conflicts with CallKit and causes interruptions
+      if (Platform.isIOS) {
+        debugPrint(
+            'iOS CallKit: Audio device selection disabled - CallKit handles all audio management');
+        // CallKit manages all audio devices automatically
+        // Custom audio device selection conflicts with CallKit and causes interruptions
+        return;
+      }
+
+      // On Android, allow manual audio device control
+      if (_siprixSdk != null && _devicesModel != null) {
+        debugPrint(
+            'Android: Setting audio output device to index $deviceIndex');
+        await _siprixSdk!.setPlayoutDevice(deviceIndex);
+
+        // Update the current call state if it's a speaker device
+        final devices = _devicesModel!.playout;
+        if (deviceIndex < devices.length) {
+          final device = devices[deviceIndex];
+          final isSpeaker = device.name.toLowerCase().contains('speaker') ||
+              device.name.toLowerCase().contains('loud');
+          _updateCurrentCall(_currentCall?.copyWith(isSpeakerOn: isSpeaker));
+          debugPrint(
+              'Android: Audio device set to ${device.name}, speaker: $isSpeaker');
+        }
+      }
     } catch (e) {
-      debugPrint('Audio device selection disabled: $e');
+      debugPrint('Set audio output device failed: $e');
     }
   }
 
@@ -1405,13 +1546,15 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         break;
       case AppLifecycleState.resumed:
         debugPrint('SIP Service: App resumed');
-        
+
         // Check if we have an active call and ensure audio session is working
-        if (_currentCall != null && _currentCall!.state == AppCallState.answered) {
-          debugPrint('SIP Service: App resumed with active call - ensuring audio session');
+        if (_currentCall != null &&
+            _currentCall!.state == AppCallState.answered) {
+          debugPrint(
+              'SIP Service: App resumed with active call - ensuring audio session');
           _ensureAudioSessionOnResume();
         }
-        
+
         // Disable stale call detection for now as it's too aggressive
         // and interferes with active calls when app comes from background
         // TODO: Implement more sophisticated stale call detection
@@ -1435,22 +1578,26 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
   void _ensureAudioSessionOnResume() {
     try {
       if (Platform.isIOS) {
-        debugPrint('SIP Service: Ensuring audio session on app resume with active call');
-        
+        debugPrint(
+            'SIP Service: Ensuring audio session on app resume with active call');
+
         // Add a slight delay to allow the app to fully resume
         Future.delayed(const Duration(milliseconds: 300), () async {
           try {
             // Try to reactivate audio session for the active call
-            if (_currentCall != null && _currentCall!.state == AppCallState.answered) {
-              debugPrint('SIP Service: Attempting to reactivate audio session for resumed call');
-              
+            if (_currentCall != null &&
+                _currentCall!.state == AppCallState.answered) {
+              debugPrint(
+                  'SIP Service: Attempting to reactivate audio session for resumed call');
+
               // Force audio session reactivation by briefly toggling audio state
               // This helps fix audio issues when app resumes from background during calls
               await Future.delayed(const Duration(milliseconds: 100));
               debugPrint('SIP Service: Audio session reactivation completed');
             }
           } catch (e) {
-            debugPrint('SIP Service: Error reactivating audio session on resume: $e');
+            debugPrint(
+                'SIP Service: Error reactivating audio session on resume: $e');
           }
         });
       }
@@ -1462,35 +1609,36 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
   /// Check for stale call states when app resumes (fixes CallKit termination issues)
   void _checkForStaleCallStates() {
     try {
-      debugPrint('SIP Service: Checking for stale call states after app resume');
-      
+      debugPrint(
+          'SIP Service: Checking for stale call states after app resume');
+
       // Check if we have a current call but no active CallKit calls
       if (_currentCall != null) {
         // Get the current active calls from Siprix
         final activeCallsCount = _callsModel?.length ?? 0;
         final switchedCallId = _callsModel?.switchedCallId ?? 0;
-        
-        debugPrint('SIP Service: Current call state: ${_currentCall!.state}, Active Siprix calls: $activeCallsCount, Switched call ID: $switchedCallId');
-        
+
+        debugPrint(
+            'SIP Service: Current call state: ${_currentCall!.state}, Active Siprix calls: $activeCallsCount, Switched call ID: $switchedCallId');
+
         // If we have a current call in our state but no active calls in Siprix,
         // this indicates a stale state (likely from CallKit termination while app was backgrounded)
         // Be more conservative - only trigger if there are truly no active calls
         if (activeCallsCount == 0) {
-          
           debugPrint('SIP Service: Detected stale call state - cleaning up');
-          
+
           // Force end the current call
           _updateCurrentCall(_currentCall?.copyWith(state: AppCallState.ended));
-          
+
           // Reset hangup flag
           _isHangingUp = false;
-          
+
           // Clear the call after a brief delay to allow UI to update
           Timer(const Duration(milliseconds: 500), () {
             _updateCurrentCall(null);
             debugPrint('SIP Service: Stale call state cleaned up');
           });
-          
+
           // Navigate to keypad if we're currently on OnCallScreen
           Future.delayed(const Duration(milliseconds: 100), () {
             NavigationService.goToKeypad();
@@ -1566,25 +1714,29 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   // Update built-in Siprix CallKit display with clean caller information
-  Future<void> _updateSiprixCallKitDisplay(int callId, String callerName, String callerNumber) async {
+  Future<void> _updateSiprixCallKitDisplay(
+      int callId, String callerName, String callerNumber) async {
     if (_siprixSdk == null) return;
-    
+
     try {
       // Determine the display name: use caller name if available, otherwise number
-      final displayName = callerName.isNotEmpty && callerName != 'Unknown' ? callerName : callerNumber;
-      
-      debugPrint('SIP Service: Updating Siprix CallKit display - Name: $displayName, Handle: $callerNumber');
-      
+      final displayName = callerName.isNotEmpty && callerName != 'Unknown'
+          ? callerName
+          : callerNumber;
+
+      debugPrint(
+          'SIP Service: Updating Siprix CallKit display - Name: $displayName, Handle: $callerNumber');
+
       // Note: For incoming calls, we may need to get the CallKit UUID from Siprix
       // For now, let's try with an empty string as the UUID and let Siprix manage it
       await _siprixSdk!.updateCallKitCallDetails(
         "", // CallKit UUID - let Siprix manage this internally
         callId, // SIP call ID
-        displayName, // Caller name to display 
+        displayName, // Caller name to display
         callerNumber, // Phone number handle
         false, // Not a video call
       );
-      
+
       debugPrint('SIP Service: Siprix CallKit display updated successfully');
     } catch (e) {
       debugPrint('SIP Service: Failed to update Siprix CallKit display: $e');
@@ -1594,25 +1746,28 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
   /// Check iOS capabilities and device requirements for PushKit
   void _checkIOSCapabilities() {
     if (!Platform.isIOS) return;
-    
+
     debugPrint('SIP Service: 🔍 Checking iOS PushKit requirements...');
     debugPrint('SIP Service: Platform.isIOS: ${Platform.isIOS}');
-    
+
     // Check if running on simulator vs device
     // Note: This is a simple check, more sophisticated detection may be needed
     try {
-      debugPrint('SIP Service: 📱 Device check - Platform.operatingSystem: ${Platform.operatingSystem}');
-      debugPrint('SIP Service: 📱 Device check - Platform.operatingSystemVersion: ${Platform.operatingSystemVersion}');
-      
+      debugPrint(
+          'SIP Service: 📱 Device check - Platform.operatingSystem: ${Platform.operatingSystem}');
+      debugPrint(
+          'SIP Service: 📱 Device check - Platform.operatingSystemVersion: ${Platform.operatingSystemVersion}');
+
       // PushKit requirements reminder
       debugPrint('SIP Service: 📋 PushKit Requirements Checklist:');
       debugPrint('SIP Service: ✓ iOS physical device (not simulator)');
       debugPrint('SIP Service: ✓ Background Modes capability: "Voice over IP"');
       debugPrint('SIP Service: ✓ Push Notifications capability');
-      debugPrint('SIP Service: ✓ VoIP Push certificate in Apple Developer Console');
+      debugPrint(
+          'SIP Service: ✓ VoIP Push certificate in Apple Developer Console');
       debugPrint('SIP Service: ✓ App bundle ID matches push certificate');
-      debugPrint('SIP Service: ✓ Valid provisioning profile with push notifications');
-      
+      debugPrint(
+          'SIP Service: ✓ Valid provisioning profile with push notifications');
     } catch (e) {
       debugPrint('SIP Service: Error checking device info: $e');
     }
@@ -1621,17 +1776,19 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
   /// Schedule PushKit token retry attempts with increasing delays
   void _scheduleTokenRetry() {
     final delays = [2, 5, 10, 20]; // Retry after 2s, 5s, 10s, 20s
-    
+
     for (int i = 0; i < delays.length; i++) {
       Timer(Duration(seconds: delays[i]), () async {
-        debugPrint('SIP Service: PushKit token retry attempt ${i + 1}/${delays.length}');
+        debugPrint(
+            'SIP Service: PushKit token retry attempt ${i + 1}/${delays.length}');
         await _attemptGetPushKitToken(isRetry: true, attempt: i + 1);
       });
     }
   }
 
   /// Attempt to get PushKit token with detailed debugging
-  Future<void> _attemptGetPushKitToken({bool isRetry = false, int attempt = 0}) async {
+  Future<void> _attemptGetPushKitToken(
+      {bool isRetry = false, int attempt = 0}) async {
     if (_siprixSdk == null) {
       debugPrint('SIP Service: Cannot get PushKit token - SDK not initialized');
       return;
@@ -1640,38 +1797,47 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
     try {
       final prefix = isRetry ? 'Retry $attempt' : 'Initial';
       debugPrint('SIP Service: [$prefix] Requesting PushKit token...');
-      
+
       // Enhanced device detection
       await _performDeviceDetection();
-      
+
       final pushToken = await _siprixSdk!.getPushKitToken();
-      debugPrint('SIP Service: [$prefix] PushKit token response: ${pushToken != null ? pushToken : 'null'}');
-      
+      debugPrint(
+          'SIP Service: [$prefix] PushKit token response: ${pushToken != null ? pushToken : 'null'}');
+
       if (pushToken != null && pushToken.isNotEmpty) {
-        debugPrint('SIP Service: ✅ [$prefix] PushKit token obtained successfully!');
+        debugPrint(
+            'SIP Service: ✅ [$prefix] PushKit token obtained successfully!');
         debugPrint('SIP Service: Token length: ${pushToken.length} characters');
-        debugPrint('SIP Service: Token preview: ${pushToken.length > 20 ? pushToken.substring(0, 20) + '...' : pushToken}');
-        
+        debugPrint(
+            'SIP Service: Token preview: ${pushToken.length > 20 ? pushToken.substring(0, 20) + '...' : pushToken}');
+
         // Try to update current account if it exists
         await _updateAccountWithPushToken(pushToken);
-        
       } else {
         if (isRetry && attempt >= 4) {
-          debugPrint('SIP Service: ❌ All retry attempts failed - PushKit token not available');
+          debugPrint(
+              'SIP Service: ❌ All retry attempts failed - PushKit token not available');
           debugPrint('SIP Service: 🚨 STEP-BY-STEP CONFIGURATION GUIDE:');
           debugPrint('SIP Service: ');
           debugPrint('SIP Service: 📋 1. XCODE PROJECT CONFIGURATION:');
-          debugPrint('SIP Service: │   a) Open ios/Runner.xcworkspace in Xcode');
-          debugPrint('SIP Service: │   b) Select Runner target → Signing & Capabilities tab');
+          debugPrint(
+              'SIP Service: │   a) Open ios/Runner.xcworkspace in Xcode');
+          debugPrint(
+              'SIP Service: │   b) Select Runner target → Signing & Capabilities tab');
           debugPrint('SIP Service: │   c) Add capability: Background Modes');
           debugPrint('SIP Service: │   d) Enable: ☑ Voice over IP');
           debugPrint('SIP Service: │   e) Add capability: Push Notifications');
-          debugPrint('SIP Service: │   f) Create Runner.entitlements file if missing');
+          debugPrint(
+              'SIP Service: │   f) Create Runner.entitlements file if missing');
           debugPrint('SIP Service: ');
-          debugPrint('SIP Service: 📋 2. ENTITLEMENTS FILE (ios/Runner/Runner.entitlements):');
+          debugPrint(
+              'SIP Service: 📋 2. ENTITLEMENTS FILE (ios/Runner/Runner.entitlements):');
           debugPrint('SIP Service: │   <?xml version="1.0" encoding="UTF-8"?>');
-          debugPrint('SIP Service: │   <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"');
-          debugPrint('SIP Service: │         "http://www.apple.com/DTDs/PropertyList-1.0.dtd">');
+          debugPrint(
+              'SIP Service: │   <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"');
+          debugPrint(
+              'SIP Service: │         "http://www.apple.com/DTDs/PropertyList-1.0.dtd">');
           debugPrint('SIP Service: │   <plist version="1.0">');
           debugPrint('SIP Service: │   <dict>');
           debugPrint('SIP Service: │     <key>aps-environment</key>');
@@ -1680,35 +1846,53 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
           debugPrint('SIP Service: │   </plist>');
           debugPrint('SIP Service: ');
           debugPrint('SIP Service: 📋 3. APPLE DEVELOPER CONSOLE:');
-          debugPrint('SIP Service: │   a) App ID configured with Push Notifications');
-          debugPrint('SIP Service: │   b) VoIP Services Certificate created and downloaded');
-          debugPrint('SIP Service: │   c) Provisioning profile regenerated after adding capabilities');
+          debugPrint(
+              'SIP Service: │   a) App ID configured with Push Notifications');
+          debugPrint(
+              'SIP Service: │   b) VoIP Services Certificate created and downloaded');
+          debugPrint(
+              'SIP Service: │   c) Provisioning profile regenerated after adding capabilities');
           debugPrint('SIP Service: ');
           debugPrint('SIP Service: 📋 4. TESTING REQUIREMENTS:');
-          debugPrint('SIP Service: │   a) Must use PHYSICAL iOS device (not simulator)');
-          debugPrint('SIP Service: │   b) App must be installed via Xcode or TestFlight');
-          debugPrint('SIP Service: │   c) Bundle ID must match certificate exactly');
+          debugPrint(
+              'SIP Service: │   a) Must use PHYSICAL iOS device (not simulator)');
+          debugPrint(
+              'SIP Service: │   b) App must be installed via Xcode or TestFlight');
+          debugPrint(
+              'SIP Service: │   c) Bundle ID must match certificate exactly');
         } else {
-          debugPrint('SIP Service: ⚠️ [$prefix] No PushKit token available yet - will retry in ${attempt < 3 ? [2, 5, 10, 20][attempt] : 20}s');
+          debugPrint(
+              'SIP Service: ⚠️ [$prefix] No PushKit token available yet - will retry in ${attempt < 3 ? [
+                  2,
+                  5,
+                  10,
+                  20
+                ][attempt] : 20}s');
         }
       }
     } catch (e) {
       final prefix = isRetry ? 'Retry $attempt' : 'Initial';
       debugPrint('SIP Service: ❌ [$prefix] Error getting PushKit token: $e');
       debugPrint('SIP Service: Error type: ${e.runtimeType}');
-      
+
       // Enhanced error analysis
       final errorStr = e.toString().toLowerCase();
       if (errorStr.contains('simulator') || errorStr.contains('unavailable')) {
-        debugPrint('SIP Service: 🔴 SIMULATOR DETECTED: PushKit tokens are only available on physical devices');
-      } else if (errorStr.contains('entitlement') || errorStr.contains('capability')) {
-        debugPrint('SIP Service: 🔴 CAPABILITY ISSUE: Check Xcode project capabilities configuration');
-      } else if (errorStr.contains('certificate') || errorStr.contains('provision')) {
-        debugPrint('SIP Service: 🔴 CERTIFICATE ISSUE: Check Apple Developer Console setup');
+        debugPrint(
+            'SIP Service: 🔴 SIMULATOR DETECTED: PushKit tokens are only available on physical devices');
+      } else if (errorStr.contains('entitlement') ||
+          errorStr.contains('capability')) {
+        debugPrint(
+            'SIP Service: 🔴 CAPABILITY ISSUE: Check Xcode project capabilities configuration');
+      } else if (errorStr.contains('certificate') ||
+          errorStr.contains('provision')) {
+        debugPrint(
+            'SIP Service: 🔴 CERTIFICATE ISSUE: Check Apple Developer Console setup');
       }
-      
+
       if (isRetry && attempt >= 4) {
-        debugPrint('SIP Service: This error suggests iOS capabilities or certificates are not properly configured');
+        debugPrint(
+            'SIP Service: This error suggests iOS capabilities or certificates are not properly configured');
       }
     }
   }
@@ -1718,16 +1902,20 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
     try {
       debugPrint('SIP Service: 🔍 Device Detection:');
       debugPrint('SIP Service: Platform.isIOS: ${Platform.isIOS}');
-      debugPrint('SIP Service: Platform.operatingSystem: ${Platform.operatingSystem}');
-      debugPrint('SIP Service: Platform.operatingSystemVersion: ${Platform.operatingSystemVersion}');
-      
+      debugPrint(
+          'SIP Service: Platform.operatingSystem: ${Platform.operatingSystem}');
+      debugPrint(
+          'SIP Service: Platform.operatingSystemVersion: ${Platform.operatingSystemVersion}');
+
       // Try to detect if running on simulator
       // This is a heuristic check - simulators typically have different environment
       final version = Platform.operatingSystemVersion;
       if (version.contains('Simulator') || version.contains('iPhone OS')) {
-        debugPrint('SIP Service: 🔴 SIMULATOR DETECTED: PushKit tokens are not available on iOS Simulator');
+        debugPrint(
+            'SIP Service: 🔴 SIMULATOR DETECTED: PushKit tokens are not available on iOS Simulator');
       } else {
-        debugPrint('SIP Service: 🟢 PHYSICAL DEVICE: PushKit tokens should be available with proper setup');
+        debugPrint(
+            'SIP Service: 🟢 PHYSICAL DEVICE: PushKit tokens should be available with proper setup');
       }
     } catch (e) {
       debugPrint('SIP Service: Error in device detection: $e');
@@ -1737,13 +1925,14 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
   /// Manual PushKit token refresh method for testing
   Future<String?> refreshPushKitToken() async {
     if (_siprixSdk == null) {
-      debugPrint('SIP Service: Cannot refresh PushKit token - SDK not initialized');
+      debugPrint(
+          'SIP Service: Cannot refresh PushKit token - SDK not initialized');
       return null;
     }
-    
+
     debugPrint('SIP Service: 🔄 Manual PushKit token refresh requested...');
     await _attemptGetPushKitToken(isRetry: false, attempt: 0);
-    
+
     try {
       final token = await _siprixSdk!.getPushKitToken();
       return token;
@@ -1762,46 +1951,54 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
 
     debugPrint('SIP Service: 🔍 CURRENT iOS CONFIGURATION STATUS:');
     debugPrint('SIP Service: ');
-    
+
     // Check platform info
     debugPrint('SIP Service: 📱 Device Information:');
     debugPrint('SIP Service: │   Platform: ${Platform.operatingSystem}');
     debugPrint('SIP Service: │   Version: ${Platform.operatingSystemVersion}');
-    
+
     // Check if simulator vs device heuristically
     final version = Platform.operatingSystemVersion;
     if (version.toLowerCase().contains('simulator')) {
-      debugPrint('SIP Service: │   Type: 🔴 iOS Simulator (PushKit unavailable)');
-      debugPrint('SIP Service: │   Action: Deploy to physical device for PushKit testing');
+      debugPrint(
+          'SIP Service: │   Type: 🔴 iOS Simulator (PushKit unavailable)');
+      debugPrint(
+          'SIP Service: │   Action: Deploy to physical device for PushKit testing');
     } else {
-      debugPrint('SIP Service: │   Type: 🟢 Physical Device (PushKit should be available)');
+      debugPrint(
+          'SIP Service: │   Type: 🟢 Physical Device (PushKit should be available)');
     }
-    
+
     debugPrint('SIP Service: ');
     debugPrint('SIP Service: 📋 Current Info.plist Configuration:');
     debugPrint('SIP Service: │   Background Modes: ✓ voip (configured)');
-    debugPrint('SIP Service: │   Microphone Usage: ✓ NSMicrophoneUsageDescription (configured)');
-    
+    debugPrint(
+        'SIP Service: │   Microphone Usage: ✓ NSMicrophoneUsageDescription (configured)');
+
     debugPrint('SIP Service: ');
     debugPrint('SIP Service: ⚠️ MISSING CONFIGURATION DETECTED:');
     debugPrint('SIP Service: │   Push Notifications Entitlements: ❌ Not found');
     debugPrint('SIP Service: │   Runner.entitlements file: ❌ Missing');
-    
+
     debugPrint('SIP Service: ');
     debugPrint('SIP Service: 🛠️ REQUIRED ACTIONS TO FIX:');
     debugPrint('SIP Service: │   1. Open ios/Runner.xcworkspace in Xcode');
-    debugPrint('SIP Service: │   2. Select Runner target → Signing & Capabilities');
+    debugPrint(
+        'SIP Service: │   2. Select Runner target → Signing & Capabilities');
     debugPrint('SIP Service: │   3. Add "Push Notifications" capability');
     debugPrint('SIP Service: │   4. This will auto-create Runner.entitlements');
-    debugPrint('SIP Service: │   5. Ensure "Background Modes" includes "Voice over IP"');
+    debugPrint(
+        'SIP Service: │   5. Ensure "Background Modes" includes "Voice over IP"');
     debugPrint('SIP Service: │   6. Clean build and run on physical device');
-    
+
     // Try to get bundle ID from package info if available
     try {
       debugPrint('SIP Service: ');
       debugPrint('SIP Service: 📦 App Information:');
-      debugPrint('SIP Service: │   Bundle ID: Check Xcode project for exact value');
-      debugPrint('SIP Service: │   Make sure Bundle ID matches Apple Developer Console App ID');
+      debugPrint(
+          'SIP Service: │   Bundle ID: Check Xcode project for exact value');
+      debugPrint(
+          'SIP Service: │   Make sure Bundle ID matches Apple Developer Console App ID');
     } catch (e) {
       debugPrint('SIP Service: Could not retrieve app info: $e');
     }
@@ -1812,20 +2009,23 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
     if (_currentAccountId != null && _accountsModel != null) {
       try {
         debugPrint('SIP Service: PushKit token received: $pushToken');
-        debugPrint('SIP Service: ✅ PushKit token available for OpenSIPS integration');
-        debugPrint('SIP Service: Next step: Configure OpenSIPS to handle push notifications using this token');
-        
+        debugPrint(
+            'SIP Service: ✅ PushKit token available for OpenSIPS integration');
+        debugPrint(
+            'SIP Service: Next step: Configure OpenSIPS to handle push notifications using this token');
+
         // TODO: When implementing OpenSIPS push notifications, the token can be used in:
         // 1. SIP REGISTER requests with custom X-Push-Token header
         // 2. Push notification payload routing
         // 3. Call correlation between push payload and incoming SIP INVITE
-        
       } catch (e) {
         debugPrint('SIP Service: Error processing PushKit token: $e');
       }
     } else {
-      debugPrint('SIP Service: Cannot process token - no current account or model available');
-      debugPrint('SIP Service: PushKit token: $pushToken (available for future use)');
+      debugPrint(
+          'SIP Service: Cannot process token - no current account or model available');
+      debugPrint(
+          'SIP Service: PushKit token: $pushToken (available for future use)');
     }
   }
 }
