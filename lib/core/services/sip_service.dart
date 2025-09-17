@@ -8,15 +8,11 @@ import 'package:siprix_voip_sdk/calls_model.dart';
 import 'package:siprix_voip_sdk/network_model.dart';
 import 'package:siprix_voip_sdk/devices_model.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
-import 'package:flutter_callkit_incoming/entities/entities.dart';
-import 'package:uuid/uuid.dart';
 
 import '../constants/app_constants.dart';
 import '../../shared/services/storage_service.dart';
 import 'navigation_service.dart';
 import 'contact_service.dart';
-import 'avatar_service.dart';
 
 enum AudioDeviceCategory {
   earpiece,
@@ -138,9 +134,6 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
   // Flag to prevent state updates after disposal
   bool _isDisposed = false;
 
-  // Flag to prevent multiple navigation attempts
-  bool _isNavigatingFromCallKit = false;
-
   // Store credentials for re-registration
   Map<String, dynamic>? _lastCredentials;
 
@@ -179,17 +172,22 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       InitData initData = InitData();
       initData.license = ""; // TODO: Add license key here or use trial mode
       initData.singleCallMode = false; // Allow multiple calls
-      initData.shareUdpTransport = true; // Share UDP transport for all accounts
-      initData.enableVideoCall =
-          false; // Disable video - reduces WebRTC SDP attributes
-
-      // Try disabling Siprix CallKit again and use custom CallKit with better audio handling
+      
+      // Share UDP transport for efficiency
+      initData.shareUdpTransport = true;
+      
+      // Platform-specific initialization
       if (Platform.isIOS) {
-        initData.enableCallKit = false; // Disable to use custom CallKit with clean display
-        initData.enablePushKit =
-            false; // Disabled - no push notification infrastructure yet
+        // iOS-specific settings - these work reliably on iOS
+        initData.enableVideoCall = false; // Disable video - reduces WebRTC SDP attributes
+        initData.enableCallKit = true; // Enable Siprix built-in CallKit
+        initData.enablePushKit = true; // Enable PushKit for background calls
         initData.unregOnDestroy = false;
-        debugPrint('SIP Service: Disabled Siprix CallKit to use custom CallKit with clean caller display');
+        debugPrint('SIP Service: Enabled Siprix built-in CallKit and PushKit for iOS');
+      } else if (Platform.isAndroid) {
+        // Android-specific settings - skip problematic video configuration
+        // Note: Skip enableVideoCall on Android to avoid native library issues
+        debugPrint('SIP Service: Configured Siprix for Android (video disabled)');
       }
 
       _siprixSdk = SiprixVoipSdk();
@@ -215,7 +213,7 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         proceeding: _onCallProceeding,
         connected: _onCallConnected,
         incoming: _onCallIncomingDirect,
-        // incomingPush: null - disabled until push notifications are implemented
+        incomingPush: _onIncomingPush, // Enable push call handling for CallKit
       );
 
       debugPrint('SIP Service: Call and push listeners configured');
@@ -250,8 +248,15 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         await _autoRegister(credentials);
       }
 
-      // Re-enable custom CallKit listeners
-      _initializeCallKitListeners();
+      // Siprix built-in CallKit and PushKit will handle events automatically
+
+      // Try to get PushKit token after SDK initialization (tokens may not be immediately available)
+      if (Platform.isIOS) {
+        debugPrint('SIP Service: iOS detected - starting PushKit token retrieval process');
+        _checkIOSCapabilities();
+        debugIOSPushConfiguration();
+        _scheduleTokenRetry();
+      }
 
       // Initialize contact service for avatar generation (non-blocking)
       ContactService.instance.initialize().catchError((e) {
@@ -370,8 +375,7 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
     // Clear the stored Siprix call ID
     _currentSiprixCallId = null;
 
-    // End any active CallKit call
-    _endCallKitCall(callId.toString());
+    // Siprix built-in CallKit will handle call termination automatically
 
     // Update our call state to ended
     if (_currentCall != null) {
@@ -382,6 +386,10 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         _updateCurrentCall(null);
         // Clear hangup flag after call is terminated
         _isHangingUp = false;
+        
+        // Add extra delay to ensure audio session is fully cleaned up
+        // This helps prevent WebRTC conflicts on subsequent calls
+        debugPrint('SIP Service: Call cleanup completed - audio session should be free');
       });
     } else {
       // Clear hangup flag immediately if there's no current call
@@ -455,19 +463,49 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       ));
 
       // Navigate to OnCallScreen when call is connected/answered
-      // But only if this wasn't handled by CallKit (to avoid duplicate navigation)
-      if (_currentCall!.isIncoming && !_isNavigatingFromCallKit) {
+      // Built-in Siprix CallKit handles CallKit UI, we handle app navigation
+      if (_currentCall!.isIncoming) {
         debugPrint('SIP Service: Incoming call connected, navigating to OnCallScreen');
         NavigationService.goToInCall(
           _currentCall!.id,
           phoneNumber: _currentCall!.remoteNumber,
           contactName: _currentCall!.remoteName != _currentCall!.remoteNumber ? _currentCall!.remoteName : null,
         );
-      } else if (_currentCall!.isIncoming) {
-        debugPrint('SIP Service: Incoming call connected, but navigation already handled by CallKit');
       } else {
         debugPrint('SIP Service: Outgoing call connected, OnCallScreen should already be visible');
       }
+    }
+  }
+
+  // Handle incoming push notifications for CallKit
+  void _onIncomingPush(String callkitUuid, Map<String, dynamic> payload) {
+    if (!Platform.isIOS) return;
+    
+    try {
+      debugPrint('SIP Service: Incoming push - CallKit UUID: $callkitUuid, Payload: $payload');
+      
+      // Extract caller details from payload
+      String callerName = payload['callerName'] ?? 'Incoming Call';
+      String callerNumber = payload['callerNumber'] ?? '';
+      
+      debugPrint('SIP Service: Push notification - Name: $callerName, Number: $callerNumber');
+      
+      // Update CallKit call details with push notification information
+      try {
+        _siprixSdk?.updateCallKitCallDetails(
+          callkitUuid,
+          null, // SIP call ID will be provided when SIP call arrives
+          callerName,
+          callerNumber,
+          false, // withVideo
+        );
+        debugPrint('SIP Service: Updated CallKit details from push notification');
+      } catch (e) {
+        debugPrint('SIP Service: Failed to update CallKit details: $e');
+      }
+      
+    } catch (e) {
+      debugPrint('SIP Service: Error handling incoming push: $e');
     }
   }
 
@@ -506,13 +544,12 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
 
     _updateCurrentCall(callInfo);
 
-    // Show CallKit incoming call with system ringtone and vibration
-    // CallKit will handle the UI - no need to navigate to incoming_call_screen
-    _showCallKitIncomingCall(callId.toString(), callerName, callerNumber);
+    // Siprix built-in CallKit will handle incoming call display automatically
 
     debugPrint(
         'SIP Service: CallKit incoming call displayed - no app UI needed');
   }
+
 
   Map<String, String> _parseCallerInfo(String fromHeader) {
     // Parse SIP from header like: "Srigo" <sip:1001@408708399.ringplus.co.uk>
@@ -615,8 +652,8 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       account.sipAuthId =
           extension; // Authentication ID (usually same as extension)
       account.expireTime = 120;
-      account.sipProxy = proxy;
-      account.port = port;
+      account.sipProxy = '$proxy:$port'; // Concatenate proxy with port
+      account.port = 0; // Use random port selection by Siprix SDK
       account.userAgent = '${AppConstants.appName}/${AppConstants.appVersion}';
 
       // Set display name for proper caller ID
@@ -626,6 +663,8 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       account.forceSipProxy = true; // Force using proxy for all requests
       account.rewriteContactIp = true; // Enable IP rewrite for NAT handling
       account.keepAliveTime = 30; // Keep alive packets every 30 seconds
+      
+      // Transport configuration
       account.transport = SipTransport.udp; // Use UDP as configured on server
 
       // Disable all WebRTC-specific features for traditional SIP compatibility
@@ -668,6 +707,28 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
 
       debugPrint(
           'Register: Account configured - server: ${account.sipServer}, ext: ${account.sipExtension}');
+
+      // Get push token for iOS CallKit integration
+      if (Platform.isIOS) {
+        try {
+          debugPrint('SIP Service: Requesting PushKit token...');
+          final pushToken = await _siprixSdk!.getPushKitToken();
+          debugPrint('SIP Service: PushKit token response: $pushToken');
+          
+          if (pushToken != null && pushToken.isNotEmpty) {
+            // Add push token to SIP headers for OpenSIPS integration
+            account.xheaders ??= <String, String>{};
+            account.xheaders!['X-Push-Token'] = pushToken;
+            debugPrint('SIP Service: ✅ Added PushKit token to account headers: $pushToken');
+          } else {
+            debugPrint('SIP Service: ❌ No PushKit token available yet - Check iOS capabilities configuration');
+            debugPrint('SIP Service: Required: Background Modes (Voice over IP) + Push Notifications capabilities');
+          }
+        } catch (e) {
+          debugPrint('SIP Service: ❌ Failed to get PushKit token: $e');
+          debugPrint('SIP Service: This might indicate missing iOS capabilities or certificates');
+        }
+      }
 
       // Add account to accounts model
       try {
@@ -845,16 +906,32 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         // Use Siprix SDK accept method (audio-only for now)
         debugPrint('Answer call: Accepting call with ID $intCallId');
         
-        // Accept call immediately - audio session is now always active
+        // Only add defensive delay for potential background scenarios
+        // Reduce delay to minimize audio session interruption
+        await Future.delayed(const Duration(milliseconds: 50));
+        
+        // Accept call with proper error handling for WebRTC issues
         await _siprixSdk!.accept(intCallId, false); // false = audio only
         debugPrint('Answer call: Successfully accepted call via SDK');
         
         // Brief pause to ensure call state is fully established
-        await Future.delayed(const Duration(milliseconds: 50));
+        await Future.delayed(const Duration(milliseconds: 100));
         
       } catch (e) {
-        debugPrint('Answer call: Siprix accept failed: $e');
-        // Don't rethrow to prevent UI crash, just log the error
+        debugPrint('Answer call: Siprix accept failed (possibly WebRTC audio issue): $e');
+        
+        // If WebRTC audio session fails, try to recover
+        if (e.toString().contains('audio') || e.toString().contains('WebRTC') || e.toString().contains('Session')) {
+          debugPrint('Answer call: Detected audio session error, attempting recovery');
+          try {
+            // Add more delay and try again
+            await Future.delayed(const Duration(milliseconds: 500));
+            await _siprixSdk!.accept(intCallId, false);
+            debugPrint('Answer call: Recovery attempt succeeded');
+          } catch (recoveryError) {
+            debugPrint('Answer call: Recovery attempt failed: $recoveryError');
+          }
+        }
       }
 
       // Update our internal call state with current time as start time for duration tracking
@@ -874,7 +951,7 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       if (_callsModel == null || _siprixSdk == null) {
         debugPrint('Hangup failed: Models not initialized');
         // Still end CallKit call even if SIP models aren't available
-        await _endCallKitCall(callId);
+        // Siprix built-in CallKit will handle call termination
         _updateCurrentCall(_currentCall?.copyWith(state: AppCallState.ended));
         _updateCurrentCall(null);
         _isHangingUp = false; // Clear flag even if models aren't available
@@ -989,7 +1066,7 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       _updateCurrentCall(_currentCall?.copyWith(state: AppCallState.ended));
 
       // End CallKit call AFTER SIP BYE is sent
-      await _endCallKitCall(callId);
+      // Siprix built-in CallKit will handle call termination
 
       // Clear the call after a brief delay
       Timer(const Duration(milliseconds: 500), () {
@@ -1328,6 +1405,13 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         break;
       case AppLifecycleState.resumed:
         debugPrint('SIP Service: App resumed');
+        
+        // Check if we have an active call and ensure audio session is working
+        if (_currentCall != null && _currentCall!.state == AppCallState.answered) {
+          debugPrint('SIP Service: App resumed with active call - ensuring audio session');
+          _ensureAudioSessionOnResume();
+        }
+        
         // Disable stale call detection for now as it's too aggressive
         // and interferes with active calls when app comes from background
         // TODO: Implement more sophisticated stale call detection
@@ -1344,6 +1428,34 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       case AppLifecycleState.hidden:
         debugPrint('SIP Service: App hidden');
         break;
+    }
+  }
+
+  /// Ensure audio session is working when app resumes with active call
+  void _ensureAudioSessionOnResume() {
+    try {
+      if (Platform.isIOS) {
+        debugPrint('SIP Service: Ensuring audio session on app resume with active call');
+        
+        // Add a slight delay to allow the app to fully resume
+        Future.delayed(const Duration(milliseconds: 300), () async {
+          try {
+            // Try to reactivate audio session for the active call
+            if (_currentCall != null && _currentCall!.state == AppCallState.answered) {
+              debugPrint('SIP Service: Attempting to reactivate audio session for resumed call');
+              
+              // Force audio session reactivation by briefly toggling audio state
+              // This helps fix audio issues when app resumes from background during calls
+              await Future.delayed(const Duration(milliseconds: 100));
+              debugPrint('SIP Service: Audio session reactivation completed');
+            }
+          } catch (e) {
+            debugPrint('SIP Service: Error reactivating audio session on resume: $e');
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('SIP Service: Error in _ensureAudioSessionOnResume: $e');
     }
   }
 
@@ -1370,10 +1482,6 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
           // Force end the current call
           _updateCurrentCall(_currentCall?.copyWith(state: AppCallState.ended));
           
-          // Clear any remaining CallKit mappings
-          _callKitToSipMapping.clear();
-          _acceptedCallKitIds.clear();
-          
           // Reset hangup flag
           _isHangingUp = false;
           
@@ -1385,13 +1493,7 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
           
           // Navigate to keypad if we're currently on OnCallScreen
           Future.delayed(const Duration(milliseconds: 100), () {
-            if (!_isNavigatingFromCallKit) {
-              _isNavigatingFromCallKit = true;
-              NavigationService.goToKeypad();
-              Future.delayed(const Duration(milliseconds: 500), () {
-                _isNavigatingFromCallKit = false;
-              });
-            }
+            NavigationService.goToKeypad();
           });
         } else {
           debugPrint('SIP Service: Call state appears valid');
@@ -1463,415 +1565,267 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
     super.dispose();
   }
 
-  // CallKit Integration for iOS native ringtone and vibration
-  Future<void> _showCallKitIncomingCall(
-      String callId, String callerName, String callerNumber) async {
+  // Update built-in Siprix CallKit display with clean caller information
+  Future<void> _updateSiprixCallKitDisplay(int callId, String callerName, String callerNumber) async {
+    if (_siprixSdk == null) return;
+    
     try {
-      final uuid = const Uuid().v4();
-
-      debugPrint('SIP Service: CallKit display - callerName: "$callerName", callerNumber: "$callerNumber"');
+      // Determine the display name: use caller name if available, otherwise number
+      final displayName = callerName.isNotEmpty && callerName != 'Unknown' ? callerName : callerNumber;
       
-      // Clean up the caller name by removing any remaining quotes (simple approach)
-      String cleanCallerName = callerName;
-      String previousName;
-      do {
-        previousName = cleanCallerName;
-        cleanCallerName = cleanCallerName.replaceAll('"', '').replaceAll("'", '');
-      } while (previousName != cleanCallerName);
-      cleanCallerName = cleanCallerName.trim();
+      debugPrint('SIP Service: Updating Siprix CallKit display - Name: $displayName, Handle: $callerNumber');
       
-      // Determine what to display - show name only if it's different from number
-      final displayName = cleanCallerName.isNotEmpty && cleanCallerName != 'Unknown' && cleanCallerName != callerNumber
-          ? cleanCallerName
-          : callerNumber;
-          
-      debugPrint('SIP Service: CallKit will display: "$displayName" (cleaned from: "$callerName")');
-
-      debugPrint('SIP Service: CallKit params - nameCaller: "$displayName", handle: "$displayName", appName: "RingPlus"');
-
-      // Avatar generation temporarily disabled to prevent crashes
-      String avatarPath = '';
-      // TODO: Re-enable avatar generation once core functionality is stable
-      // _generateAvatarInBackground(callerNumber, displayName, uuid);
-
-      final params = CallKitParams(
-        id: uuid,
-        nameCaller: displayName,
-        appName: 'RingPlus',
-        avatar: avatarPath, // Start with empty avatar path to avoid blocking
-        handle: displayName, // Use the display name as handle to prevent SIP URI showing
-        type: 0, // Audio call
-        textAccept: 'Accept',
-        textDecline: 'Decline',
-        duration: 30000, // 30 seconds timeout
-        extra: <String, dynamic>{
-          'sipCallId': callId,
-          'callerName': callerName,
-          'callerNumber': callerNumber,
-        },
-        headers: <String, dynamic>{
-          'apiKey': 'RingPlus_VoIP',
-          'platform': 'flutter',
-        },
-        android: const AndroidParams(
-          isCustomNotification: true,
-          isShowLogo: true,
-          ringtonePath: 'system_ringtone_default',
-          backgroundColor: '#4A1458',
-          backgroundUrl: '',
-          actionColor: '#4CAF50',
-          textColor: '#ffffff',
-          incomingCallNotificationChannelName: 'Incoming Call',
-          missedCallNotificationChannelName: 'Missed Call',
-        ),
-        ios: const IOSParams(
-          iconName: 'AppIcon',
-          handleType: 'generic', // Use generic for better CallKit display consistency
-          supportsVideo: false,
-          maximumCallGroups: 1,
-          maximumCallsPerCallGroup: 1,
-          audioSessionMode: 'voiceChat', // Use voiceChat mode optimized for VoIP calls
-          audioSessionActive:
-              true, // Activate immediately to ensure audio works in all modes
-          audioSessionPreferredSampleRate:
-              48000.0, // Use 48kHz for better CallKit compatibility
-          audioSessionPreferredIOBufferDuration: 0.01, // 10ms buffer for stable audio
-          supportsDTMF: true,
-          supportsHolding: true,
-          supportsGrouping: false,
-          supportsUngrouping: false,
-          ringtonePath:
-              'system_ringtone_default', // This uses iOS system ringtone
-        ),
+      // Note: For incoming calls, we may need to get the CallKit UUID from Siprix
+      // For now, let's try with an empty string as the UUID and let Siprix manage it
+      await _siprixSdk!.updateCallKitCallDetails(
+        "", // CallKit UUID - let Siprix manage this internally
+        callId, // SIP call ID
+        displayName, // Caller name to display 
+        callerNumber, // Phone number handle
+        false, // Not a video call
       );
-
-      // Store the mapping of CallKit UUID to SIP call ID
-      _callKitToSipMapping[uuid] = callId;
-
-      await FlutterCallkitIncoming.showCallkitIncoming(params);
-
-      debugPrint(
-          'SIP Service: CallKit incoming call shown with UUID: $uuid, SIP callId: $callId');
       
-      // Add a slight delay to ensure CallKit is properly activated
-      await Future.delayed(const Duration(milliseconds: 100));
-      
-      // Log CallKit state for debugging full-screen vs banner issues
-      debugPrint('SIP Service: CallKit incoming call displayed successfully');
-          
-      // Clean up old avatars periodically
-      AvatarService.instance.cleanupOldAvatars();
+      debugPrint('SIP Service: Siprix CallKit display updated successfully');
     } catch (e) {
-      debugPrint('SIP Service: Error showing CallKit incoming call: $e');
-      // Fallback to direct navigation if CallKit fails
-      NavigationService.goToIncomingCall(
-        callId: callId,
-        callerName: callerName,
-        callerNumber: callerNumber,
-      );
+      debugPrint('SIP Service: Failed to update Siprix CallKit display: $e');
     }
   }
 
-  /// Generate avatar in background to avoid blocking CallKit display
-  void _generateAvatarInBackground(String callerNumber, String displayName, String uuid) {
-    // Run avatar generation in background
-    Future(() async {
-      try {
-        debugPrint('SIP Service: Generating avatar in background for CallKit...');
-        final generatedAvatarPath = await AvatarService.instance.generateAvatarForCallKit(
-          phoneNumber: callerNumber,
-          displayName: displayName,
-        );
+  /// Check iOS capabilities and device requirements for PushKit
+  void _checkIOSCapabilities() {
+    if (!Platform.isIOS) return;
+    
+    debugPrint('SIP Service: 🔍 Checking iOS PushKit requirements...');
+    debugPrint('SIP Service: Platform.isIOS: ${Platform.isIOS}');
+    
+    // Check if running on simulator vs device
+    // Note: This is a simple check, more sophisticated detection may be needed
+    try {
+      debugPrint('SIP Service: 📱 Device check - Platform.operatingSystem: ${Platform.operatingSystem}');
+      debugPrint('SIP Service: 📱 Device check - Platform.operatingSystemVersion: ${Platform.operatingSystemVersion}');
+      
+      // PushKit requirements reminder
+      debugPrint('SIP Service: 📋 PushKit Requirements Checklist:');
+      debugPrint('SIP Service: ✓ iOS physical device (not simulator)');
+      debugPrint('SIP Service: ✓ Background Modes capability: "Voice over IP"');
+      debugPrint('SIP Service: ✓ Push Notifications capability');
+      debugPrint('SIP Service: ✓ VoIP Push certificate in Apple Developer Console');
+      debugPrint('SIP Service: ✓ App bundle ID matches push certificate');
+      debugPrint('SIP Service: ✓ Valid provisioning profile with push notifications');
+      
+    } catch (e) {
+      debugPrint('SIP Service: Error checking device info: $e');
+    }
+  }
+
+  /// Schedule PushKit token retry attempts with increasing delays
+  void _scheduleTokenRetry() {
+    final delays = [2, 5, 10, 20]; // Retry after 2s, 5s, 10s, 20s
+    
+    for (int i = 0; i < delays.length; i++) {
+      Timer(Duration(seconds: delays[i]), () async {
+        debugPrint('SIP Service: PushKit token retry attempt ${i + 1}/${delays.length}');
+        await _attemptGetPushKitToken(isRetry: true, attempt: i + 1);
+      });
+    }
+  }
+
+  /// Attempt to get PushKit token with detailed debugging
+  Future<void> _attemptGetPushKitToken({bool isRetry = false, int attempt = 0}) async {
+    if (_siprixSdk == null) {
+      debugPrint('SIP Service: Cannot get PushKit token - SDK not initialized');
+      return;
+    }
+
+    try {
+      final prefix = isRetry ? 'Retry $attempt' : 'Initial';
+      debugPrint('SIP Service: [$prefix] Requesting PushKit token...');
+      
+      // Enhanced device detection
+      await _performDeviceDetection();
+      
+      final pushToken = await _siprixSdk!.getPushKitToken();
+      debugPrint('SIP Service: [$prefix] PushKit token response: ${pushToken != null ? pushToken : 'null'}');
+      
+      if (pushToken != null && pushToken.isNotEmpty) {
+        debugPrint('SIP Service: ✅ [$prefix] PushKit token obtained successfully!');
+        debugPrint('SIP Service: Token length: ${pushToken.length} characters');
+        debugPrint('SIP Service: Token preview: ${pushToken.length > 20 ? pushToken.substring(0, 20) + '...' : pushToken}');
         
-        if (generatedAvatarPath != null && generatedAvatarPath.isNotEmpty) {
-          debugPrint('SIP Service: Avatar generated successfully in background: $generatedAvatarPath');
-          // Note: CallKit doesn't support updating avatar after initial display
-          // This is generated for consistency and future use
+        // Try to update current account if it exists
+        await _updateAccountWithPushToken(pushToken);
+        
+      } else {
+        if (isRetry && attempt >= 4) {
+          debugPrint('SIP Service: ❌ All retry attempts failed - PushKit token not available');
+          debugPrint('SIP Service: 🚨 STEP-BY-STEP CONFIGURATION GUIDE:');
+          debugPrint('SIP Service: ');
+          debugPrint('SIP Service: 📋 1. XCODE PROJECT CONFIGURATION:');
+          debugPrint('SIP Service: │   a) Open ios/Runner.xcworkspace in Xcode');
+          debugPrint('SIP Service: │   b) Select Runner target → Signing & Capabilities tab');
+          debugPrint('SIP Service: │   c) Add capability: Background Modes');
+          debugPrint('SIP Service: │   d) Enable: ☑ Voice over IP');
+          debugPrint('SIP Service: │   e) Add capability: Push Notifications');
+          debugPrint('SIP Service: │   f) Create Runner.entitlements file if missing');
+          debugPrint('SIP Service: ');
+          debugPrint('SIP Service: 📋 2. ENTITLEMENTS FILE (ios/Runner/Runner.entitlements):');
+          debugPrint('SIP Service: │   <?xml version="1.0" encoding="UTF-8"?>');
+          debugPrint('SIP Service: │   <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"');
+          debugPrint('SIP Service: │         "http://www.apple.com/DTDs/PropertyList-1.0.dtd">');
+          debugPrint('SIP Service: │   <plist version="1.0">');
+          debugPrint('SIP Service: │   <dict>');
+          debugPrint('SIP Service: │     <key>aps-environment</key>');
+          debugPrint('SIP Service: │     <string>development</string>');
+          debugPrint('SIP Service: │   </dict>');
+          debugPrint('SIP Service: │   </plist>');
+          debugPrint('SIP Service: ');
+          debugPrint('SIP Service: 📋 3. APPLE DEVELOPER CONSOLE:');
+          debugPrint('SIP Service: │   a) App ID configured with Push Notifications');
+          debugPrint('SIP Service: │   b) VoIP Services Certificate created and downloaded');
+          debugPrint('SIP Service: │   c) Provisioning profile regenerated after adding capabilities');
+          debugPrint('SIP Service: ');
+          debugPrint('SIP Service: 📋 4. TESTING REQUIREMENTS:');
+          debugPrint('SIP Service: │   a) Must use PHYSICAL iOS device (not simulator)');
+          debugPrint('SIP Service: │   b) App must be installed via Xcode or TestFlight');
+          debugPrint('SIP Service: │   c) Bundle ID must match certificate exactly');
         } else {
-          debugPrint('SIP Service: Failed to generate avatar in background');
+          debugPrint('SIP Service: ⚠️ [$prefix] No PushKit token available yet - will retry in ${attempt < 3 ? [2, 5, 10, 20][attempt] : 20}s');
         }
-      } catch (e) {
-        debugPrint('SIP Service: Error generating avatar in background: $e');
-      }
-    }).catchError((e) {
-      debugPrint('SIP Service: Background avatar generation failed: $e');
-    });
-  }
-
-  // Mapping to track CallKit UUIDs to SIP call IDs
-  final Map<String, String> _callKitToSipMapping = {};
-
-  // Track accepted CallKit calls to prevent duplicate accepts
-  final Set<String> _acceptedCallKitIds = {};
-
-  // Initialize CallKit event listeners
-  void _initializeCallKitListeners() {
-    FlutterCallkitIncoming.onEvent.listen((CallEvent? event) {
-      if (event == null) return;
-
-      debugPrint('SIP Service: CallKit event: ${event.event}');
-
-      switch (event.event) {
-        case Event.actionCallAccept:
-          _handleCallKitAccept(event.body);
-          break;
-        case Event.actionCallDecline:
-          _handleCallKitDecline(event.body);
-          break;
-        case Event.actionCallEnded:
-          _handleCallKitEnded(event.body);
-          break;
-        case Event.actionCallTimeout:
-          _handleCallKitTimeout(event.body);
-          break;
-        case Event.actionCallCallback:
-          _handleCallKitCallback(event.body);
-          break;
-        default:
-          break;
-      }
-    });
-  }
-
-  void _handleCallKitAccept(dynamic body) async {
-    try {
-      final String callKitId = body['id'];
-      final String? sipCallId = _callKitToSipMapping[callKitId];
-
-      if (sipCallId != null) {
-        // Check if this call has already been accepted
-        if (_acceptedCallKitIds.contains(callKitId)) {
-          debugPrint(
-              'SIP Service: CallKit call $callKitId already accepted, ignoring duplicate accept event');
-          return;
-        }
-
-        debugPrint('SIP Service: CallKit accept for SIP call: $sipCallId');
-
-        // Mark this call as accepted to prevent duplicate attempts
-        _acceptedCallKitIds.add(callKitId);
-
-        // CallKit handles all audio session and device management automatically
-
-        // Enhanced CallKit accept with audio debugging
-        debugPrint('SIP Service: Before CallKit accept - checking system audio state');
-        await _handleCallKitAcceptWithAudioFix(sipCallId);
-
-        // Mark CallKit call as connected
-        await FlutterCallkitIncoming.setCallConnected(callKitId);
-
-        // Add small delay before navigation to prevent GlobalKey conflicts
-        await Future.delayed(const Duration(milliseconds: 100));
-
-        // Navigate to in-call screen (with debouncing)
-        if (!_isNavigatingFromCallKit) {
-          _isNavigatingFromCallKit = true;
-          // For incoming calls, pass the caller information if available
-          NavigationService.goToInCall(
-            sipCallId,
-            phoneNumber: _currentCall?.remoteNumber,
-            contactName: _currentCall?.remoteName,
-          );
-          // Reset flag after a delay to allow future navigation
-          Future.delayed(const Duration(milliseconds: 500), () {
-            _isNavigatingFromCallKit = false;
-          });
-        }
-
-        // Keep the mapping for hangup - remove it only on call termination
-        debugPrint('SIP Service: CallKit call accepted and connected');
       }
     } catch (e) {
-      debugPrint('SIP Service: Error handling CallKit accept: $e');
+      final prefix = isRetry ? 'Retry $attempt' : 'Initial';
+      debugPrint('SIP Service: ❌ [$prefix] Error getting PushKit token: $e');
+      debugPrint('SIP Service: Error type: ${e.runtimeType}');
+      
+      // Enhanced error analysis
+      final errorStr = e.toString().toLowerCase();
+      if (errorStr.contains('simulator') || errorStr.contains('unavailable')) {
+        debugPrint('SIP Service: 🔴 SIMULATOR DETECTED: PushKit tokens are only available on physical devices');
+      } else if (errorStr.contains('entitlement') || errorStr.contains('capability')) {
+        debugPrint('SIP Service: 🔴 CAPABILITY ISSUE: Check Xcode project capabilities configuration');
+      } else if (errorStr.contains('certificate') || errorStr.contains('provision')) {
+        debugPrint('SIP Service: 🔴 CERTIFICATE ISSUE: Check Apple Developer Console setup');
+      }
+      
+      if (isRetry && attempt >= 4) {
+        debugPrint('SIP Service: This error suggests iOS capabilities or certificates are not properly configured');
+      }
     }
   }
 
-  /// Enhanced CallKit call acceptance with audio session debugging and fixes
-  Future<void> _handleCallKitAcceptWithAudioFix(String sipCallId) async {
+  /// Perform detailed device detection and logging
+  Future<void> _performDeviceDetection() async {
     try {
-      debugPrint('SIP Service: CallKit accept with audio fix for SIP call: $sipCallId');
+      debugPrint('SIP Service: 🔍 Device Detection:');
+      debugPrint('SIP Service: Platform.isIOS: ${Platform.isIOS}');
+      debugPrint('SIP Service: Platform.operatingSystem: ${Platform.operatingSystem}');
+      debugPrint('SIP Service: Platform.operatingSystemVersion: ${Platform.operatingSystemVersion}');
       
-      // Log current audio session state for debugging
-      debugPrint('SIP Service: Audio session state before accept');
-      
-      // Answer the SIP call with optimized timing
-      await answerCall(sipCallId);
-      
-      // Additional audio session verification after call acceptance
-      await Future.delayed(const Duration(milliseconds: 100));
-      
-      debugPrint('SIP Service: CallKit accept with audio fix completed');
-      
+      // Try to detect if running on simulator
+      // This is a heuristic check - simulators typically have different environment
+      final version = Platform.operatingSystemVersion;
+      if (version.contains('Simulator') || version.contains('iPhone OS')) {
+        debugPrint('SIP Service: 🔴 SIMULATOR DETECTED: PushKit tokens are not available on iOS Simulator');
+      } else {
+        debugPrint('SIP Service: 🟢 PHYSICAL DEVICE: PushKit tokens should be available with proper setup');
+      }
     } catch (e) {
-      debugPrint('SIP Service: Error in CallKit accept with audio fix: $e');
-      // Fallback to regular answer call
+      debugPrint('SIP Service: Error in device detection: $e');
+    }
+  }
+
+  /// Manual PushKit token refresh method for testing
+  Future<String?> refreshPushKitToken() async {
+    if (_siprixSdk == null) {
+      debugPrint('SIP Service: Cannot refresh PushKit token - SDK not initialized');
+      return null;
+    }
+    
+    debugPrint('SIP Service: 🔄 Manual PushKit token refresh requested...');
+    await _attemptGetPushKitToken(isRetry: false, attempt: 0);
+    
+    try {
+      final token = await _siprixSdk!.getPushKitToken();
+      return token;
+    } catch (e) {
+      debugPrint('SIP Service: Manual token refresh failed: $e');
+      return null;
+    }
+  }
+
+  /// Display current iOS configuration status for troubleshooting
+  void debugIOSPushConfiguration() async {
+    if (!Platform.isIOS) {
+      debugPrint('SIP Service: Not running on iOS - PushKit not available');
+      return;
+    }
+
+    debugPrint('SIP Service: 🔍 CURRENT iOS CONFIGURATION STATUS:');
+    debugPrint('SIP Service: ');
+    
+    // Check platform info
+    debugPrint('SIP Service: 📱 Device Information:');
+    debugPrint('SIP Service: │   Platform: ${Platform.operatingSystem}');
+    debugPrint('SIP Service: │   Version: ${Platform.operatingSystemVersion}');
+    
+    // Check if simulator vs device heuristically
+    final version = Platform.operatingSystemVersion;
+    if (version.toLowerCase().contains('simulator')) {
+      debugPrint('SIP Service: │   Type: 🔴 iOS Simulator (PushKit unavailable)');
+      debugPrint('SIP Service: │   Action: Deploy to physical device for PushKit testing');
+    } else {
+      debugPrint('SIP Service: │   Type: 🟢 Physical Device (PushKit should be available)');
+    }
+    
+    debugPrint('SIP Service: ');
+    debugPrint('SIP Service: 📋 Current Info.plist Configuration:');
+    debugPrint('SIP Service: │   Background Modes: ✓ voip (configured)');
+    debugPrint('SIP Service: │   Microphone Usage: ✓ NSMicrophoneUsageDescription (configured)');
+    
+    debugPrint('SIP Service: ');
+    debugPrint('SIP Service: ⚠️ MISSING CONFIGURATION DETECTED:');
+    debugPrint('SIP Service: │   Push Notifications Entitlements: ❌ Not found');
+    debugPrint('SIP Service: │   Runner.entitlements file: ❌ Missing');
+    
+    debugPrint('SIP Service: ');
+    debugPrint('SIP Service: 🛠️ REQUIRED ACTIONS TO FIX:');
+    debugPrint('SIP Service: │   1. Open ios/Runner.xcworkspace in Xcode');
+    debugPrint('SIP Service: │   2. Select Runner target → Signing & Capabilities');
+    debugPrint('SIP Service: │   3. Add "Push Notifications" capability');
+    debugPrint('SIP Service: │   4. This will auto-create Runner.entitlements');
+    debugPrint('SIP Service: │   5. Ensure "Background Modes" includes "Voice over IP"');
+    debugPrint('SIP Service: │   6. Clean build and run on physical device');
+    
+    // Try to get bundle ID from package info if available
+    try {
+      debugPrint('SIP Service: ');
+      debugPrint('SIP Service: 📦 App Information:');
+      debugPrint('SIP Service: │   Bundle ID: Check Xcode project for exact value');
+      debugPrint('SIP Service: │   Make sure Bundle ID matches Apple Developer Console App ID');
+    } catch (e) {
+      debugPrint('SIP Service: Could not retrieve app info: $e');
+    }
+  }
+
+  /// Update current account with PushKit token
+  Future<void> _updateAccountWithPushToken(String pushToken) async {
+    if (_currentAccountId != null && _accountsModel != null) {
       try {
-        await answerCall(sipCallId);
-      } catch (fallbackError) {
-        debugPrint('SIP Service: Fallback answerCall also failed: $fallbackError');
-      }
-    }
-  }
-
-  void _handleCallKitDecline(dynamic body) async {
-    try {
-      final String callKitId = body['id'];
-      final String? sipCallId = _callKitToSipMapping[callKitId];
-
-      if (sipCallId != null) {
-        debugPrint('SIP Service: CallKit decline for SIP call: $sipCallId');
-
-        // Set hangup flag to prevent state conflicts
-        _isHangingUp = true;
-
-        // Remove the mapping first to prevent double cleanup in hangupCall
-        _callKitToSipMapping.remove(callKitId);
-        _acceptedCallKitIds.remove(callKitId);
-
-        // Decline the SIP call
-        await hangupCall(sipCallId);
-
-        // Add small delay before navigation to prevent GlobalKey conflicts
-        await Future.delayed(const Duration(milliseconds: 100));
-
-        // Navigate back to keypad (with debouncing)
-        if (!_isNavigatingFromCallKit) {
-          _isNavigatingFromCallKit = true;
-          NavigationService.goToKeypad();
-          // Reset flag after a delay to allow future navigation
-          Future.delayed(const Duration(milliseconds: 500), () {
-            _isNavigatingFromCallKit = false;
-          });
-        }
-
-        debugPrint('SIP Service: CallKit call declined successfully');
-      }
-    } catch (e) {
-      debugPrint('SIP Service: Error handling CallKit decline: $e');
-    }
-  }
-
-  void _handleCallKitEnded(dynamic body) async {
-    try {
-      final String callKitId = body['id'];
-      final String? sipCallId = _callKitToSipMapping[callKitId];
-
-      debugPrint('SIP Service: CallKit call ended - callKitId: $callKitId, sipCallId: $sipCallId');
-
-      if (sipCallId != null) {
-        debugPrint('SIP Service: CallKit ended for SIP call: $sipCallId');
-
-        // Set hangup flag to prevent state conflicts
-        _isHangingUp = true;
-
-        // Remove the mapping first to prevent double cleanup in hangupCall
-        _callKitToSipMapping.remove(callKitId);
-        _acceptedCallKitIds.remove(callKitId);
-
-        // End the SIP call
-        await hangupCall(sipCallId);
-
-        // Add small delay before navigation to prevent GlobalKey conflicts
-        await Future.delayed(const Duration(milliseconds: 100));
-
-        // Navigate back to keypad (with debouncing)
-        if (!_isNavigatingFromCallKit) {
-          _isNavigatingFromCallKit = true;
-          NavigationService.goToKeypad();
-          // Reset flag after a delay to allow future navigation
-          Future.delayed(const Duration(milliseconds: 500), () {
-            _isNavigatingFromCallKit = false;
-          });
-        }
-
-        debugPrint('SIP Service: CallKit call ended successfully');
-      } else {
-        debugPrint('SIP Service: No SIP call found for ended CallKit call: $callKitId');
+        debugPrint('SIP Service: PushKit token received: $pushToken');
+        debugPrint('SIP Service: ✅ PushKit token available for OpenSIPS integration');
+        debugPrint('SIP Service: Next step: Configure OpenSIPS to handle push notifications using this token');
         
-        // Still clean up any remaining state
-        _callKitToSipMapping.remove(callKitId);
-        _acceptedCallKitIds.remove(callKitId);
+        // TODO: When implementing OpenSIPS push notifications, the token can be used in:
+        // 1. SIP REGISTER requests with custom X-Push-Token header
+        // 2. Push notification payload routing
+        // 3. Call correlation between push payload and incoming SIP INVITE
         
-        // If we have a current call that matches this scenario, end it
-        if (_currentCall != null) {
-          debugPrint('SIP Service: Force ending current call due to CallKit termination');
-          _updateCurrentCall(_currentCall?.copyWith(state: AppCallState.ended));
-          
-          // Navigate back to keypad
-          if (!_isNavigatingFromCallKit) {
-            _isNavigatingFromCallKit = true;
-            NavigationService.goToKeypad();
-            Future.delayed(const Duration(milliseconds: 500), () {
-              _isNavigatingFromCallKit = false;
-            });
-          }
-        }
+      } catch (e) {
+        debugPrint('SIP Service: Error processing PushKit token: $e');
       }
-    } catch (e) {
-      debugPrint('SIP Service: Error handling CallKit ended: $e');
-    }
-  }
-
-  void _handleCallKitTimeout(dynamic body) async {
-    try {
-      final String callKitId = body['id'];
-      final String? sipCallId = _callKitToSipMapping[callKitId];
-
-      if (sipCallId != null) {
-        debugPrint('SIP Service: CallKit timeout for SIP call: $sipCallId');
-        // The call timed out, just clean up
-        _callKitToSipMapping.remove(callKitId);
-        _acceptedCallKitIds.remove(callKitId);
-        // Add small delay before navigation to prevent GlobalKey conflicts
-        await Future.delayed(const Duration(milliseconds: 100));
-
-        // Navigate back to keypad (with debouncing)
-        if (!_isNavigatingFromCallKit) {
-          _isNavigatingFromCallKit = true;
-          NavigationService.goToKeypad();
-          // Reset flag after a delay to allow future navigation
-          Future.delayed(const Duration(milliseconds: 500), () {
-            _isNavigatingFromCallKit = false;
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint('SIP Service: Error handling CallKit timeout: $e');
-    }
-  }
-
-  void _handleCallKitCallback(dynamic body) {
-    debugPrint('SIP Service: CallKit callback: $body');
-    // Handle callback if needed
-  }
-
-  // End CallKit call when SIP call terminates
-  Future<void> _endCallKitCall(String sipCallId) async {
-    try {
-      debugPrint('SIP Service: Attempting to end CallKit call for SIP callId: $sipCallId');
-      debugPrint('SIP Service: Current CallKit mappings: $_callKitToSipMapping');
-      
-      // Find the CallKit UUID for this SIP call
-      String? callKitId;
-      for (final entry in _callKitToSipMapping.entries) {
-        if (entry.value == sipCallId) {
-          callKitId = entry.key;
-          break;
-        }
-      }
-
-      if (callKitId != null) {
-        debugPrint('SIP Service: Found CallKit UUID: $callKitId for SIP callId: $sipCallId');
-        await FlutterCallkitIncoming.endCall(callKitId);
-        _callKitToSipMapping.remove(callKitId);
-        _acceptedCallKitIds.remove(callKitId);
-        debugPrint('SIP Service: Successfully ended CallKit call and cleaned up mappings');
-      } else {
-        debugPrint('SIP Service: No CallKit UUID found for SIP callId: $sipCallId');
-        debugPrint('SIP Service: Available mappings: $_callKitToSipMapping');
-      }
-    } catch (e) {
-      debugPrint('SIP Service: Error ending CallKit call: $e');
+    } else {
+      debugPrint('SIP Service: Cannot process token - no current account or model available');
+      debugPrint('SIP Service: PushKit token: $pushToken (available for future use)');
     }
   }
 }

@@ -185,14 +185,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.2.4"
-  contacts_service:
-    dependency: "direct main"
-    description:
-      name: contacts_service
-      sha256: f6d5ea33b31dfcdcd2e65d8abdc836502e04ddb0f66a96aa726fa9891ea9671e
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.6.3"
   convert:
     dependency: transitive
     description:
@@ -326,14 +318,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.4.1"
-  flutter_callkit_incoming:
-    dependency: "direct main"
-    description:
-      name: flutter_callkit_incoming
-      sha256: "993fb0f0cd990961072f0d13ff815a91773f92bfa1895be17d3366b2225ec9cd"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.5.8"
   flutter_contacts:
     dependency: "direct main"
     description:
@@ -424,14 +408,6 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  flutter_voip_kit:
-    dependency: "direct main"
-    description:
-      name: flutter_voip_kit
-      sha256: "155de556d98edc9970b97f61f5c0a6eef62147a3f29ace4ecad50efe85ee1aea"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.0.6"
   flutter_web_plugins:
     dependency: transitive
     description: flutter
@@ -869,14 +845,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.5.0"
-  quiver:
-    dependency: transitive
-    description:
-      name: quiver
-      sha256: ea0b925899e64ecdfbf9c7becb60d5b50e706ade44a85b2363be2a22d88117d2
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.2.2"
   riverpod:
     dependency: "direct main"
     description:
@@ -985,50 +953,50 @@ packages:
     dependency: transitive
     description:
       name: siprix_voip_sdk_android
-      sha256: "1544fac0444cf55d3de2f7bc706c3ec0d905215705b2800a6b805e663cf23100"
+      sha256: "713788d993fceef1f04a465a704ce9bca26345e64a9f600aba7ba8057ea6d86a"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.18"
+    version: "1.0.19"
   siprix_voip_sdk_ios:
     dependency: transitive
     description:
       name: siprix_voip_sdk_ios
-      sha256: "58fee54922546da4d36f0e1cdc816c553d30256593bf0785fbcda0517de1f653"
+      sha256: c79ba80a257b2e6bdaed25cf70bb6a6124b34825f9c413fad5e03e9353d73b52
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.23"
+    version: "1.0.24"
   siprix_voip_sdk_linux:
     dependency: transitive
     description:
       name: siprix_voip_sdk_linux
-      sha256: e525398308768ea74fd88d77e29e6e00f26035fa2e5aa48210da343f7fc5221d
+      sha256: "77ef3e48820c38b6a215f04d37257df07656c9c7395beda04ab606621f986819"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.13"
+    version: "1.0.14"
   siprix_voip_sdk_macos:
     dependency: transitive
     description:
       name: siprix_voip_sdk_macos
-      sha256: "0eeb0e8b293c8706f96e1f2120deea2b6f968c8a3dfeac810241b2fcf15e66d2"
+      sha256: "4385d7fdb7754481e3f7ffb12114112f2bc878cd7b621781d0d76899b7c981cc"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.13"
+    version: "1.0.14"
   siprix_voip_sdk_platform_interface:
     dependency: transitive
     description:
       name: siprix_voip_sdk_platform_interface
-      sha256: aa3d9f9f5752ce40f6652b8dd2952c8c7505cf9590009c44f5077f1fd7326168
+      sha256: "9d18cecf09f328b9ca8c84569c830666384ae990a1a4e779a8b2a46978287c1d"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.5"
+    version: "1.0.6"
   siprix_voip_sdk_windows:
     dependency: transitive
     description:
       name: siprix_voip_sdk_windows
-      sha256: "91ccde2621a075d163dcb5f3ac4426765ad812067f1f0c0f2b9535a99af686fc"
+      sha256: "2e610059d302da93315007a85138be1b9d68065858f7f134ad21d21dea8046a1"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.14"
+    version: "1.0.15"
   sky_engine:
     dependency: transitive
     description: flutter
@@ -1282,22 +1250,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.0"
-  vibration:
-    dependency: "direct main"
-    description:
-      name: vibration
-      sha256: "06588a845a4ebc73ab7ff7da555c2b3dbcd9676164b5856a38bf0b2287f1045d"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.9.0"
-  vibration_platform_interface:
-    dependency: transitive
-    description:
-      name: vibration_platform_interface
-      sha256: "6ffeee63547562a6fef53c05a41d4fdcae2c0595b83ef59a4813b0612cd2bc36"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.0.3"
   vm_service:
     dependency: transitive
     description:

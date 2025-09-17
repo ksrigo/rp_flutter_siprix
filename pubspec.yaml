@@ -14,14 +14,14 @@ dependencies:
     sdk: flutter
 
   # Core SIP VoIP SDK
-  siprix_voip_sdk: ^1.0.25
+  siprix_voip_sdk: 1.0.25  # Pinned to avoid Android compilation issues with 1.0.26
 
   # Push notifications - temporarily commented out for build fix
   # firebase_messaging: ^14.7.9
-  flutter_voip_kit: ^0.0.6
+  # flutter_voip_kit: ^0.0.6  # Removed - using Siprix built-in PushKit instead
 
-  # Incoming call UI
-  flutter_callkit_incoming: ^2.0.0
+  # Incoming call UI - using Siprix built-in CallKit instead
+  # flutter_callkit_incoming: ^2.0.0
 
   # State management
   provider: ^6.1.1
@@ -44,7 +44,7 @@ dependencies:
   just_audio: ^0.9.36
   audio_session: ^0.1.16
   permission_handler: ^11.1.0
-  vibration: ^1.8.4
+  # vibration: ^1.8.4  # Removed due to Android API compatibility issues
 
   # Networking and HTTP
   dio: ^5.4.0
@@ -59,7 +59,6 @@ dependencies:
   path_provider: ^2.1.1
 
   # Contacts
-  contacts_service: ^0.6.3
   flutter_contacts: ^1.1.7+1
 
   # Icons and fonts

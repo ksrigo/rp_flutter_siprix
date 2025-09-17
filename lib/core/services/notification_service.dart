@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 // import 'package:firebase_messaging/firebase_messaging.dart'; // Temporarily disabled
-import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
+// import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart'; // Removed - using Siprix built-in CallKit
 // import 'package:flutter_voip_kit/flutter_voip_kit.dart'; // Temporarily disabled
 
 // import '../constants/app_constants.dart'; // Temporarily disabled with Firebase
@@ -132,10 +132,8 @@ class NotificationService {
 
   Future<void> _initializeCallKit() async {
     try {
-      // Listen for CallKit events
-      FlutterCallkitIncoming.onEvent.listen((event) {
-        _handleCallKitEvent(event);
-      });
+      // CallKit disabled - using Siprix built-in CallKit instead
+      debugPrint('CallKit initialization skipped - using Siprix built-in CallKit');
 
     } catch (e) {
       debugPrint('Error initializing CallKit: $e');
@@ -235,7 +233,8 @@ class NotificationService {
 
   Future<void> endIncomingCallNotification(String callId) async {
     try {
-      await FlutterCallkitIncoming.endCall(callId);
+      // CallKit disabled - using Siprix built-in CallKit instead
+      debugPrint('CallKit end call skipped - using Siprix built-in CallKit for call: $callId');
     } catch (e) {
       debugPrint('Error ending incoming call notification: $e');
     }
