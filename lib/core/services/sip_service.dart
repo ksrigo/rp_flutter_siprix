@@ -602,6 +602,44 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
+  /// Ensure account uses only PCMU+DTMF codecs to prevent REINVITE audio delay
+  Future<void> _ensureSingleCodecConfiguration() async {
+    try {
+      debugPrint(
+          'SIP Service: Ensuring single codec configuration (PCMU+DTMF only)');
+
+      if (_accountsModel != null && _accountsModel!.length > 0) {
+        // Get the selected account by index
+        final selectedIndex = _accountsModel!.selAccountId != null ? 0 : null; // Usually first account
+        if (selectedIndex != null && selectedIndex < _accountsModel!.length) {
+          final currentAccount = _accountsModel![selectedIndex];
+          
+          // Set only PCMU + DTMF codecs as recommended by Siprix developers
+          currentAccount.aCodecs = [
+            SiprixVoipSdk.kAudioCodecPCMU,
+            SiprixVoipSdk.kAudioCodecDTMF
+          ];
+
+          // Update the account in the model
+          await _accountsModel!.updateAccount(currentAccount);
+          debugPrint(
+              'SIP Service: ✅ Account updated with PCMU+DTMF codecs only');
+          debugPrint(
+              'SIP Service: This prevents REINVITE and eliminates 6s audio delay');
+        } else {
+          debugPrint(
+              'SIP Service: ⚠️ Cannot update codecs - no current account found');
+        }
+      } else {
+        debugPrint(
+            'SIP Service: ⚠️ Cannot update codecs - accounts model not available or empty');
+      }
+    } catch (e) {
+      debugPrint(
+          'SIP Service: ❌ Error ensuring single codec configuration: $e');
+    }
+  }
+
   Map<String, String> _parseCallerInfo(String fromHeader) {
     // Parse SIP from header like: "Srigo" <sip:1001@408708399.ringplus.co.uk>
     // or just: sip:1001@408708399.ringplus.co.uk
@@ -974,6 +1012,9 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       // Ensure audio session is properly configured before accepting call
 
       try {
+        // Ensure account has only PCMU+DTMF codecs to prevent REINVITE
+        await _ensureSingleCodecConfiguration();
+
         // Use Siprix SDK accept method (audio-only for now)
         debugPrint('Answer call: Accepting call with ID $intCallId');
 

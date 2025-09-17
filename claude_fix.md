@@ -1520,3 +1520,72 @@ Step 4: Enable Cloud Messaging
 2. Note your Server Key (for backend push notifications)
 
 Step 5: Test FCM Token Generation
+
+---
+
+I have changed in some files: com.example.ringplus_pbx to com.ringplus.app does it break something:
+
+A Dart VM Service on 2312DRA50G is available at: http://127.0.0.1:60304/kjhSiEyy7qY=/
+E/GraphicBufferAllocator(20872): Failed to allocate (4 x 4) layerCount 1 format 56 usage b00: 5
+E/AHardwareBuffer(20872): GraphicBuffer(w=4, h=4, lc=1) failed (Unknown error -5), handle=0x0
+E/qdgralloc(20872): GetSize: Unrecognized pixel format: 0x3b
+E/Gralloc4(20872): isSupported(1, 1, 59, 1, ...) failed with 5
+I/AHardwareBuffer(20872): proc name :com.ringplus.app
+E/GraphicBufferAllocator(20872): Failed to allocate (4 x 4) layerCount 1 format 59 usage b00: 5
+E/AHardwareBuffer(20872): GraphicBuffer(w=4, h=4, lc=1) failed (Unknown error -5), handle=0x0
+E/qdgralloc(20872): GetSize: Unrecognized pixel format: 0x38
+E/Gralloc4(20872): isSupported(1, 1, 56, 1, ...) failed with 5
+I/AHardwareBuffer(20872): proc name :com.ringplus.app
+E/GraphicBufferAllocator(20872): Failed to allocate (4 x 4) layerCount 1 format 56 usage b00: 5
+E/AHardwareBuffer(20872): GraphicBuffer(w=4, h=4, lc=1) failed (Unknown error -5), handle=0x0
+E/qdgralloc(20872): GetSize: Unrecognized pixel format: 0x3b
+E/Gralloc4(20872): isSupported(1, 1, 59, 1, ...) failed with 5
+I/AHardwareBuffer(20872): proc name :com.ringplus.app
+E/GraphicBufferAllocator(20872): Failed to allocate (4 x 4) layerCount 1 format 59 usage b00: 5
+E/AHardwareBuffer(20872): GraphicBuffer(w=4, h=4, lc=1) failed (Unknown error -5), handle=0x0
+W/qdgralloc(20872): getInterlacedFlag: getMetaData returned -22, defaulting to interlaced_flag = 0
+W/qdgralloc(20872): getInterlacedFlag: getMetaData returned -22, defaulting to interlaced_flag = 0
+W/qdgralloc(20872): getInterlacedFlag: getMetaData returned -22, defaulting to interlaced_flag = 0
+W/qdgralloc(20872): getInterlacedFlag: getMetaData returned -22, defaulting to interlaced_flag = 0
+W/qdgralloc(20872): getInterlacedFlag: getMetaData returned -22, defaulting to interlaced_flag = 0
+The Flutter DevTools debugger and profiler on 2312DRA50G is available at: http://127.0.0.1:9101?uri=http://127.0.0.1:60304/kjhSiEyy7qY=/
+E/FileUtils(20872): err write to mi_exception_log
+E/FileUtils(20872): err write to mi_exception_log
+I/Choreographer(20872): Skipped 36 frames! The application may be doing too much work on its main thread.
+D/UserSceneDetector(20872): invoke error.
+D/SurfaceView(20872): UPDATE Surface(name=SurfaceView[com.ringplus.app/com.ringplus.app.MainActivity]#1906)/@0xa6b38d7, mIsProjectionMode = false
+E/FileUtils(20872): err write to mi_exception_log
+W/Activity(20872): Can request only one set of permissions at a time
+I/om.ringplus.app(20872): Compiler allocated 5311KB to compile void android.view.ViewRootImpl.performTraversals()
+D/ProfileInstaller(20872): Installing profile for com.ringplus.app
+W/FinalizerDaemon(20872): type=1400 audit(0.0:5998): avc: denied { getopt } for path="/dev/socket/usap_pool_primary" scontext=u:r:untrusted_app:s0:c161,c257,c512,c768 tcontext=u:r:zygote:s0 tclass=unix_stream_socket permissive=0 app=com.ringplus.app
+D/SecurityManager(20872): checkAccessControl flag0
+W/om.ringplus.app(20872): type=1400 audit(0.0:5999): avc: denied { write } for name="binder_delay" dev="proc" ino=4026533098 scontext=u:r:untrusted_app:s0:c161,c257,c512,c768 tcontext=u:object_r:proc_mi_log:s0 tclass=file permissive=0 app=com.ringplus.app
+E/BinderMonitor(20872): err open binder_delay errno=13
+E/FileUtils(20872): err write to mi_exception_log
+D/VRI[MainActivity](20872): vri.reportNextDraw android.view.ViewRootImpl.performTraversals:4972 android.view.ViewRootImpl.doTraversal:3560 android.view.ViewRootImpl$TraversalRunnable.run:11601 android.view.Choreographer$CallbackRecord.run:1747 android.view.Choreographer$CallbackRecord.run:1756
+
+---
+
+Token generation works fine. As I mentionned before we need to make sure to handle incoming calls when the app is in foreground, in background or not running.
+Let's make sure we are handling properly first forground incoming calls: We should show incoming call screen to accept or reject a call. Implement it.
+
+---
+
+Dont forget here we are developing for Android, we still need to use siprix builtin callkit for IOS, I guess for Android, we can dont need callkit from Siprix for incoming calls. So make sure to handle for both platforms.
+
+---
+
+I have the issue on the incoming call, audio from app to caller is delayed by 6s. It's probably due to the REINVITE from Caller on 200OK. Could you adopt the code to this recommandation from siprix developers:
+
+Reason of re-invite is few audio codecs in the 200OK library's response.
+Select only PCMU+DTMF codecs on app side, it will prevent sending re-invite.
+
+From src point of view:
+
+\_account.aCodecs = [SiprixVoipSdk.kAudioCodecPCMU, SiprixVoipSdk.kAudioCodecDTMF];
+context.read<AppAccountsModel>().updateAccount(\_account);// or .addAccount(\_account)
+
+Check if we can only propose one codec + dtmf on 200OK (onCallAnswered event).
+
+---
