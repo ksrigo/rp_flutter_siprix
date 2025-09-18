@@ -1826,3 +1826,160 @@ I/flutter (22594): Splash: User has valid token, navigating to keypad
 Seems like Auth service works properly. If you see any issue fix it. But there is another issue: /extensions/mobile is never called therefore app cant get extension details and get registrered
 
 ---
+
+As I mentionned before, we can have incoming calls when the app in these state: in foreground, in background or not running.
+When it's in foreground, the app behaviour is fine: when a call comes in Incoming call screen shows up. Now we need to handle when the app is in background: When there is a call, we have a notification showing: incoming call and we can accept it or reject it. If we accept it, it opens our app and the incoming call screen shows up and we need to accept the call again.
+We need to change this behaviour to when we accept the call on the Notification, call should be asnwered and the app should open to on call screen.
+
+Scenario 1: App in Foreground
+
+1. Call comes in → Incoming call screen shows (existing behavior works fine)
+
+Scenario 2: App in Background - User Accepts
+
+1. Push notification shows with Accept/Reject buttons
+2. User taps Accept → action: 'accept' sent to app
+3. App wakes up → SIP service answers call → Navigate to in-call screen
+4. User sees in-call screen immediately (no double-accept needed)
+
+Scenario 3: App in Background - User Rejects
+
+1. Push notification shows with Accept/Reject buttons
+2. User taps Reject → action: 'reject' sent to app
+3. App wakes up → SIP service hangs up call → Navigate to keypad
+4. Call is rejected and user returns to app
+
+Scenario 4: App Not Running - Any Action
+
+1. Push notification wakes app → Background handler processes action
+2. Services initialize → Action is processed → App opens appropriately
+
+🧪 Server-Side Requirements:
+
+To fully utilize this implementation, the server should send notifications with action buttons:
+
+For regular incoming calls (existing):
+{
+"type": "incoming_call",
+"call_id": "12345",
+"caller_name": "John Doe",
+"caller_number": "+1234567890"
+}
+
+For notification actions (new):
+{
+"type": "incoming_call",
+"action": "accept", // or "reject"
+"call_id": "12345",
+"caller_name": "John Doe",
+"caller_number": "+1234567890"
+}
+
+---
+
+In Background mode, user reject works as expected but when accepting the call, it still opening incoming call screen and we need to accept again:
+D/AppScoutStateMachine(14427): 14427-ScoutStateMachinecreated
+I/SiprixVoipSdkPlugin(14427): handleIntent 'onNewIntent' Intent { act=kActionIncomingCallAccept cat=[android.intent.category.LAUNCHER] flg=0x10400000 pkg=com.ringplus.app cmp=com.ringplus.app/.MainActivity (has extras) }
+I/SiprixVoipSdkPlugin(14427): raiseIncomingCallEvent: Intent { act=kActionIncomingCallAccept cat=[android.intent.category.LAUNCHER] flg=0x10400000 pkg=com.ringplus.app cmp=com.ringplus.app/.MainActivity (has extras) }
+I/SiprixVoipSdkPlugin(14427): raise onCallIncoming 205
+I/flutter (14427): event OnCallIncoming {callId: 205, withVideo: false, accId: 1, from: "Srigo" <sip:1001@408708399.ringplus.co.uk>, to: sip:1002@408708399.ringplus.co.uk}
+I/flutter (14427): SIP Service: Incoming call - callId: 205, from: "Srigo" <sip:1001@408708399.ringplus.co.uk>, to: sip:1002@408708399.ringplus.co.uk, withVideo: false
+I/flutter (14427): SIP Service: Raw from header: "Srigo" <sip:1001@408708399.ringplus.co.uk>
+I/flutter (14427): SIP Service: Raw name before quote removal: ""Srigo""
+I/flutter (14427): SIP Service: Raw name after quote removal: "Srigo"
+I/flutter (14427): SIP Service: Parsed name: "Srigo", number: "1001"
+I/flutter (14427): SIP Service: Parsed caller - name: Srigo, number: 1001
+I/flutter (14427): SIP Service: Stored Siprix call ID for operations: 205
+I/flutter (14427): SipService: \_updateCurrentCall called - callId: 205, state: AppCallState.ringing
+I/flutter (14427): SIP Service: Android - Showing custom incoming call screen for call: 205
+I/flutter (14427): SIP Service: Android - Successfully navigated to incoming call screen
+I/flutter (14427): SIP Service: Android - Custom incoming call screen displayed
+I/SiprixVoipSdkPlugin(14427): raise onCallAcceptNotif 205
+I/flutter (14427): event OnCallAcceptNotif {callId: 205, withVideo: false}
+D/SecurityManager(14427): checkAccessControl flag0
+I/flutter (14427): SIP Service: App hidden
+I/flutter (14427): SIP Service: App inactive
+W/om.ringplus.app(14427): type=1400 audit(0.0:24122): avc: denied { read } for name="u:object_r:vendor_display_prop:s0" dev="tmpfs" ino=460 scontext=u:r:untrusted_app:s0:c161,c257,c512,c768 tcontext=u:object_r:vendor_display_prop:s0 tclass=file permissive=0 app=com.ringplus.app
+W/libc (14427): Access denied finding property "vendor.display.enable_optimal_refresh_rate"
+W/libc (14427): Access denied finding property "vendor.gpp.create_frc_extension"
+I/om.ringplus.app(14427): 【MiuiBoosterUtils】checkUtil disable.
+I/om.ringplus.app(14427): 【MiuiBoosterUtils】package permission check disable.
+I/om.ringplus.app(14427): 【MiuiBoosterUtils】get Service disable.
+W/libc (14427): Access denied finding property "vendor.display.enable_optimal_refresh_rate"
+W/libc (14427): Access denied finding property "vendor.gpp.create_frc_extension"
+I/om.ringplus.app(14427): 【MiuiBoosterUtils】checkUtil disable.
+I/om.ringplus.app(14427): 【MiuiBoosterUtils】package permission check disable.
+I/om.ringplus.app(14427): 【MiuiBoosterUtils】get Service disable.
+E/qdgralloc(14427): GetSize: Unrecognized pixel format: 0x38
+E/Gralloc4(14427): isSupported(1, 1, 56, 1, ...) failed with 5
+W/om.ringplus.app(14427): type=1400 audit(0.0:24123): avc: denied { read } for name="u:object_r:vendor_display_prop:s0" dev="tmpfs" ino=460 scontext=u:r:untrusted_app:s0:c161,c257,c512,c768 tcontext=u:object_r:vendor_display_prop:s0 tclass=file permissive=0 app=com.ringplus.app
+I/AHardwareBuffer(14427): proc name :com.ringplus.app
+E/GraphicBufferAllocator(14427): Failed to allocate (4 x 4) layerCount 1 format 56 usage b00: 5
+E/AHardwareBuffer(14427): GraphicBuffer(w=4, h=4, lc=1) failed (Unknown error -5), handle=0x0
+E/qdgralloc(14427): GetSize: Unrecognized pixel format: 0x3b
+E/Gralloc4(14427): isSupported(1, 1, 59, 1, ...) failed with 5
+I/AHardwareBuffer(14427): proc name :com.ringplus.app
+E/GraphicBufferAllocator(14427): Failed to allocate (4 x 4) layerCount 1 format 59 usage b00: 5
+E/AHardwareBuffer(14427): GraphicBuffer(w=4, h=4, lc=1) failed (Unknown error -5), handle=0x0
+E/qdgralloc(14427): GetSize: Unrecognized pixel format: 0x38
+E/Gralloc4(14427): isSupported(1, 1, 56, 1, ...) failed with 5
+I/AHardwareBuffer(14427): proc name :com.ringplus.app
+E/GraphicBufferAllocator(14427): Failed to allocate (4 x 4) layerCount 1 format 56 usage b00: 5
+E/AHardwareBuffer(14427): GraphicBuffer(w=4, h=4, lc=1) failed (Unknown error -5), handle=0x0
+E/qdgralloc(14427): GetSize: Unrecognized pixel format: 0x3b
+E/Gralloc4(14427): isSupported(1, 1, 59, 1, ...) failed with 5
+I/AHardwareBuffer(14427): proc name :com.ringplus.app
+E/GraphicBufferAllocator(14427): Failed to allocate (4 x 4) layerCount 1 format 59 usage b00: 5
+E/AHardwareBuffer(14427): GraphicBuffer(w=4, h=4, lc=1) failed (Unknown error -5), handle=0x0
+W/qdgralloc(14427): getInterlacedFlag: getMetaData returned -22, defaulting to interlaced_flag = 0
+W/qdgralloc(14427): getInterlacedFlag: getMetaData returned -22, defaulting to interlaced_flag = 0
+W/qdgralloc(14427): getInterlacedFlag: getMetaData returned -22, defaulting to interlaced_flag = 0
+W/qdgralloc(14427): getInterlacedFlag: getMetaData returned -22, defaulting to interlaced_flag = 0
+W/qdgralloc(14427): getInterlacedFlag: getMetaData returned -22, defaulting to interlaced_flag = 0
+D/VRI[MainActivity](14427): vri.reportNextDraw android.view.ViewRootImpl.performTraversals:4972 android.view.ViewRootImpl.doTraversal:3560 android.view.ViewRootImpl$TraversalRunnable.run:11601 android.view.Choreographer$CallbackRecord.run:1747 android.view.Choreographer$CallbackRecord.run:1756
+D/SurfaceView(14427): UPDATE Surface(name=SurfaceView[com.ringplus.app/com.ringplus.app.MainActivity]#5812)/@0xe92ef1b, mIsProjectionMode = false
+D/VRI[MainActivity](14427): vri.Setup new sync=wmsSync-VRI[MainActivity]#13
+I/om.ringplus.app(14427): DynamicFPS DF top: com.ringplus.app : 0.000000
+E/FileUtils(14427): err write to mi_exception_log
+I/flutter (14427): 🔥 IncomingCallScreen: initState called for callId: 205
+I/flutter (14427): 🔥 IncomingCallScreen: callerName: Srigo, callerNumber: 1001
+I/flutter (14427): 🔥 IncomingCallScreen: Setting up call state listener for callId: 205
+I/flutter (14427): 🔥 IncomingCallScreen: Initial \_isNavigatingAway state: false
+I/flutter (14427): 🔥 IncomingCallScreen: Building action button: Decline
+I/flutter (14427): 🔥 IncomingCallScreen: Building action button: Accept
+W/WindowOnBackDispatcher(14427): OnBackInvokedCallback is not enabled for the application.
+W/WindowOnBackDispatcher(14427): Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+D/VRI[MainActivity](14427): vri.reportDrawFinished
+I/flutter (14427): SIP Service: App resumed
+I/HandWritingStubImpl(14427): refreshLastKeyboardType: 1
+I/HandWritingStubImpl(14427): getCurrentKeyboardType: 1
+
+I/MIUIInput(14427): [MotionEvent] ViewRootImpl windowName 'com.ringplus.app/com.ringplus.app.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=40626304, downTime=40626304, phoneEventTime=16:13:50.844 } moveCount:0
+I/flutter (14427): 🔥 IncomingCallScreen: onTapDown detected for: Accept
+I/MIUIInput(14427): [MotionEvent] ViewRootImpl windowName 'com.ringplus.app/com.ringplus.app.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=40626385, downTime=40626304, phoneEventTime=16:13:50.925 } moveCount:0
+I/flutter (14427): 🔥 IncomingCallScreen: onTapUp detected for: Accept
+I/flutter (14427): 🔥 IncomingCallScreen: ========== GESTURE DETECTOR onTap ==========
+I/flutter (14427): 🔥 IncomingCallScreen: GestureDetector onTap triggered for: Accept
+I/flutter (14427): 🔥 IncomingCallScreen: mounted: true
+I/flutter (14427): 🔥 IncomingCallScreen: \_isNavigatingAway: false
+I/flutter (14427): 🔥 IncomingCallScreen: About to call onPressed callback
+I/flutter (14427): 🔥 IncomingCallScreen: Accept button onPressed callback invoked
+I/flutter (14427): 🔥 IncomingCallScreen: ========== ANSWER CALL HANDLER STARTED ==========
+I/flutter (14427): 🔥 IncomingCallScreen: Answer button pressed! CallId: 205
+I/flutter (14427): 🔥 IncomingCallScreen: Current mounted state: true
+I/flutter (14427): 🔥 IncomingCallScreen: Current \_isNavigatingAway: false
+I/flutter (14427): 🔥 IncomingCallScreen: Attempting to answer call...
+I/flutter (14427): 🔥 SipService: ========== ANSWER CALL STARTED ==========
+I/flutter (14427): 🔥 SipService: Answer call: 205
+I/flutter (14427): SIP Service: Ensuring single codec configuration (PCMU+DTMF only)
+I/flutter (14427): SIP Service: ❌ Error ensuring single codec configuration: Can't update/delete account as is has unfinished calls
+I/flutter (14427): Answer call: Accepting call with ID 205
+
+---
+
+Check this doc:
+
+- https://pub.dev/documentation/siprix_voip_sdk/latest/calls_model/CallModel-class.html
+- https://pub.dev/documentation/siprix_voip_sdk/latest/calls_model/CallsModel-class.html
+
+Try to use onAcceptNotif or onConnected

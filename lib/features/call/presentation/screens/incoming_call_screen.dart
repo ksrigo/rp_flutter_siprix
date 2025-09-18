@@ -67,9 +67,22 @@ class _IncomingCallScreenState extends ConsumerState<IncomingCallScreen>
         debugPrint('🔥 IncomingCallScreen: Call was cleared, calling _handleCallEnded()');
         _handleCallEnded();
       } else if (callInfo.id == widget.callId) {
-        // This is our call, check if it ended or failed
+        // This is our call, check state changes
         debugPrint('🔥 IncomingCallScreen: This is our call, state: ${callInfo.state}');
-        if (callInfo.state == AppCallState.ended || callInfo.state == AppCallState.failed) {
+        
+        if (callInfo.state == AppCallState.answered) {
+          // Call was accepted (possibly from background) - navigate to in-call screen immediately
+          debugPrint('🔥 IncomingCallScreen: Call answered (background acceptance), navigating to in-call screen IMMEDIATELY');
+          if (!_isNavigatingAway) {
+            _isNavigatingAway = true;
+            // Navigate immediately without delay for background acceptance
+            NavigationService.goToInCall(
+              widget.callId,
+              phoneNumber: widget.callerNumber,
+              contactName: widget.callerName,
+            );
+          }
+        } else if (callInfo.state == AppCallState.ended || callInfo.state == AppCallState.failed) {
           debugPrint('🔥 IncomingCallScreen: Call ${callInfo.state.name}, calling _handleCallEnded()');
           _handleCallEnded();
         } else {
@@ -79,6 +92,28 @@ class _IncomingCallScreenState extends ConsumerState<IncomingCallScreen>
         debugPrint('🔥 IncomingCallScreen: Different call ID, ignoring: ${callInfo.id} vs ${widget.callId}');
       }
     });
+  }
+
+  void _handleCallAnswered() async {
+    debugPrint('🔥 IncomingCallScreen: ========== _handleCallAnswered CALLED ==========');
+    debugPrint('🔥 IncomingCallScreen: mounted: $mounted, _isNavigatingAway: $_isNavigatingAway');
+    
+    if (mounted && !_isNavigatingAway) {
+      debugPrint('🔥 IncomingCallScreen: Setting _isNavigatingAway = true and navigating to in-call screen');
+      _isNavigatingAway = true;
+      debugPrint('IncomingCallScreen: Navigating to in-call screen due to background acceptance');
+      // Reduce delay for faster transition on background acceptance
+      await Future.delayed(const Duration(milliseconds: 50));
+      if (mounted) {
+        NavigationService.goToInCall(
+          widget.callId,
+          phoneNumber: widget.callerNumber,
+          contactName: widget.callerName,
+        );
+      }
+    } else {
+      debugPrint('🔥 IncomingCallScreen: Not navigating - mounted: $mounted, _isNavigatingAway: $_isNavigatingAway');
+    }
   }
 
   void _handleCallEnded() async {

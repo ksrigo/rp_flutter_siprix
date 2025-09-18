@@ -127,6 +127,9 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
   DevicesModel? _devicesModel;
   int? _currentAccountId;
 
+  // Background acceptance monitoring
+  Timer? _backgroundAcceptanceTimer;
+
   SipRegistrationState _registrationState = SipRegistrationState.unregistered;
   CallInfo? _currentCall;
   int? _currentSiprixCallId; // Store the actual Siprix call ID for operations
@@ -140,6 +143,11 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
 
   // Store credentials for re-registration
   Map<String, dynamic>? _lastCredentials;
+
+  // Auto-answer flag for notification acceptance
+  String? _autoAnswerCallId;
+  String? _autoAnswerCallerName;
+  String? _autoAnswerCallerNumber;
 
   // Network change detection
   StreamSubscription<ConnectivityResult>? _connectivitySubscription;
@@ -223,7 +231,11 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         connected: _onCallConnected,
         incoming: _onCallIncomingDirect,
         incomingPush: _onIncomingPush, // Enable push call handling for CallKit
+        acceptNotif: _onCallAcceptNotif, // Handle Android notification acceptance
       );
+
+      // Set up a periodic check for background call acceptance
+      _setupBackgroundAcceptanceMonitor();
 
       debugPrint('SIP Service: Call and push listeners configured');
 
@@ -302,8 +314,102 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
     debugPrint('SIP Service: Event listeners configured');
   }
 
+  void _setupBackgroundAcceptanceMonitor() {
+    debugPrint('SIP Service: Background acceptance monitor configured');
+  }
+
+  void _startBackgroundAcceptanceTimer() {
+    // Stop any existing timer
+    _stopBackgroundAcceptanceTimer();
+    
+    // Start a timer to check for background call acceptance
+    _backgroundAcceptanceTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      // Only run if we have an active call that's ringing
+      if (_currentCall != null && _currentCall!.state == AppCallState.ringing) {
+        _checkForBackgroundAcceptance();
+      } else {
+        // Stop the timer if there's no ringing call
+        _stopBackgroundAcceptanceTimer();
+      }
+    });
+    
+    debugPrint('🔥 SIP Service: Started background acceptance monitoring timer');
+  }
+
+  void _stopBackgroundAcceptanceTimer() {
+    _backgroundAcceptanceTimer?.cancel();
+    _backgroundAcceptanceTimer = null;
+  }
+
+  void _checkForBackgroundAcceptance() {
+    try {
+      if (_callsModel == null || _currentCall == null) return;
+      
+      // Get call model information
+      final callCount = _callsModel!.length;
+      final activeCall = _callsModel!.switchedCall();
+      final switchedCallId = _callsModel!.switchedCallId;
+      
+      debugPrint('🔥 SIP Service: Checking background acceptance - call count: $callCount, current state: ${_currentCall!.state}');
+      debugPrint('🔥 SIP Service: Active call from model: ${activeCall?.myCallId}, switched ID: $switchedCallId');
+      
+      if (_currentCall!.state == AppCallState.ringing) {
+        final timeSinceStart = DateTime.now().difference(_currentCall!.startTime);
+        
+        // Check multiple conditions for background acceptance detection
+        bool backgroundAcceptanceDetected = false;
+        String detectionReason = '';
+        
+        // Method 1: Check if CallsModel shows connected state
+        if (activeCall != null && activeCall.isConnected) {
+          backgroundAcceptanceDetected = true;
+          detectionReason = 'Active call shows connected state';
+        }
+        
+        // Method 2: Check if we've been ringing for more than 3 seconds without connection
+        else if (timeSinceStart.inSeconds > 3) {
+          // For calls that have been ringing too long, assume background acceptance
+          backgroundAcceptanceDetected = true;
+          detectionReason = 'Call ringing too long (${timeSinceStart.inSeconds}s)';
+        }
+        
+        // Method 3: Check if there's a switched call that matches our call
+        else if (switchedCallId > 0) {
+          final ourCallId = int.tryParse(_currentCall!.id);
+          if (ourCallId != null && switchedCallId == ourCallId) {
+            backgroundAcceptanceDetected = true;
+            detectionReason = 'Switched call ID matches our call';
+          }
+        }
+        
+        if (backgroundAcceptanceDetected) {
+          debugPrint('🔥 SIP Service: ========== BACKGROUND ACCEPTANCE DETECTED ==========');
+          debugPrint('🔥 SIP Service: Detection reason: $detectionReason');
+          debugPrint('🔥 SIP Service: ATTEMPTING to trigger connected event for background acceptance');
+          
+          // Stop the timer since we found the issue
+          _stopBackgroundAcceptanceTimer();
+          
+          // Get the call ID to trigger connected event
+          final callIdInt = int.tryParse(_currentCall!.id);
+          if (callIdInt != null) {
+            // Manually trigger the connected event
+            _onCallConnected(
+              callIdInt,
+              _currentCall!.remoteName,
+              _currentCall!.remoteNumber,
+              false // Assuming audio call
+            );
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('🔥 SIP Service: Error checking background acceptance: $e');
+    }
+  }
+
   void _onModelsChanged() {
-    debugPrint('🔥 SIP Service: Models changed - checking registration status...');
+    debugPrint('🔥 SIP Service: Models changed - checking registration status and call states...');
     
     try {
       if (_accountsModel != null && _accountsModel!.length > 0) {
@@ -318,6 +424,9 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       } else {
         debugPrint('🔥 SIP Service: No accounts available');
       }
+      
+      // Check for call state changes (this will detect OnCallAcceptNotif events)
+      _checkCallModelForConnectedState();
     } catch (e) {
       debugPrint('🔥 SIP Service: Error checking registration status: $e');
     }
@@ -343,6 +452,42 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
   void _onNewIncomingCall() {
     debugPrint('SIP Service: New incoming call received');
     // TODO: Handle incoming calls
+  }
+
+  void _checkCallModelForConnectedState() {
+    if (_callsModel == null) return;
+    
+    try {
+      // Get the currently switched/active call from the calls model
+      final activeCall = _callsModel!.switchedCall();
+      final switchedCallId = _callsModel!.switchedCallId;
+      final callsCount = _callsModel!.length;
+      
+      debugPrint('🔥 SIP Service: Call model check - Active call: ${activeCall?.myCallId}, switched ID: $switchedCallId, total calls: $callsCount');
+      
+      // Check if we have a current call in ringing state but the model shows connected state
+      if (_currentCall != null && _currentCall!.state == AppCallState.ringing) {
+        if (activeCall != null && activeCall.isConnected) {
+          debugPrint('🔥 SIP Service: ========== BACKGROUND ACCEPTANCE DETECTED ==========');
+          debugPrint('🔥 SIP Service: Call model shows connected but our state is still ringing');
+          debugPrint('🔥 SIP Service: This indicates OnCallAcceptNotif was processed but connected event missed');
+          
+          // Extract call details
+          final callId = activeCall.myCallId;
+          final remoteExt = activeCall.remoteExt ?? 'Unknown';
+          
+          debugPrint('🔥 SIP Service: Triggering missed connected event - ID: $callId, Remote: $remoteExt');
+          
+          // Stop the background acceptance timer
+          _stopBackgroundAcceptanceTimer();
+          
+          // Manually trigger the connected event
+          _onCallConnected(callId, remoteExt, remoteExt, false);
+        }
+      }
+    } catch (e) {
+      debugPrint('🔥 SIP Service: Error checking call model for connected state: $e');
+    }
   }
 
   /// Resolve contact name for CallKit display - called by Siprix for incoming/outgoing calls
@@ -476,15 +621,50 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
+  void _onCallAcceptNotif(int callId, bool withVideo) {
+    debugPrint('🔥 SIP Service: ========== ONCALLACCEPTNOTIF EVENT ==========');
+    debugPrint('🔥 SIP Service: OnCallAcceptNotif triggered - callId: $callId, withVideo: $withVideo');
+    debugPrint('🔥 SIP Service: User accepted call from Android notification');
+    
+    // Stop background acceptance timer since we got the accept notification
+    _stopBackgroundAcceptanceTimer();
+    
+    // This event means the user accepted the call from the notification
+    // We need to actually answer the SIP call (let the answer flow handle state and navigation)
+    if (_currentCall != null && _currentCall!.id == callId.toString()) {
+      debugPrint('🔥 SIP Service: Call matches current call, answering SIP call now');
+      
+      // Actually answer the SIP call without pre-setting state
+      Future.delayed(const Duration(milliseconds: 50)).then((_) async {
+        try {
+          debugPrint('🔥 SIP Service: Performing SIP answer for notification acceptance');
+          await answerCall(callId.toString());
+          debugPrint('🔥 SIP Service: SIP call answered successfully from notification');
+        } catch (e) {
+          debugPrint('🔥 SIP Service: Error answering SIP call from notification: $e');
+        }
+      });
+    } else {
+      debugPrint('🔥 SIP Service: WARNING - AcceptNotif for unknown call ID: $callId');
+    }
+  }
+
   void _onCallConnected(int callId, String from, String to, bool withVideo) {
+    debugPrint('🔥 SIP Service: ========== CALL CONNECTED EVENT ==========');
     debugPrint(
-        'SIP Service: Call connected - callId: $callId, from: $from, to: $to, withVideo: $withVideo');
+        '🔥 SIP Service: Call connected - callId: $callId, from: $from, to: $to, withVideo: $withVideo');
+    debugPrint('🔥 SIP Service: Current call ID: ${_currentCall?.id}');
+    debugPrint('🔥 SIP Service: Is hanging up: $_isHangingUp');
 
     // Ignore connected events if we're in the middle of hanging up
     if (_isHangingUp) {
-      debugPrint('SIP Service: Ignoring connected event - hangup in progress');
+      debugPrint('🔥 SIP Service: Ignoring connected event - hangup in progress');
       return;
     }
+
+    // Stop background acceptance timer since we got the connected event
+    _stopBackgroundAcceptanceTimer();
+    debugPrint('🔥 SIP Service: Stopped background acceptance timer - call connected');
 
     // Call is connected - start timer immediately
     if (_currentCall != null) {
@@ -511,6 +691,31 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         debugPrint(
             'SIP Service: Outgoing call connected, OnCallScreen should already be visible');
       }
+    } else {
+      debugPrint('🔥 SIP Service: WARNING - Call connected but no current call in our state');
+      debugPrint('🔥 SIP Service: This might be a background acceptance scenario');
+      
+      // Try to create a minimal call info from the connected event
+      final callInfo = CallInfo(
+        id: callId.toString(),
+        remoteNumber: to.isNotEmpty ? to : from,
+        remoteName: from.isNotEmpty ? from : to,
+        state: AppCallState.answered,
+        startTime: DateTime.now(),
+        isIncoming: true, // Assume incoming for background acceptance
+        isConnectedWithAudio: true,
+      );
+      
+      _updateCurrentCall(callInfo);
+      
+      debugPrint('🔥 SIP Service: Created call info from connected event and navigating to OnCallScreen');
+      NavigationService.goToInCall(
+        callId.toString(),
+        phoneNumber: callInfo.remoteNumber,
+        contactName: callInfo.remoteName != callInfo.remoteNumber
+            ? callInfo.remoteName
+            : null,
+      );
     }
   }
 
@@ -583,6 +788,30 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
     );
 
     _updateCurrentCall(callInfo);
+
+    // Check if this call should be auto-answered (notification acceptance)
+    if (_autoAnswerCallId == callId.toString()) {
+      debugPrint('🔥 SIP Service: ========== AUTO-ANSWER DETECTED ==========');
+      debugPrint('🔥 SIP Service: Call $callId matches auto-answer flag, answering immediately');
+      
+      // Clear the auto-answer flag
+      clearAutoAnswerCall();
+      
+      // Answer the call immediately with a small delay
+      Future.delayed(const Duration(milliseconds: 100)).then((_) async {
+        try {
+          await answerCall(callId.toString());
+          debugPrint('🔥 SIP Service: Auto-answer successful for notification acceptance');
+        } catch (e) {
+          debugPrint('🔥 SIP Service: Auto-answer failed: $e');
+        }
+      });
+      return; // Exit early, don't show incoming call screen
+    }
+
+    // Start background acceptance monitoring for incoming calls
+    _startBackgroundAcceptanceTimer();
+    debugPrint('🔥 SIP Service: Started background acceptance timer for incoming call: $callId');
 
     // Handle incoming calls differently per platform
     if (Platform.isAndroid) {
@@ -948,6 +1177,22 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
+  /// Set auto-answer flag for notification acceptance
+  void setAutoAnswerCall(String callId, String callerName, String callerNumber) {
+    debugPrint('🔥 SIP Service: Setting auto-answer for callId: $callId');
+    _autoAnswerCallId = callId;
+    _autoAnswerCallerName = callerName;
+    _autoAnswerCallerNumber = callerNumber;
+  }
+
+  /// Clear auto-answer flag
+  void clearAutoAnswerCall() {
+    debugPrint('🔥 SIP Service: Clearing auto-answer flag');
+    _autoAnswerCallId = null;
+    _autoAnswerCallerName = null;
+    _autoAnswerCallerNumber = null;
+  }
+
   Future<String?> makeCall(String number) async {
     try {
       debugPrint('Make call: Starting call to $number');
@@ -1036,26 +1281,44 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         return;
       }
 
-      // Check if the call is already answered
-      if (_currentCall != null &&
-          _currentCall!.state == AppCallState.answered) {
-        debugPrint('Answer call: Call is already answered, ignoring');
-        return;
-      }
-
-      // Parse callId to integer
+      // Parse callId to integer first
       final intCallId = int.tryParse(callId);
       if (intCallId == null) {
         debugPrint('Answer call failed: Invalid call ID format');
         return;
       }
 
+      // Check if the call is already answered/connected (background acceptance)
+      if (_currentCall != null && _currentCall!.id == callId) {
+        if (_currentCall!.state == AppCallState.answered) {
+          debugPrint('🔥 Answer call: Call is already answered, navigating to in-call screen');
+          // Navigate to in-call screen since call is already connected
+          NavigationService.goToInCall(
+            callId,
+            phoneNumber: _currentCall!.remoteNumber,
+            contactName: _currentCall!.remoteName != _currentCall!.remoteNumber
+                ? _currentCall!.remoteName
+                : null,
+          );
+          return;
+        }
+        
+        // If we reach here, the call might be in an inconsistent state
+        // Let's try to proceed with the normal answer flow, but catch any errors
+        debugPrint('🔥 Answer call: Proceeding with answer call attempt for current call');
+      }
+
       // CallKit handles all audio session management automatically
       // Ensure audio session is properly configured before accepting call
 
       try {
-        // Ensure account has only PCMU+DTMF codecs to prevent REINVITE
-        await _ensureSingleCodecConfiguration();
+        // Skip codec configuration during active calls to avoid "unfinished calls" error
+        if (_callsModel?.length == 0) {
+          // Only update codec configuration if no calls are active
+          await _ensureSingleCodecConfiguration();
+        } else {
+          debugPrint('Answer call: Skipping codec configuration - call is active');
+        }
 
         // Use Siprix SDK accept method (audio-only for now)
         debugPrint('Answer call: Accepting call with ID $intCallId');
@@ -1070,6 +1333,13 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
 
         // Brief pause to ensure call state is fully established
         await Future.delayed(const Duration(milliseconds: 100));
+        
+        // Check immediately if the call became connected after accept
+        final activeCall = _callsModel?.switchedCall();
+        if (activeCall != null && activeCall.isConnected) {
+          debugPrint('🔥 Answer call: Call connected immediately after accept - triggering connected event');
+          _onCallConnected(intCallId, activeCall.remoteExt ?? 'Unknown', activeCall.remoteExt ?? 'Unknown', false);
+        }
       } catch (e) {
         debugPrint(
             'Answer call: Siprix accept failed (possibly WebRTC audio issue): $e');
@@ -1096,6 +1366,19 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         state: AppCallState.answered,
         startTime: DateTime.now(), // Update start time for accurate duration
       ));
+      
+      // Add a follow-up check to ensure connected event is triggered
+      Timer(const Duration(milliseconds: 500), () {
+        if (_currentCall != null && _currentCall!.state == AppCallState.answered) {
+          final activeCall = _callsModel?.switchedCall();
+          if (activeCall != null && activeCall.isConnected) {
+            debugPrint('🔥 Answer call: Follow-up check detected connected call - ensuring navigation');
+            // Ensure the connected event is properly handled
+            _onCallConnected(intCallId, activeCall.remoteExt ?? _currentCall!.remoteNumber, 
+                            activeCall.remoteExt ?? _currentCall!.remoteNumber, false);
+          }
+        }
+      });
     } catch (e) {
       debugPrint('Answer call failed: $e');
     }

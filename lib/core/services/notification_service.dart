@@ -265,8 +265,7 @@ class NotificationService {
       
       final action = data['action'];
       final callId = data['call_id'];
-      final callerName = data['caller_name'] ?? 'Unknown';
-      final callerNumber = data['caller_number'] ?? 'Unknown';
+      debugPrint('🔥 Android: Caller: ${data['caller_name']} (${data['caller_number']})');
       
       debugPrint('🔥 Android: Action: $action, CallId: $callId');
       
@@ -352,27 +351,73 @@ class NotificationService {
     try {
       debugPrint('🔥 Android: Handling notification accept for callId: $callId');
       
-      // Check if SIP service is initialized and if call exists
-      if (!SipService.instance.isInitialized) {
-        debugPrint('🔥 Android: SIP service not initialized, initializing now...');
+      // Initialize SIP service if needed
+      try {
+        debugPrint('🔥 Android: Ensuring SIP service is initialized...');
         await SipService.instance.initialize();
+      } catch (e) {
+        debugPrint('🔥 Android: Error initializing SIP service: $e');
       }
       
-      // Answer the call directly
-      await SipService.instance.answerCall(callId);
-      debugPrint('🔥 Android: Call answered successfully from notification');
+      // Set flag for auto-answer when call arrives (critical fix)
+      debugPrint('🔥 Android: Setting auto-answer flag for callId: $callId');
+      SipService.instance.setAutoAnswerCall(callId, callerName, callerNumber);
       
-      // Wait a moment for call state to update
-      await Future.delayed(const Duration(milliseconds: 1000));
+      // Wait for actual SIP call to arrive before attempting to answer
+      debugPrint('🔥 Android: Waiting for SIP call to arrive...');
+      bool callAnswered = false;
+      int attempts = 0;
+      const maxAttempts = 10; // Wait up to 10 seconds
       
-      // Navigate directly to in-call screen
-      NavigationService.goToInCall(
-        callId,
-        phoneNumber: callerNumber,
-        contactName: callerName,
-      );
+      while (!callAnswered && attempts < maxAttempts) {
+        await Future.delayed(const Duration(seconds: 1));
+        attempts++;
+        
+        // Check if call exists in SIP service now
+        final currentCall = SipService.instance.currentCall;
+        if (currentCall != null && currentCall.id == callId) {
+          debugPrint('🔥 Android: SIP call arrived! State: ${currentCall.state}');
+          
+          if (currentCall.state == AppCallState.ringing) {
+            debugPrint('🔥 Android: Call is ringing, answering now...');
+            await SipService.instance.answerCall(callId);
+            debugPrint('🔥 Android: Call answered successfully from notification');
+            callAnswered = true;
+            
+            // Navigate directly to in-call screen
+            NavigationService.goToInCall(
+              callId,
+              phoneNumber: callerNumber,
+              contactName: callerName,
+            );
+            break;
+          } else if (currentCall.state == AppCallState.answered) {
+            debugPrint('🔥 Android: Call already answered (auto-answer worked)');
+            callAnswered = true;
+            
+            // Navigate directly to in-call screen
+            NavigationService.goToInCall(
+              callId,
+              phoneNumber: callerNumber,
+              contactName: callerName,
+            );
+            break;
+          }
+        } else {
+          debugPrint('🔥 Android: Waiting for SIP call (attempt $attempts/$maxAttempts)...');
+        }
+      }
       
-      debugPrint('🔥 Android: Navigated to in-call screen after notification accept');
+      if (!callAnswered) {
+        debugPrint('🔥 Android: Timeout waiting for SIP call, showing incoming call screen as fallback');
+        NavigationService.goToIncomingCall(
+          callId: callId,
+          callerName: callerName,
+          callerNumber: callerNumber,
+        );
+      }
+      
+      debugPrint('🔥 Android: Notification accept handling completed');
     } catch (e) {
       debugPrint('🔥 Android: Error handling notification accept: $e');
       // Fallback: show incoming call screen if call is still active
