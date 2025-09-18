@@ -152,8 +152,18 @@ class NotificationService {
     debugPrint('Android: Foreground FCM message received: ${message.data}');
     
     final data = message.data;
+    final action = data['action'];
+    
     if (data['type'] == 'INCOMING_CALL' || data['type'] == 'incoming_call') {
-      await _handleIncomingCallNotification(data);
+      // Check if this is an action-based message (accept/reject from notification)
+      if (action == 'accept' || action == 'reject') {
+        debugPrint('Android: Foreground action-based message received: $action');
+        // Handle the action the same way as notification tap
+        await _handleNotificationTap(message);
+      } else {
+        // Regular incoming call notification
+        await _handleIncomingCallNotification(data);
+      }
     } else if (data['type'] == 'voicemail') {
       await _handleVoicemailNotification(data);
     }
@@ -166,9 +176,17 @@ class NotificationService {
     debugPrint('Android: Background FCM message received: ${message.data}');
     
     final data = message.data;
+    final action = data['action'];
+    
     if (data['type'] == 'INCOMING_CALL' || data['type'] == 'incoming_call') {
-      // Wake up the app and trigger SIP registration to receive the call
-      await wakeUpAndRegisterForIncomingCall(data);
+      if (action == 'accept' || action == 'reject') {
+        debugPrint('Android: Background action-based message received: $action');
+        // For action-based messages, we need to wake up and handle the action
+        await wakeUpAndHandleCallAction(data);
+      } else {
+        // Regular incoming call - wake up the app and trigger SIP registration to receive the call
+        await wakeUpAndRegisterForIncomingCall(data);
+      }
     }
   }
 
@@ -238,6 +256,59 @@ class NotificationService {
     }
   }
 
+  /// Wake up app and handle call action (accept/reject) from notification
+  @pragma('vm:entry-point')
+  static Future<void> wakeUpAndHandleCallAction(Map<String, dynamic> data) async {
+    try {
+      debugPrint('🔥 Android: STARTING wake-up process for call action from notification');
+      debugPrint('🔥 Android: Action data: $data');
+      
+      final action = data['action'];
+      final callId = data['call_id'];
+      final callerName = data['caller_name'] ?? 'Unknown';
+      final callerNumber = data['caller_number'] ?? 'Unknown';
+      
+      debugPrint('🔥 Android: Action: $action, CallId: $callId');
+      
+      // Initialize core services required by SIP service
+      debugPrint('🔥 Android: Initializing services for call action...');
+      await StorageService.instance.initialize();
+      await NotificationService.instance.initialize();
+      
+      // Initialize SIP service
+      final sipService = SipService.instance;
+      try {
+        await sipService.initialize();
+        debugPrint('🔥 Android: SIP service initialized for call action');
+      } catch (e) {
+        debugPrint('🔥 Android: SIP service initialization failed: $e');
+      }
+      
+      // Handle the specific action
+      if (action == 'accept' && callId != null) {
+        debugPrint('🔥 Android: Handling ACCEPT action for call: $callId');
+        try {
+          await sipService.answerCall(callId);
+          debugPrint('🔥 Android: Call answered successfully from background notification');
+        } catch (e) {
+          debugPrint('🔥 Android: Error answering call from background: $e');
+        }
+      } else if (action == 'reject' && callId != null) {
+        debugPrint('🔥 Android: Handling REJECT action for call: $callId');
+        try {
+          await sipService.hangupCall(callId);
+          debugPrint('🔥 Android: Call rejected successfully from background notification');
+        } catch (e) {
+          debugPrint('🔥 Android: Error rejecting call from background: $e');
+        }
+      }
+      
+      debugPrint('🔥 Android: 🎯 Background call action handled');
+    } catch (e) {
+      debugPrint('Android: Error handling call action from background: $e');
+    }
+  }
+
   Future<void> _handleNotificationTap(RemoteMessage message) async {
     debugPrint('Android: Notification tapped: ${message.data}');
     
@@ -246,20 +317,98 @@ class NotificationService {
       final callId = data['call_id'];
       final callerName = data['caller_name'] ?? 'Unknown';
       final callerNumber = data['caller_number'] ?? 'Unknown';
+      final action = data['action']; // Check if user accepted/rejected from notification
+      
+      debugPrint('Android: Incoming call notification - CallId: $callId, Action: $action');
       
       if (callId != null) {
-        // Navigate to incoming call screen
-        NavigationService.goToIncomingCall(
-          callId: callId,
-          callerName: callerName,
-          callerNumber: callerNumber,
-        );
+        // Check if user accepted the call from the notification
+        if (action == 'accept') {
+          debugPrint('Android: User accepted call from notification, answering call directly');
+          await _handleNotificationAccept(callId, callerName, callerNumber);
+        } else if (action == 'reject') {
+          debugPrint('Android: User rejected call from notification, hanging up call');
+          await _handleNotificationReject(callId);
+        } else {
+          // User just tapped the notification without specific action
+          debugPrint('Android: User tapped notification, showing incoming call screen');
+          NavigationService.goToIncomingCall(
+            callId: callId,
+            callerName: callerName,
+            callerNumber: callerNumber,
+          );
+        }
       } else {
         // If no call ID, just open the app to the main screen
         NavigationService.goToKeypad();
       }
     } else if (data['type'] == 'voicemail') {
       NavigationService.goToVoicemail();
+    }
+  }
+
+  /// Handle accepting call directly from notification
+  Future<void> _handleNotificationAccept(String callId, String callerName, String callerNumber) async {
+    try {
+      debugPrint('🔥 Android: Handling notification accept for callId: $callId');
+      
+      // Check if SIP service is initialized and if call exists
+      if (!SipService.instance.isInitialized) {
+        debugPrint('🔥 Android: SIP service not initialized, initializing now...');
+        await SipService.instance.initialize();
+      }
+      
+      // Answer the call directly
+      await SipService.instance.answerCall(callId);
+      debugPrint('🔥 Android: Call answered successfully from notification');
+      
+      // Wait a moment for call state to update
+      await Future.delayed(const Duration(milliseconds: 1000));
+      
+      // Navigate directly to in-call screen
+      NavigationService.goToInCall(
+        callId,
+        phoneNumber: callerNumber,
+        contactName: callerName,
+      );
+      
+      debugPrint('🔥 Android: Navigated to in-call screen after notification accept');
+    } catch (e) {
+      debugPrint('🔥 Android: Error handling notification accept: $e');
+      // Fallback: show incoming call screen if call is still active
+      try {
+        final currentCall = SipService.instance.currentCall;
+        if (currentCall != null && currentCall.id == callId) {
+          NavigationService.goToIncomingCall(
+            callId: callId,
+            callerName: callerName,
+            callerNumber: callerNumber,
+          );
+        } else {
+          NavigationService.goToKeypad();
+        }
+      } catch (fallbackError) {
+        debugPrint('🔥 Android: Fallback navigation error: $fallbackError');
+        NavigationService.goToKeypad();
+      }
+    }
+  }
+
+  /// Handle rejecting call directly from notification  
+  Future<void> _handleNotificationReject(String callId) async {
+    try {
+      debugPrint('🔥 Android: Handling notification reject for callId: $callId');
+      
+      // Reject the call directly
+      await SipService.instance.hangupCall(callId);
+      debugPrint('🔥 Android: Call rejected successfully from notification');
+      
+      // Navigate to keypad screen
+      NavigationService.goToKeypad();
+    } catch (e) {
+      debugPrint('🔥 Android: Error handling notification reject: $e');
+      // Still navigate to keypad even if reject failed
+      NavigationService.goToKeypad();
     }
   }
 

@@ -42,11 +42,11 @@ Future<void> _initializeServices() async {
     // Initialize storage service first (required by other services)
     await StorageService.instance.initialize();
     
+    // Initialize API service before auth service (auth service needs API for extension details)
+    await ApiService.instance.initialize();
+    
     // Initialize authentication service
     await AuthService.instance.initialize();
-    
-    // Initialize API service
-    await ApiService.instance.initialize();
     
     // Initialize notification service
     await NotificationService.instance.initialize();

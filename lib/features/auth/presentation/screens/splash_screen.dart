@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/services/auth_service.dart';
-import '../../../../shared/services/storage_service.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -56,18 +55,21 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       // Add a minimum splash duration for better UX
       await Future.delayed(const Duration(seconds: 2));
 
-      // Check if user has valid authentication token
-      final hasValidToken = await StorageService.instance.hasValidToken();
-
+      debugPrint('Splash: Checking authentication state...');
+      
+      // Use AuthService to check if user is authenticated and get valid token
+      // This will trigger token refresh if needed
+      final validToken = await AuthService.instance.getValidAccessToken();
+      
       if (mounted) {
-        if (hasValidToken) {
-          // Initialize SIP service for authenticated user
-          await AuthService.instance.initializeSIPIfAuthenticated();
-          // Navigate to main app
+        if (validToken != null) {
+          debugPrint('Splash: User has valid token, navigating to keypad');
+          // User is authenticated, navigate to main app
           // ignore: use_build_context_synchronously
           context.go('/keypad');
         } else {
-          // Navigate to login screen
+          debugPrint('Splash: No valid token, navigating to login');
+          // User is not authenticated, navigate to login screen
           // ignore: use_build_context_synchronously
           context.go('/login');
         }
@@ -75,6 +77,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     } catch (e) {
       debugPrint('Error during app initialization: $e');
       if (mounted) {
+        debugPrint('Splash: Error occurred, navigating to login');
         context.go('/login');
       }
     }
@@ -222,15 +225,21 @@ class _GradientSplashScreenState extends ConsumerState<GradientSplashScreen>
   Future<void> _initializeApp() async {
     await Future.delayed(const Duration(seconds: 3));
 
-    final hasValidToken = await StorageService.instance.hasValidToken();
+    debugPrint('GradientSplash: Checking authentication state...');
+    
+    // Use AuthService to check if user is authenticated and get valid token
+    // This will trigger token refresh if needed
+    final validToken = await AuthService.instance.getValidAccessToken();
 
     if (mounted) {
-      if (hasValidToken) {
-        // Initialize SIP service for authenticated user
-        await AuthService.instance.initializeSIPIfAuthenticated();
+      if (validToken != null) {
+        debugPrint('GradientSplash: User has valid token, navigating to keypad');
+        // User is authenticated, navigate to main app
         // ignore: use_build_context_synchronously
         context.go('/keypad');
       } else {
+        debugPrint('GradientSplash: No valid token, navigating to login');
+        // User is not authenticated, navigate to login screen
         // ignore: use_build_context_synchronously
         context.go('/login');
       }

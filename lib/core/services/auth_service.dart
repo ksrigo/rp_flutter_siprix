@@ -5,8 +5,8 @@ import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 
 import '../../shared/services/storage_service.dart';
 import '../models/extension_details.dart';
-import 'api_service.dart';
 import 'sip_service.dart';
+import 'navigation_service.dart';
 
 class AuthService extends ChangeNotifier {
   static final AuthService _instance = AuthService._internal();
@@ -28,13 +28,28 @@ class AuthService extends ChangeNotifier {
 
   Future<void> initialize() async {
     try {
+      debugPrint('Auth: Initializing authentication service...');
       await _loadTokensFromStorage();
+      debugPrint('Auth: Tokens loaded from storage - accessToken: ${_accessToken != null ? 'present' : 'null'}, refreshToken: ${_refreshToken != null ? 'present' : 'null'}');
+      
       if (_isTokenValid()) {
         _isAuthenticated = true;
+        debugPrint('Auth: Token is valid, user authenticated');
         notifyListeners();
+        
+        // Fetch extension details if we don't have them
+        if (_extensionDetails == null) {
+          debugPrint('Auth: Valid token found but no extension details, fetching...');
+          await _fetchExtensionDetailsAndInitializeSIP();
+        }
+      } else {
+        _isAuthenticated = false;
+        debugPrint('Auth: Token is invalid or expired, user not authenticated');
       }
+      debugPrint('Auth: Authentication service initialization completed');
     } catch (e) {
-      debugPrint('Error initializing auth service: $e');
+      debugPrint('Auth: Error initializing auth service: $e');
+      _isAuthenticated = false;
     }
   }
 
@@ -46,8 +61,7 @@ class AuthService extends ChangeNotifier {
       });
 
       debugPrint('Auth: Sending signin request with FormData');
-      debugPrint(
-          'Auth: Content-Type will be: ${Headers.formUrlEncodedContentType}');
+      debugPrint('Auth: Content-Type will be: ${Headers.formUrlEncodedContentType}');
       debugPrint('Auth: Data: username=$email&password=***');
 
       final response = await _dio.post(
@@ -55,6 +69,10 @@ class AuthService extends ChangeNotifier {
         data: formData,
         options: Options(
           contentType: Headers.formUrlEncodedContentType,
+          headers: {
+            // Explicitly exclude Authorization header for signin
+            'Authorization': null,
+          },
         ),
       );
 
@@ -101,49 +119,153 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<String?> getValidAccessToken() async {
-    if (!_isTokenValid()) {
-      final refreshed = await _refreshAccessToken();
-      if (!refreshed) {
-        await signOut();
+    // If no access token, check if we have refresh token to attempt login recovery
+    if (_accessToken == null) {
+      debugPrint('Auth: No access token available');
+      
+      if (_refreshToken != null) {
+        debugPrint('Auth: No access token but refresh token exists, attempting token refresh');
+        final refreshed = await _refreshAccessToken();
+        if (refreshed) {
+          debugPrint('Auth: Successfully recovered access token using refresh token');
+          _isAuthenticated = true;
+          notifyListeners();
+          
+          // Fetch extension details if we don't have them
+          if (_extensionDetails == null) {
+            await _fetchExtensionDetailsAndInitializeSIP();
+          }
+          
+          return _accessToken;
+        } else {
+          debugPrint('Auth: Failed to recover access token, redirecting to login');
+          await handleAuthenticationFailure();
+          return null;
+        }
+      } else {
+        debugPrint('Auth: No tokens available, user needs to login');
         return null;
       }
     }
+
+    // Check if current access token is valid
+    if (!_isTokenValid()) {
+      debugPrint('Auth: Access token is expired or expiring soon, attempting refresh');
+      debugPrint('Auth: Current token expiry: $_tokenExpiresAt');
+      debugPrint('Auth: Current time: ${DateTime.now()}');
+      
+      if (_refreshToken != null) {
+        final refreshed = await _refreshAccessToken();
+        if (!refreshed) {
+          debugPrint('Auth: Token refresh failed (response code != 200), redirecting to login');
+          await handleAuthenticationFailure();
+          return null;
+        }
+        debugPrint('Auth: Token successfully refreshed');
+        _isAuthenticated = true;
+        notifyListeners();
+        
+        // Fetch extension details if we don't have them
+        if (_extensionDetails == null) {
+          await _fetchExtensionDetailsAndInitializeSIP();
+        }
+      } else {
+        debugPrint('Auth: No refresh token available, redirecting to login');
+        await handleAuthenticationFailure();
+        return null;
+      }
+    } else {
+      debugPrint('Auth: Access token is still valid');
+    }
+    
     return _accessToken;
+  }
+
+  /// Handle authentication failure by clearing tokens and redirecting to login
+  Future<void> handleAuthenticationFailure() async {
+    try {
+      debugPrint('Auth: Handling authentication failure - clearing tokens and redirecting to login');
+      
+      // Clear all authentication state
+      _accessToken = null;
+      _refreshToken = null;
+      _tokenExpiresAt = null;
+      _extensionDetails = null;
+      _isAuthenticated = false;
+      
+      // Clear stored tokens
+      await StorageService.instance.clearTokens();
+      await StorageService.instance.clearCredentials();
+      
+      // Notify listeners of state change
+      notifyListeners();
+      
+      // Redirect to login page
+      NavigationService.goToLogin();
+      
+      debugPrint('Auth: Successfully cleared authentication state and redirected to login');
+    } catch (e) {
+      debugPrint('Auth: Error handling authentication failure: $e');
+      // Even if there's an error, still try to redirect to login
+      try {
+        NavigationService.goToLogin();
+      } catch (navError) {
+        debugPrint('Auth: Error redirecting to login: $navError');
+      }
+    }
   }
 
   Future<bool> _refreshAccessToken() async {
     if (_refreshToken == null) return false;
 
     try {
-      final formData = FormData.fromMap({
+      // Use JSON body as specified, not FormData
+      final requestData = {
         'refresh_token': _refreshToken!,
-      });
+      };
+
+      debugPrint('Auth: Refreshing token with refresh_token: ${_refreshToken!.substring(0, 20)}...');
 
       final response = await _dio.put(
         '$_baseUrl/refresh',
-        data: formData,
+        data: requestData,
         options: Options(
-          contentType: Headers.formUrlEncodedContentType,
+          contentType: 'application/json',
+          headers: {
+            // Explicitly exclude Authorization header for refresh
+            'Authorization': null,
+          },
         ),
       );
 
       if (response.statusCode == 200) {
         final data = response.data;
+        debugPrint('Auth: Token refresh successful, response received');
+        
         _accessToken = data['access_token'];
+        debugPrint('Auth: New access token received: ${_accessToken!.substring(0, 20)}...');
 
         // Update refresh token if provided
         if (data['refresh_token'] != null) {
           _refreshToken = data['refresh_token'];
+          debugPrint('Auth: New refresh token received: ${_refreshToken!.substring(0, 20)}...');
         }
 
         _updateTokenExpiry(_accessToken!);
         await _saveTokensToStorage();
 
-        debugPrint('Access token refreshed successfully');
+        debugPrint('Auth: Token refresh completed successfully, new expiry: $_tokenExpiresAt');
         return true;
+      } else {
+        debugPrint('Auth: Token refresh failed with status code: ${response.statusCode}');
+        debugPrint('Auth: Response data: ${response.data}');
       }
     } catch (e) {
-      debugPrint('Token refresh error: $e');
+      debugPrint('Auth: Token refresh error: $e');
+      if (e is DioException) {
+        debugPrint('Auth: Token refresh - Status code: ${e.response?.statusCode}');
+        debugPrint('Auth: Token refresh - Response data: ${e.response?.data}');
+      }
     }
 
     return false;
@@ -156,9 +278,15 @@ class AuthService extends ChangeNotifier {
       final exp = jwt.payload['exp'];
       if (exp != null) {
         _tokenExpiresAt = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
+        debugPrint('Auth: JWT decoded successfully, expires at: $_tokenExpiresAt');
+        debugPrint('Auth: Token valid for: ${_tokenExpiresAt!.difference(DateTime.now())}');
+      } else {
+        debugPrint('Auth: No expiry found in JWT payload, using fallback');
+        _tokenExpiresAt = DateTime.now().add(const Duration(hours: 1));
       }
     } catch (e) {
-      debugPrint('Error decoding JWT: $e');
+      debugPrint('Auth: Error decoding JWT: $e');
+      debugPrint('Auth: Using fallback expiry time (1 hour from now)');
       // Fallback: assume token expires in 1 hour
       _tokenExpiresAt = DateTime.now().add(const Duration(hours: 1));
     }
@@ -167,21 +295,28 @@ class AuthService extends ChangeNotifier {
   bool _isTokenValid() {
     if (_accessToken == null || _tokenExpiresAt == null) return false;
 
-    // Check if token expires in less than 1 minute
+    // Check if now < token_expires_at - 60*1000 (1 min before expiry)
     final now = DateTime.now();
-    final oneMinuteBeforeExpiry =
-        _tokenExpiresAt!.subtract(const Duration(minutes: 1));
+    final tokenExpiresAtMillis = _tokenExpiresAt!.millisecondsSinceEpoch;
+    final nowMillis = now.millisecondsSinceEpoch;
+    const oneMinuteInMillis = 60 * 1000;
 
-    return now.isBefore(oneMinuteBeforeExpiry);
+    return nowMillis < (tokenExpiresAtMillis - oneMinuteInMillis);
   }
 
   Future<void> _loadTokensFromStorage() async {
+    debugPrint('Auth: Loading tokens from storage...');
     final storage = StorageService.instance;
     _accessToken = await storage.getAccessToken();
     _refreshToken = await storage.getRefreshToken();
 
+    debugPrint('Auth: Loaded from storage - accessToken: ${_accessToken?.substring(0, 20) ?? 'null'}..., refreshToken: ${_refreshToken?.substring(0, 20) ?? 'null'}...');
+
     if (_accessToken != null) {
       _updateTokenExpiry(_accessToken!);
+      debugPrint('Auth: Token expiry set to: $_tokenExpiresAt');
+    } else {
+      debugPrint('Auth: No access token found in storage');
     }
   }
 
@@ -201,7 +336,24 @@ class AuthService extends ChangeNotifier {
   Future<void> _fetchExtensionDetailsAndInitializeSIP() async {
     try {
       debugPrint('Auth: Fetching extension details...');
-      final response = await ApiService.instance.getExtensionDetails();
+      
+      // Make direct API call to avoid circular dependency with API service interceptor
+      final dio = Dio();
+      dio.options.baseUrl = 'https://api.ringplus.co.uk/v1';
+      dio.options.connectTimeout = const Duration(seconds: 30);
+      dio.options.receiveTimeout = const Duration(seconds: 30);
+      
+      final response = await dio.get(
+        '/extensions/mobile',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $_accessToken',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+
+      debugPrint('Auth: Extension details API response - Status: ${response.statusCode}');
 
       if (response.statusCode == 200 && response.data != null) {
         final List<dynamic> extensions = response.data;
@@ -212,10 +364,18 @@ class AuthService extends ChangeNotifier {
 
           // Initialize SIP with extension details
           await _initializeSIPWithExtension();
+        } else {
+          debugPrint('Auth: Extension details response is empty');
         }
+      } else {
+        debugPrint('Auth: Extension details API failed - Status: ${response.statusCode}, Data: ${response.data}');
       }
     } catch (e) {
       debugPrint('Auth: Error fetching extension details: $e');
+      if (e is DioException) {
+        debugPrint('Auth: Extension details - Status code: ${e.response?.statusCode}');
+        debugPrint('Auth: Extension details - Response data: ${e.response?.data}');
+      }
     }
   }
 

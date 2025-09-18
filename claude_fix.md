@@ -1711,3 +1711,118 @@ $var(pn_prid) = $(param(uri){param.value,pn-prid});
 The implementation is now ready for testing with your OpenSIPS 3.4 server configured for RFC 8599 push notifications!
 
 ---
+
+I need to implement Push notifications for Incoming calls: when the app is in background or not running at all.
+I'm using Opensips 3.4. Check these docs first:
+
+- https://opensips.org/docs/modules/3.4.x/mid_registrar.html
+- https://blog.opensips.org/2020/05/07/sip-push-notification-with-opensips-3-1-lts-rfc-8599-supportpart-i/
+- https://blog.opensips.org/2020/06/03/sip-push-notification-with-opensips-3-1-lts-rfc-8599-supportpart-ii/
+
+I have implemented on the app to register as follow:
+
+Contact: <sip:1002@88.174.209.3:39815;pn-param=c-65uNp0QKuiOjtVbD5WWD:APA91bEPBl6YFUuGFLROzWzKgm7gH9HHkmpOztRTvbtQCLTYxNMk3FNa4h-93lh43nHyLIwENSPQ0uwJ2LGwFarPaFx9IPrOpc3CvSlFK3PMfAJvVfZXPZk;pn-prid=com.ringplus.app;pn-provider=fcm;pn-silent=1;pn-timeout=0>;+sip.instance="<urn:uuid:ea28367d-5b61-4853-9364-bd8291b9fb94>";reg-id=1.
+
+Help me step by step to Prepare Opensips for enabling Push notifications on Incoming calls.
+
+---
+
+I can see the in log Push Notifications coming:
+D/FLTFireMsgReceiver(23823): broadcast received for message
+I/flutter (23823): Android: Received background push notification: {caller_name: Test In, callee_uri: sip:1002@example.com, caller_uri: sip:1001@example.com, type: INCOMING_CALL, timestamp: 1758196009, call_id: abc123}
+
+It doest start SIP Registration.
+
+---
+
+On Incoming call, incoming call screen shows up. But any actions on the button accept or deny have no effect. In logs:
+
+I/MIUIInput(28242): [MotionEvent] ViewRootImpl windowName 'com.ringplus.app/com.ringplus.app.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=33844174, downTime=33844174, phoneEventTime=14:20:48.715 } moveCount:0
+I/MIUIInput(28242): [MotionEvent] ViewRootImpl windowName 'com.ringplus.app/com.ringplus.app.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=33844286, downTime=33844174, phoneEventTime=14:20:48.826 } moveCount:0
+I/MIUIInput(28242): [MotionEvent] ViewRootImpl windowName 'com.ringplus.app/com.ringplus.app.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=33844757, downTime=33844757, phoneEventTime=14:20:49.298 } moveCount:0
+I/MIUIInput(28242): [MotionEvent] ViewRootImpl windowName 'com.ringplus.app/com.ringplus.app.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=33844853, downTime=33844757, phoneEventTime=14:20:49.393 } moveCount:0
+I/MIUIInput(28242): [MotionEvent] ViewRootImpl windowName 'com.ringplus.app/com.ringplus.app.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=33844947, downTime=33844947, phoneEventTime=14:20:49.488 } moveCount:0
+I/MIUIInput(28242): [MotionEvent] ViewRootImpl windowName 'com.ringplus.app/com.ringplus.app.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=33845043, downTime=33844947, phoneEventTime=14:20:49.583 } moveCount:0
+I/MIUIInput(28242): [MotionEvent] ViewRootImpl windowName 'com.ringplus.app/com.ringplus.app.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=33845137, downTime=33845137, phoneEventTime=14:20:49.677 } moveCount:0
+I/MIUIInput(28242): [MotionEvent] ViewRootImpl windowName 'com.ringplus.app/com.ringplus.app.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=33845242, downTime=33845137, phoneEventTime=14:20:49.782 } moveCount:0
+I/MIUIInput(28242): [MotionEvent] ViewRootImpl windowName 'com.ringplus.app/com.ringplus.app.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=33845331, downTime=33845331, phoneEventTime=14:20:49.871 } moveCount:0
+
+---
+
+I believe there is an issue with login and token refresh flow. You should implement this logic:
+
+1.  Once you login with username/password, you will get:
+    {
+    "access_token": "string",
+    "refresh_token": "string",
+    "token_type": "string"
+    }
+2.  Parse the response, to:
+    - Save `access_token`, `refresh_token` in local storage (e.g. `shared_preferences`).
+3.  Decode using JWT `access_token`, get from payload `exp` and save it in local storage as `token_expires_at`.
+4.  Before every API calls, you have to make sure access_token is valid (Add this logic in API function called by every endpoint):
+    - Check if `now < token_expires_at - 60*1000` (1 min before expiry). If true → use the existing `access_token`.
+    - Else you need to call update access_token using refresh_token
+5.  Token refresh:
+    - Call without Authorization header: PUT https://api.ringplus.co.uk/v1/refresh
+    - Body:
+      {
+      "refresh_token": <refresh_token from local storage>
+      }
+    - Reponse: {
+      "access_token": "string",
+      "refresh_token": "string",
+      "token_type": "string"
+      }
+    - You need to repeat step 2, 3.
+6.  If access_token is expired but you have still have a refresh_token in localstorage, try to refresh token as described at step 5. If Reponse code != 200 then redirect to login page.
+7.  Except Post /signin and PUT /refresh, every endpoints need to add:
+    Authorization: "Bearer <access_token>"
+
+---
+
+I/flutter (22594): Auth: Loaded from storage - accessToken: eyJhbGciOiJIUzI1NiIs..., refreshToken: nfIRS-NJsR7wEqzgCQL4...
+I/flutter (22594): Auth: JWT decoded successfully, expires at: 2025-09-18 15:14:36.000
+I/flutter (22594): Auth: Token valid for: -0:16:12.026375
+I/flutter (22594): Auth: Token expiry set to: 2025-09-18 15:14:36.000
+I/flutter (22594): Auth: Tokens loaded from storage - accessToken: present, refreshToken: present
+I/flutter (22594): Auth: Token is invalid or expired, user not authenticated
+I/flutter (22594): Auth: Authentication service initialization completed
+I/flutter (22594): Android: User granted permission for notifications
+I/flutter (22594): Android: FCM Token: c-65uNp0QKuiOjtVbD5WWD:APA91bEPBl6YFUuGFLROzWzKgm7gH9HHkmpOztRTvbtQCLTYxNMk3FNa4h-93lh43nHyLIwENSPQ0uwJ2LGwFarPaFx9IPrOpc3CvSlFK3PMfAJvVfZXPZk
+I/flutter (22594): Android: Firebase messaging configured successfully
+I/flutter (22594): Firebase messaging initialized for Android
+I/flutter (22594): Notification service initialized successfully
+I/Choreographer(22594): Skipped 68 frames! The application may be doing too much work on its main thread.
+D/UserSceneDetector(22594): invoke error.
+E/FileUtils(22594): err write to mi_exception_log
+D/VRI[MainActivity](22594): vri.reportNextDraw android.view.ViewRootImpl.performTraversals:4972 android.view.ViewRootImpl.doTraversal:3560 android.view.ViewRootImpl$TraversalRunnable.run:11601 android.view.Choreographer$CallbackRecord.run:1747 android.view.Choreographer$CallbackRecord.run:1756
+E/LB (22594): fail to open node: No such file or directory
+W/1.raster(22594): type=1400 audit(0.0:22985): avc: denied { getattr } for path="/sys/module/metis/parameters/minor_window_app" dev="sysfs" ino=61709 scontext=u:r:untrusted_app:s0:c161,c257,c512,c768 tcontext=u:object_r:sysfs_migt:s0 tclass=file permissive=0 app=com.ringplus.app
+D/VRI[MainActivity](22594): vri.Setup new sync=wmsSync-VRI[MainActivity]#1
+D/UserSceneDetector(22594): invoke error.
+D/om.ringplus.app(22594): MiuiProcessManagerServiceStub setSchedFifo
+I/MiuiProcessManagerImpl(22594): setSchedFifo pid:22594, mode:3
+D/VRI[MainActivity](22594): vri.reportDrawFinished
+I/NativeTurboSchedManager(22594): Load libmiui_runtime
+I/HandWritingStubImpl(22594): refreshLastKeyboardType: 1
+I/HandWritingStubImpl(22594): getCurrentKeyboardType: 1
+I/HandWritingStubImpl(22594): getCurrentKeyboardType: 1
+D/ProfileInstaller(22594): Installing profile for com.ringplus.app
+I/flutter (22594): Splash: Checking authentication state...
+I/flutter (22594): Auth: Access token is expired or expiring soon, attempting refresh
+I/flutter (22594): Auth: Current token expiry: 2025-09-18 15:14:36.000
+I/flutter (22594): Auth: Current time: 2025-09-18 15:30:50.899430
+I/flutter (22594): Auth: Refreshing token with refresh_token: nfIRS-NJsR7wEqzgCQL4...
+I/flutter (22594): Auth: Token refresh successful, response received
+I/flutter (22594): Auth: New access token received: eyJhbGciOiJIUzI1NiIs...
+I/flutter (22594): Auth: New refresh token received: h6IDFlNNiimabyBj0fqN...
+I/flutter (22594): Auth: JWT decoded successfully, expires at: 2025-09-18 15:32:51.000
+I/flutter (22594): Auth: Token valid for: 0:01:59.485390
+I/flutter (22594): Auth: Token refresh completed successfully, new expiry: 2025-09-18 15:32:51.000
+I/flutter (22594): Auth: Token successfully refreshed
+I/flutter (22594): Splash: User has valid token, navigating to keypad
+
+Seems like Auth service works properly. If you see any issue fix it. But there is another issue: /extensions/mobile is never called therefore app cant get extension details and get registrered
+
+---

@@ -21,11 +21,28 @@ class ApiService {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          // Get valid access token from AuthService
-          final token = await AuthService.instance.getValidAccessToken();
+          final path = options.path;
           
-          if (token != null) {
-            options.headers['Authorization'] = 'Bearer $token';
+          // Exclude Authorization header for signin and refresh endpoints
+          final isSigninEndpoint = path.contains('/signin');
+          final isRefreshEndpoint = path.contains('/refresh');
+          
+          debugPrint('API: Request to $path, isSignin: $isSigninEndpoint, isRefresh: $isRefreshEndpoint');
+          
+          if (!isSigninEndpoint && !isRefreshEndpoint) {
+            // Get valid access token from AuthService for all other endpoints
+            final token = await AuthService.instance.getValidAccessToken();
+            
+            if (token != null) {
+              options.headers['Authorization'] = 'Bearer $token';
+              debugPrint('API: Added Authorization header for $path');
+            } else {
+              debugPrint('API: No valid token available for $path');
+            }
+          } else {
+            debugPrint('API: Skipping Authorization header for $path');
+            // Ensure Authorization header is not set for these endpoints
+            options.headers.remove('Authorization');
           }
           
           // Set default content type to JSON if not already set
@@ -38,9 +55,21 @@ class ApiService {
         onError: (error, handler) async {
           // Handle 401 unauthorized responses
           if (error.response?.statusCode == 401) {
-            debugPrint('API: Received 401, user needs to re-authenticate');
-            // Sign out the user as their session is invalid
-            await AuthService.instance.signOut();
+            debugPrint('API: Received 401 Unauthorized - authentication failed');
+            debugPrint('API: Request path: ${error.requestOptions.path}');
+            
+            // Don't handle 401s for signin and refresh endpoints - let them through
+            final path = error.requestOptions.path;
+            final isSigninEndpoint = path.contains('/signin');
+            final isRefreshEndpoint = path.contains('/refresh');
+            
+            if (!isSigninEndpoint && !isRefreshEndpoint) {
+              debugPrint('API: 401 on protected endpoint, triggering authentication failure flow');
+              // Trigger authentication failure which will clear tokens and redirect to login
+              await AuthService.instance.handleAuthenticationFailure();
+            } else {
+              debugPrint('API: 401 on auth endpoint ($path), passing through for normal handling');
+            }
           }
           handler.next(error);
         },
