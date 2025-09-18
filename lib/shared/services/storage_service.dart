@@ -308,4 +308,13 @@ class StorageService {
   Future<void> clearCallHistory() async {
     await _prefs.remove('call_history');
   }
+
+  // Siprix CdrsModel call history storage (JSON string format)
+  Future<void> saveCdrCallHistory(String jsonData) async {
+    await _prefs.setString(AppConstants.keyCdrCallHistory, jsonData);
+  }
+
+  Future<String?> getCdrCallHistory() async {
+    return _prefs.getString(AppConstants.keyCdrCallHistory);
+  }
 }

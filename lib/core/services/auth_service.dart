@@ -219,15 +219,23 @@ class AuthService extends ChangeNotifier {
     if (_refreshToken == null) return false;
 
     try {
+      // Create a dedicated Dio instance for token refresh to avoid circular dependency
+      final refreshDio = Dio();
+      refreshDio.options.baseUrl = _baseUrl;
+      refreshDio.options.connectTimeout = const Duration(seconds: 30);
+      refreshDio.options.receiveTimeout = const Duration(seconds: 30);
+      refreshDio.options.sendTimeout = const Duration(seconds: 30);
+
       // Use JSON body as specified, not FormData
       final requestData = {
         'refresh_token': _refreshToken!,
       };
 
       debugPrint('Auth: Refreshing token with refresh_token: ${_refreshToken!.substring(0, 20)}...');
+      debugPrint('Auth: Making PUT request to: $_baseUrl/refresh');
 
-      final response = await _dio.put(
-        '$_baseUrl/refresh',
+      final response = await refreshDio.put(
+        '/refresh',
         data: requestData,
         options: Options(
           contentType: 'application/json',
@@ -265,6 +273,8 @@ class AuthService extends ChangeNotifier {
       if (e is DioException) {
         debugPrint('Auth: Token refresh - Status code: ${e.response?.statusCode}');
         debugPrint('Auth: Token refresh - Response data: ${e.response?.data}');
+        debugPrint('Auth: Token refresh - Error type: ${e.type}');
+        debugPrint('Auth: Token refresh - Error message: ${e.message}');
       }
     }
 

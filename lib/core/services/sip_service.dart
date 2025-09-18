@@ -12,6 +12,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import '../constants/app_constants.dart';
 import '../../shared/services/storage_service.dart';
 import 'navigation_service.dart';
+import 'call_history_service.dart';
 import 'contact_service.dart';
 import 'notification_service.dart';
 
@@ -133,6 +134,9 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
   SipRegistrationState _registrationState = SipRegistrationState.unregistered;
   CallInfo? _currentCall;
   int? _currentSiprixCallId; // Store the actual Siprix call ID for operations
+  
+  // Store CallModel for connected calls
+  CallModel? _connectedCallModel;
   Timer? _connectionCheckTimer;
 
   // Flag to prevent actions during hangup process
@@ -212,6 +216,8 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       // Create models for account and call management
       _accountsModel = AccountsModel();
       _callsModel = CallsModel(_accountsModel!);
+      
+      
       _networkModel = NetworkModel();
       _devicesModel = DevicesModel();
 
@@ -236,6 +242,9 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
 
       // Set up a periodic check for background call acceptance
       _setupBackgroundAcceptanceMonitor();
+
+      // Initialize call history service
+      await _initializeCallHistoryService();
 
       debugPrint('SIP Service: Call and push listeners configured');
 
@@ -316,6 +325,166 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
 
   void _setupBackgroundAcceptanceMonitor() {
     debugPrint('SIP Service: Background acceptance monitor configured');
+  }
+
+  Future<void> _initializeCallHistoryService() async {
+    try {
+      await CallHistoryService.instance.initialize();
+      debugPrint('SIP Service: Call history service initialized');
+    } catch (e) {
+      debugPrint('SIP Service: Error initializing call history service: $e');
+    }
+  }
+
+
+
+  void _addCallToHistoryOnTermination(int callId, int statusCode) {
+    try {
+      if (_currentCall == null) {
+        debugPrint('SIP Service: Cannot add call to history - no current call data');
+        return;
+      }
+
+      debugPrint('SIP Service: Adding call to history on termination - callId: $callId, statusCode: $statusCode');
+
+      // Check if this call is already in CDR history to prevent duplicates
+      final existingCall = CallHistoryService.instance.getCallById(callId);
+      if (existingCall != null) {
+        debugPrint('SIP Service: Call $callId already exists in CDR history, skipping duplicate');
+        return;
+      }
+
+      // First try to find if there's a connected call in CallsModel
+      if (_callsModel != null) {
+        for (int i = 0; i < _callsModel!.length; i++) {
+          final call = _callsModel![i];
+          if (call.myCallId == callId) {
+            debugPrint('SIP Service: Found matching connected call in CallsModel - using it');
+            CallHistoryService.instance.addCallRecord(call);
+            return;
+          }
+        }
+      }
+      
+      // No CallModel found - determine if this was answered or missed
+      final wasAnswered = _currentCall!.state == AppCallState.answered;
+      debugPrint('SIP Service: No CallModel in CallsModel - Call was ${wasAnswered ? "ANSWERED" : "MISSED/REJECTED"}');
+      
+      if (wasAnswered) {
+        debugPrint('SIP Service: Answered call should have been added when connected - skipping termination tracking');
+        return; // Answered calls are handled in connected event
+      }
+      
+      debugPrint('SIP Service: Creating CallModel for missed/rejected call');
+      
+      if (_accountsModel != null) {
+        try {
+          // Get account URI for the call
+          String accUri = '';
+          if (_accountsModel!.length > 0) {
+            accUri = _accountsModel![0].uri; // Use first account's URI
+          }
+          
+          // Create a new CallModel with our call data
+          final callModel = CallModel(
+            callId,                           // myCallId
+            accUri,                          // accUri
+            _currentCall!.remoteNumber,      // remoteExt
+            _currentCall!.isIncoming,        // isIncoming
+            false,                           // hasSecureMedia
+            false,                           // hasVideo
+          );
+          
+          // Set display name if available
+          if (_currentCall!.remoteName.isNotEmpty && _currentCall!.remoteName != _currentCall!.remoteNumber) {
+            callModel.displName = _currentCall!.remoteName;
+          }
+          
+          // Check if this was an answered call
+          final wasConnected = _currentCall!.state == AppCallState.answered;
+          debugPrint('SIP Service: Created CallModel - callId: $callId, remote: ${_currentCall!.remoteNumber}, incoming: ${_currentCall!.isIncoming}, wasConnected: $wasConnected');
+          
+          // Add to CDR using our created CallModel
+          CallHistoryService.instance.addCallRecord(callModel);
+          debugPrint('SIP Service: Successfully added created CallModel to CDR history');
+          
+        } catch (e) {
+          debugPrint('SIP Service: Error creating CallModel: $e');
+          debugPrint('SIP Service: Cannot track this call in history without proper CallModel creation');
+        }
+      } else {
+        debugPrint('SIP Service: AccountsModel is null - cannot create CallModel');
+      }
+    } catch (e) {
+      debugPrint('SIP Service: Error adding call to history on termination: $e');
+    }
+  }
+
+  void _addConnectedCallToHistory(int callId) {
+    try {
+      debugPrint('SIP Service: Adding connected call to history - callId: $callId');
+      
+      // Check if already exists to prevent duplicates
+      final existingCall = CallHistoryService.instance.getCallById(callId);
+      if (existingCall != null) {
+        debugPrint('SIP Service: Connected call $callId already exists in CDR history, skipping');
+        return;
+      }
+      
+      // Find the connected call in CallsModel (should be there now)
+      if (_callsModel != null) {
+        debugPrint('SIP Service: CallsModel has ${_callsModel!.length} calls during connected event');
+        for (int i = 0; i < _callsModel!.length; i++) {
+          final call = _callsModel![i];
+          debugPrint('SIP Service: CallsModel[$i] - ID: ${call.myCallId}, Remote: ${call.remoteExt}');
+          if (call.myCallId == callId) {
+            debugPrint('SIP Service: Found connected call in CallsModel - adding to CDR');
+            CallHistoryService.instance.addCallRecord(call);
+            debugPrint('SIP Service: Successfully added connected call $callId to CDR history');
+            return;
+          }
+        }
+      }
+      
+      debugPrint('SIP Service: Connected call $callId not found in CallsModel - creating connected CallModel');
+      
+      // Create CallModel for connected call and store it
+      if (_accountsModel != null && _currentCall != null) {
+        try {
+          // Get account URI for the call
+          String accUri = '';
+          if (_accountsModel!.length > 0) {
+            accUri = _accountsModel![0].uri;
+          }
+          
+          // Create CallModel for connected call
+          _connectedCallModel = CallModel(
+            callId,                           // myCallId
+            accUri,                          // accUri
+            _currentCall!.remoteNumber,      // remoteExt
+            _currentCall!.isIncoming,        // isIncoming
+            false,                           // hasSecureMedia
+            false,                           // hasVideo
+          );
+          
+          // Set display name if available
+          if (_currentCall!.remoteName.isNotEmpty && _currentCall!.remoteName != _currentCall!.remoteNumber) {
+            _connectedCallModel!.displName = _currentCall!.remoteName;
+          }
+          
+          debugPrint('SIP Service: Created and stored connected CallModel for callId: $callId');
+          
+          // Add to CDR immediately
+          CallHistoryService.instance.addCallRecord(_connectedCallModel!);
+          debugPrint('SIP Service: Successfully added connected CallModel to CDR history');
+          
+        } catch (e) {
+          debugPrint('SIP Service: Error creating connected CallModel: $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('SIP Service: Error adding connected call to history: $e');
+    }
   }
 
   void _startBackgroundAcceptanceTimer() {
@@ -549,8 +718,12 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
     debugPrint(
         'SIP Service: Direct call terminated - callId: $callId, statusCode: $statusCode');
 
-    // Clear the stored Siprix call ID
+    // Add call to history when terminated - try to find CallModel or use current call info
+    _addCallToHistoryOnTermination(callId, statusCode);
+
+    // Clear the stored Siprix call ID and connected CallModel
     _currentSiprixCallId = null;
+    _connectedCallModel = null;
 
     // Siprix built-in CallKit will handle call termination automatically
 
@@ -604,6 +777,7 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       debugPrint('SIP Service: Ignoring proceeding event - hangup in progress');
       return;
     }
+
 
     if (_currentCall != null) {
       // Handle different SIP response codes to show appropriate states
@@ -664,6 +838,11 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
 
     // Stop background acceptance timer since we got the connected event
     _stopBackgroundAcceptanceTimer();
+
+    // Add connected calls to history with a small delay to allow CallsModel to populate
+    Future.delayed(const Duration(milliseconds: 500)).then((_) {
+      _addConnectedCallToHistory(callId);
+    });
     debugPrint('🔥 SIP Service: Stopped background acceptance timer - call connected');
 
     // Call is connected - start timer immediately
@@ -788,6 +967,16 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
     );
 
     _updateCurrentCall(callInfo);
+    
+    // Debug: Check if incoming call gets added to CallsModel
+    debugPrint('SIP Service: After incoming call setup - CallsModel has ${_callsModel?.length ?? 0} calls');
+    if (_callsModel != null) {
+      for (int i = 0; i < _callsModel!.length; i++) {
+        final call = _callsModel![i];
+        debugPrint('SIP Service: CallsModel[$i] - ID: ${call.myCallId}, Remote: ${call.remoteExt}');
+      }
+    }
+
 
     // Check if this call should be auto-answered (notification acceptance)
     if (_autoAnswerCallId == callId.toString()) {

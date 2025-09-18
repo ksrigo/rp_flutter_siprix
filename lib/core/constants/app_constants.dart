@@ -21,6 +21,7 @@ class AppConstants {
   static const String keyUserCredentials = 'user_credentials';
   static const String keyAppSettings = 'app_settings';
   static const String keyCallHistory = 'call_history';
+  static const String keyCdrCallHistory = 'cdr_call_history'; // Siprix CDR format
   static const String keyContacts = 'contacts';
   static const String keyVoicemails = 'voicemails';
   static const String keyThemeMode = 'theme_mode';
