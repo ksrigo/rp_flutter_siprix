@@ -3,24 +3,24 @@ import 'package:flutter/services.dart';
 
 class AppTheme {
   // Purple-centered color palette
-  static const Color primaryPurple = Color(0xFF6B46C1);
+  static const Color primaryPurple = Color(0xFF6200EA);
   static const Color primaryPurpleLight = Color(0xFF8B5CF6);
   static const Color primaryPurpleDark = Color(0xFF553C9A);
-  
+
   static const Color secondaryPurple = Color(0xFF9333EA);
   static const Color accentPurple = Color(0xFFDDD6FE);
-  
+
   static const Color backgroundLight = Color(0xFFFAFAFA);
   static const Color backgroundDark = Color(0xFF121212);
-  
+
   static const Color surfaceLight = Color(0xFFFFFFFF);
   static const Color surfaceDark = Color(0xFF1E1E1E);
-  
+
   static const Color errorColor = Color(0xFFDC2626);
   static const Color successColor = Color(0xFF059669);
   static const Color warningColor = Color(0xFFD97706);
   static const Color infoColor = Color(0xFF2563EB);
-  
+
   // Text colors
   static const Color textPrimaryLight = Color(0xFF1F2937);
   static const Color textSecondaryLight = Color(0xFF6B7280);
@@ -49,7 +49,7 @@ class AppTheme {
       useMaterial3: true,
       colorScheme: colorScheme,
       // fontFamily: 'Roboto', // Use system font
-      
+
       // App Bar Theme
       appBarTheme: const AppBarTheme(
         backgroundColor: surfaceLight,
@@ -64,7 +64,7 @@ class AppTheme {
           // fontFamily: 'Roboto', // Use system font
         ),
       ),
-      
+
       // Bottom Navigation Bar Theme
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: surfaceLight,
@@ -72,18 +72,21 @@ class AppTheme {
         unselectedItemColor: textSecondaryLight,
         type: BottomNavigationBarType.fixed,
         elevation: 8,
-        selectedLabelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-        unselectedLabelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+        selectedLabelStyle:
+            TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+        unselectedLabelStyle:
+            TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
       ),
-      
+
       // Card Theme
       cardTheme: const CardThemeData(
         color: surfaceLight,
         elevation: 2,
         shadowColor: Color.fromRGBO(0, 0, 0, 0.1),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12))),
       ),
-      
+
       // Elevated Button Theme
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -99,7 +102,7 @@ class AppTheme {
           ),
         ),
       ),
-      
+
       // Text Button Theme
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
@@ -108,7 +111,7 @@ class AppTheme {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         ),
       ),
-      
+
       // Outlined Button Theme
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
@@ -118,7 +121,7 @@ class AppTheme {
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         ),
       ),
-      
+
       // Input Decoration Theme
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -139,9 +142,10 @@ class AppTheme {
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: errorColor),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
-      
+
       // Floating Action Button Theme
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
         backgroundColor: primaryPurple,
@@ -149,7 +153,7 @@ class AppTheme {
         elevation: 4,
         shape: CircleBorder(),
       ),
-      
+
       // Switch Theme
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
@@ -165,13 +169,13 @@ class AppTheme {
           return const Color(0xFFE5E7EB);
         }),
       ),
-      
+
       // List Tile Theme
       listTileTheme: const ListTileThemeData(
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         minLeadingWidth: 40,
       ),
-      
+
       // Divider Theme
       dividerTheme: const DividerThemeData(
         color: Color(0xFFE5E7EB),
@@ -203,7 +207,7 @@ class AppTheme {
       useMaterial3: true,
       colorScheme: colorScheme,
       // fontFamily: 'Roboto', // Use system font
-      
+
       // App Bar Theme
       appBarTheme: const AppBarTheme(
         backgroundColor: surfaceDark,
@@ -218,7 +222,7 @@ class AppTheme {
           // fontFamily: 'Roboto', // Use system font
         ),
       ),
-      
+
       // Bottom Navigation Bar Theme
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: surfaceDark,
@@ -226,18 +230,21 @@ class AppTheme {
         unselectedItemColor: textSecondaryDark,
         type: BottomNavigationBarType.fixed,
         elevation: 8,
-        selectedLabelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-        unselectedLabelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+        selectedLabelStyle:
+            TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+        unselectedLabelStyle:
+            TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
       ),
-      
+
       // Card Theme
       cardTheme: const CardThemeData(
         color: surfaceDark,
         elevation: 2,
         shadowColor: Color.fromRGBO(0, 0, 0, 0.3),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12))),
       ),
-      
+
       // Elevated Button Theme
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -253,7 +260,7 @@ class AppTheme {
           ),
         ),
       ),
-      
+
       // Text Button Theme
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
@@ -262,7 +269,7 @@ class AppTheme {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         ),
       ),
-      
+
       // Outlined Button Theme
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
@@ -272,7 +279,7 @@ class AppTheme {
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         ),
       ),
-      
+
       // Input Decoration Theme
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -293,9 +300,10 @@ class AppTheme {
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: errorColor),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
-      
+
       // Floating Action Button Theme
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
         backgroundColor: primaryPurpleLight,
@@ -303,7 +311,7 @@ class AppTheme {
         elevation: 4,
         shape: CircleBorder(),
       ),
-      
+
       // Switch Theme
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
@@ -319,13 +327,13 @@ class AppTheme {
           return const Color(0xFF374151);
         }),
       ),
-      
+
       // List Tile Theme
       listTileTheme: const ListTileThemeData(
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         minLeadingWidth: 40,
       ),
-      
+
       // Divider Theme
       dividerTheme: const DividerThemeData(
         color: Color(0xFF374151),
@@ -335,4 +343,3 @@ class AppTheme {
     );
   }
 }
-

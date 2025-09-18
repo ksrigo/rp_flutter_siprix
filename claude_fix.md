@@ -1589,3 +1589,125 @@ context.read<AppAccountsModel>().updateAccount(\_account);// or .addAccount(\_ac
 Check if we can only propose one codec + dtmf on 200OK (onCallAnswered event).
 
 ---
+
+I would like to show when we lost the network or on network change, show Reconnecting instead of timer.
+
+---
+
+https://icon.kitchen/i/H4sIAAAAAAAAAz2QwW7DIAyG38W75tBEaw%2B59rDrpPU2TZMBQ9AIjgjZNFV599pJWw5g%2F9iff7jCL6aFZuiv4LD8XAYaCXqPaaYGfLj8T5KCTXHCUqEBEz4G3LVYbCKRfDjfrwUykxzgyOOStD5aziIktpi%2Bp4EzwaqUOzgUdJHyTn57JMKxnLi0UvHSmda%2BGinYpE6lU3c4EIqEOYiF%2FnQUZlXr7undoAt01hbt8NvazL6jczEHHVJ5gr49NlBiGGSshoZr5XGPE%2FlNXQU%2FsluSftSnTHWFo9PX8Sz7Hxn4Wm%2Br2hwaSwEAAA%3D%3D
+
+---
+
+In the folder assets/incons/app, I have added all required icons for the app. Could you configure to use them for Ios and Android.
+
+---
+
+On the incoming call screen, Accept and Decline button are too close to each other. Add a gap, to place them on the left and right side.
+
+On the on call screen, implement Hold/Unhold button fuctions.
+
+---
+
+I need to implement Push notifications for Incoming calls: when the app is in background or not running at all.
+I'm using Opensips 3.4. Check these docs first:
+
+- https://opensips.org/docs/modules/3.4.x/mid_registrar.html
+- https://blog.opensips.org/2020/05/07/sip-push-notification-with-opensips-3-1-lts-rfc-8599-supportpart-i/
+- https://blog.opensips.org/2020/06/03/sip-push-notification-with-opensips-3-1-lts-rfc-8599-supportpart-ii/
+
+Code has to support IOS and Android but for now just implement it for Android. We will implement it for IOS later.
+
+Updated SIP Registration (lib/core/services/sip_service.dart:789-809):
+
+- Added RFC 8599 push notification parameters to Contact URI using xContactUriParams
+- Android Contact URI format: sip:extension@domain;pn-provider=fcm;pn-param={FCM_TOKEN};pn-prid=com.ringplus.app;pn-timeout=0;pn-silent=1
+- iOS Contact URI format: sip:extension@domain;pn-provider=apns;pn-param={PUSHKIT_TOKEN};pn-prid=com.ringplus.app;pn-timeout=0;pn-silent=1
+- Maintained backward compatibility with X-Token header
+
+✅ Enhanced Background/Terminated App Handling
+
+Firebase Background Message Handler (lib/main.dart:101-115):
+
+- Added top-level background message handler with @pragma('vm:entry-point')
+- Properly registered with FirebaseMessaging.onBackgroundMessage()
+- Handles wake-up when app is terminated or in background
+
+Improved Wake-up Flow (lib/core/services/notification_service.dart:169-214):
+
+- Enhanced wakeUpAndRegisterForIncomingCall() method
+- Added proper service initialization sequence
+- Implemented background re-registration with attemptBackgroundReregistration()
+
+New SIP Background Re-registration (lib/core/services/sip_service.dart:1083-1110):
+
+- Added attemptBackgroundReregistration() method
+- Re-registers existing accounts when app wakes up from push notification
+- Handles cases where app was terminated or backgrounded
+
+✅ Complete Push Notification Flow
+
+1. Registration Phase:
+
+- SIP client registers with OpenSIPS including RFC 8599 push notification parameters
+- OpenSIPS stores push notification coordinates (FCM token, provider, etc.)
+
+2. Incoming Call Phase:
+
+- OpenSIPS detects incoming call for registered extension
+- Triggers E_UL_CONTACT_REFRESH event with push notification coordinates
+- OpenSIPS script sends FCM push notification to Android device
+
+3. App Wake-up Phase:
+
+- FCM delivers push notification to device (even when app is terminated)
+- Background message handler wakes up the app
+- App re-initializes SIP service and re-registers
+- SIP client becomes ready to receive the actual incoming SIP INVITE
+
+4. Call Handling Phase:
+
+- OpenSIPS forwards the incoming INVITE to now-registered SIP client
+- App receives incoming call and displays incoming call screen
+- User can accept/decline the call normally
+
+✅ OpenSIPS 3.4 Compatibility
+
+The implementation follows OpenSIPS 3.4 mid_registrar documentation:
+
+- Uses RFC 8599 standard push notification parameters
+- Compatible with pn_enable parameter in mid_registrar
+- Supports OpenSIPS event system for push notification triggers
+- Works with the recommended Contact URI parameter format
+
+✅ Multi-Platform Ready
+
+- Android: Fully implemented with FCM (pn-provider=fcm)
+- iOS: Framework ready with PushKit (pn-provider=apns) - can be activated later
+- Platform-specific token handling and registration
+
+🔧 Required OpenSIPS Configuration
+
+For this to work, your OpenSIPS 3.4 server needs:
+
+# Enable push notifications in mid_registrar
+
+modparam("mid_registrar", "pn_enable", 1)
+modparam("mid_registrar", "pn_providers", "fcm,apns")
+
+# Event handling for push notifications
+
+event_route [E_UL_CONTACT_REFRESH] { # Extract push notification parameters from Contact URI
+$var(pn_provider) = $(param(uri){param.value,pn-provider});
+$var(pn_token) = $(param(uri){param.value,pn-param});
+$var(pn_prid) = $(param(uri){param.value,pn-prid});
+
+      # Send FCM push notification
+      if ($var(pn_provider) == "fcm") {
+          route(SEND_FCM_PUSH, $var(pn_token), $var(pn_prid));
+      }
+
+}
+
+The implementation is now ready for testing with your OpenSIPS 3.4 server configured for RFC 8599 push notifications!
+
+---

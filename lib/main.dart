@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'dart:io';
 
 import 'core/constants/app_constants.dart';
 import 'core/theme/app_theme.dart';
@@ -13,6 +15,11 @@ import 'shared/services/storage_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Register Firebase background message handler for Android push notifications
+  if (Platform.isAndroid) {
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  }
   
   // Initialize core services
   await _initializeServices();
@@ -88,6 +95,32 @@ class RingplusApp extends ConsumerWidget {
         );
       },
     );
+  }
+}
+
+/// Firebase background message handler for Android push notifications
+/// This function must be top-level (not inside a class) for Firebase to call it
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  try {
+    debugPrint('🚀 Android: =================================');
+    debugPrint('🚀 Android: BACKGROUND PUSH NOTIFICATION RECEIVED');
+    debugPrint('🚀 Android: Message ID: ${message.messageId}');
+    debugPrint('🚀 Android: From: ${message.from}');
+    debugPrint('🚀 Android: Data: ${message.data}');
+    debugPrint('🚀 Android: Type: ${message.data['type']}');
+    debugPrint('🚀 Android: =================================');
+    
+    if (message.data['type'] == 'INCOMING_CALL' || message.data['type'] == 'incoming_call') {
+      debugPrint('🚀 Android: ✅ Recognized as incoming call notification');
+      // Call the notification service handler
+      await NotificationService.wakeUpAndRegisterForIncomingCall(message.data);
+    } else {
+      debugPrint('🚀 Android: ❌ Ignoring push notification with type: ${message.data['type']}');
+    }
+  } catch (e) {
+    debugPrint('🚀 Android: ❌ ERROR in background message handler: $e');
+    debugPrint('🚀 Android: Stack trace: ${StackTrace.current}');
   }
 }
 

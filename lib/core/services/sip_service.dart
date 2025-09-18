@@ -111,8 +111,11 @@ class CallInfo {
   }
 }
 
+@pragma('vm:entry-point')
 class SipService extends ChangeNotifier with WidgetsBindingObserver {
+  @pragma('vm:entry-point')
   static final SipService _instance = SipService._internal();
+  @pragma('vm:entry-point')
   static SipService get instance => _instance;
   SipService._internal();
 
@@ -151,6 +154,7 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
   // Getters
   SipRegistrationState get registrationState => _registrationState;
   CallInfo? get currentCall => _currentCall;
+  @pragma('vm:entry-point')
   bool get isRegistered =>
       _registrationState == SipRegistrationState.registered;
   bool get hasActiveCall =>
@@ -161,6 +165,7 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       _registrationStateController.stream;
   Stream<CallInfo?> get currentCallStream => _currentCallController.stream;
 
+  @pragma('vm:entry-point')
   Future<void> initialize() async {
     try {
       debugPrint('SIP Service: Starting initialization...');
@@ -298,9 +303,24 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   void _onModelsChanged() {
-    // Simple model change listener - in a full implementation,
-    // you would check specific account registration states and call states
-    debugPrint('SIP Service: Models changed - checking status...');
+    debugPrint('🔥 SIP Service: Models changed - checking registration status...');
+    
+    try {
+      if (_accountsModel != null && _accountsModel!.length > 0) {
+        for (int i = 0; i < _accountsModel!.length; i++) {
+          final account = _accountsModel![i];
+          debugPrint('🔥 SIP Service: Account $i - Extension: ${account.sipExtension}, State: ${account.regState}, Text: ${account.regText}');
+        }
+        
+        // Check overall registration status
+        final registered = isRegistered;
+        debugPrint('🔥 SIP Service: Overall registration status: $registered');
+      } else {
+        debugPrint('🔥 SIP Service: No accounts available');
+      }
+    } catch (e) {
+      debugPrint('🔥 SIP Service: Error checking registration status: $e');
+    }
   }
 
   void _onCallSwitched(int callId) {
@@ -786,14 +806,25 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         account.xheaders = <String, String>{};
       }
 
-      // Add FCM token for Android push notifications
+      // Add RFC 8599 push notification parameters for Android
       if (Platform.isAndroid) {
         final fcmToken = NotificationService.instance.getCurrentFCMToken();
         if (fcmToken != null) {
+          // Add FCM token to X-headers for backward compatibility
           account.xheaders!['X-Token'] = fcmToken;
-          debugPrint('Register: Added FCM token to X-Token header');
+          
+          // Add RFC 8599 push notification parameters to Contact URI
+          account.xContactUriParams ??= <String, String>{};
+          account.xContactUriParams!['pn-provider'] = 'fcm';
+          account.xContactUriParams!['pn-param'] = fcmToken;
+          account.xContactUriParams!['pn-prid'] = 'com.ringplus.app'; // App bundle ID
+          account.xContactUriParams!['pn-timeout'] = '0';
+          account.xContactUriParams!['pn-silent'] = '1';
+          
+          debugPrint('Register: Added RFC 8599 push notification parameters to Contact URI');
+          debugPrint('Register: pn-provider=fcm, pn-param=$fcmToken, pn-prid=com.ringplus.app');
         } else {
-          debugPrint('Register: No FCM token available yet');
+          debugPrint('Register: No FCM token available yet - push notifications will not work');
         }
       }
       // Add any custom headers that might help with proxy authentication
@@ -821,11 +852,21 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
           debugPrint('SIP Service: PushKit token response: $pushToken');
 
           if (pushToken != null && pushToken.isNotEmpty) {
-            // Add push token to SIP headers for OpenSIPS integration
+            // Add push token to SIP headers for backward compatibility
             account.xheaders ??= <String, String>{};
             account.xheaders!['X-Push-Token'] = pushToken;
+            
+            // Add RFC 8599 push notification parameters to Contact URI for iOS
+            account.xContactUriParams ??= <String, String>{};
+            account.xContactUriParams!['pn-provider'] = 'apns';
+            account.xContactUriParams!['pn-param'] = pushToken;
+            account.xContactUriParams!['pn-prid'] = 'com.ringplus.app'; // App bundle ID
+            account.xContactUriParams!['pn-timeout'] = '0';
+            account.xContactUriParams!['pn-silent'] = '1';
+            
             debugPrint(
                 'SIP Service: ✅ Added PushKit token to account headers: $pushToken');
+            debugPrint('SIP Service: Added RFC 8599 push notification parameters for iOS');
           } else {
             debugPrint(
                 'SIP Service: ❌ No PushKit token available yet - Check iOS capabilities configuration');
@@ -987,7 +1028,8 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> answerCall(String callId) async {
     try {
-      debugPrint('Answer call: $callId');
+      debugPrint('🔥 SipService: ========== ANSWER CALL STARTED ==========');
+      debugPrint('🔥 SipService: Answer call: $callId');
 
       if (_callsModel == null || _siprixSdk == null) {
         debugPrint('Answer call failed: Models not initialized');
@@ -1059,9 +1101,69 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
+  /// Attempt to re-register with stored credentials for background/terminated app scenarios
+  @pragma('vm:entry-point')
+  Future<bool> attemptBackgroundReregistration() async {
+    try {
+      debugPrint('🔥 SIP Service: Attempting background re-registration');
+      
+      // First, ensure we're properly initialized
+      if (_siprixSdk == null || _accountsModel == null) {
+        debugPrint('🔥 SIP Service: SDK not initialized, attempting initialization...');
+        await initialize();
+      }
+      
+      if (_accountsModel != null && _accountsModel!.length > 0) {
+        // Try to re-register existing account
+        try {
+          debugPrint('🔥 SIP Service: Found ${_accountsModel!.length} accounts');
+          
+          // Check current account state
+          for (int i = 0; i < _accountsModel!.length; i++) {
+            final account = _accountsModel![i];
+            debugPrint('🔥 SIP Service: Account $i before re-registration - Extension: ${account.sipExtension}, State: ${account.regState}, Text: ${account.regText}');
+          }
+          
+          // First, force unregister to ensure we send a fresh REGISTER
+          debugPrint('🔥 SIP Service: Unregistering account first to force fresh registration...');
+          try {
+            await _accountsModel!.unregisterAccount(0);
+            debugPrint('🔥 SIP Service: Account unregistered');
+            // Wait briefly for unregistration
+            await Future.delayed(const Duration(milliseconds: 500));
+          } catch (e) {
+            debugPrint('🔥 SIP Service: Unregister failed (may be already unregistered): $e');
+          }
+          
+          // Now register to send fresh REGISTER message
+          debugPrint('🔥 SIP Service: Sending fresh REGISTER message...');
+          await _accountsModel!.registerAccount(0); // Register first account
+          debugPrint('🔥 SIP Service: Background re-registration attempted - REGISTER message sent');
+          
+          // Wait for registration to complete
+          await Future.delayed(const Duration(seconds: 3));
+          
+          final registered = isRegistered;
+          debugPrint('🔥 SIP Service: Registration result: $registered');
+          return registered;
+        } catch (e) {
+          debugPrint('🔥 SIP Service: Background re-registration failed: $e');
+          return false;
+        }
+      } else {
+        debugPrint('🔥 SIP Service: No existing accounts for background registration');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('🔥 SIP Service: Error in background re-registration: $e');
+      return false;
+    }
+  }
+
   Future<void> hangupCall(String callId) async {
     try {
-      debugPrint('Hangup call: $callId');
+      debugPrint('🔥 SipService: ========== HANGUP CALL STARTED ==========');
+      debugPrint('🔥 SipService: Hangup call: $callId');
 
       if (_callsModel == null || _siprixSdk == null) {
         debugPrint('Hangup failed: Models not initialized');
@@ -1204,26 +1306,90 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> holdCall(String callId) async {
     try {
       debugPrint('Hold call: $callId');
-      // TODO: Implement with correct Siprix API
-      _updateCurrentCall(_currentCall?.copyWith(
-        state: AppCallState.held,
-        isOnHold: true,
-      ));
+      
+      if (_siprixSdk == null || _callsModel == null) {
+        debugPrint('Hold call failed: SDK or calls model not initialized');
+        return;
+      }
+
+      final intCallId = int.tryParse(callId);
+      if (intCallId == null) {
+        debugPrint('Hold call failed: Invalid call ID format');
+        return;
+      }
+
+      // Use the stored Siprix call ID if available
+      final siprixCallId = _currentSiprixCallId ?? intCallId;
+      
+      debugPrint('Hold call: Using Siprix call ID: $siprixCallId');
+      
+      // Check current hold state first
+      final currentHoldStateInt = await _siprixSdk!.getHoldState(siprixCallId);
+      final currentHoldState = currentHoldStateInt != null ? HoldState.from(currentHoldStateInt) : HoldState.none;
+      debugPrint('Hold call: Current hold state: $currentHoldState');
+      
+      // Only call hold() if not already on hold (since it toggles)
+      if (currentHoldState == HoldState.none) {
+        await _siprixSdk!.hold(siprixCallId);
+        debugPrint('Hold call: Successfully put call on hold');
+        
+        // Update call state
+        _updateCurrentCall(_currentCall?.copyWith(
+          state: AppCallState.held,
+          isOnHold: true,
+        ));
+      } else {
+        debugPrint('Hold call: Call is already on hold');
+      }
+      
     } catch (e) {
       debugPrint('Hold call failed: $e');
+      throw e;
     }
   }
 
   Future<void> unholdCall(String callId) async {
     try {
       debugPrint('Unhold call: $callId');
-      // TODO: Implement with correct Siprix API
-      _updateCurrentCall(_currentCall?.copyWith(
-        state: AppCallState.answered,
-        isOnHold: false,
-      ));
+      
+      if (_siprixSdk == null || _callsModel == null) {
+        debugPrint('Unhold call failed: SDK or calls model not initialized');
+        return;
+      }
+
+      final intCallId = int.tryParse(callId);
+      if (intCallId == null) {
+        debugPrint('Unhold call failed: Invalid call ID format');
+        return;
+      }
+
+      // Use the stored Siprix call ID if available
+      final siprixCallId = _currentSiprixCallId ?? intCallId;
+      
+      debugPrint('Unhold call: Using Siprix call ID: $siprixCallId');
+      
+      // Check current hold state first
+      final currentHoldStateInt = await _siprixSdk!.getHoldState(siprixCallId);
+      final currentHoldState = currentHoldStateInt != null ? HoldState.from(currentHoldStateInt) : HoldState.none;
+      debugPrint('Unhold call: Current hold state: $currentHoldState');
+      
+      // Only call hold() if currently on hold (since it toggles)
+      if (currentHoldState != HoldState.none) {
+        await _siprixSdk!.hold(siprixCallId);
+        debugPrint('Unhold call: Successfully resumed call');
+        
+        // Update call state
+        _updateCurrentCall(_currentCall?.copyWith(
+          state: AppCallState.answered,
+          isOnHold: false,
+        ));
+      } else {
+        debugPrint('Unhold call: Call is not on hold');
+      }
+      
     } catch (e) {
       debugPrint('Unhold call failed: $e');
+      throw e;
     }
   }
 

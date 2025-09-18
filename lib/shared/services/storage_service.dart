@@ -3,14 +3,18 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_constants.dart';
 
+@pragma('vm:entry-point')
 class StorageService {
+  @pragma('vm:entry-point')
   static final StorageService _instance = StorageService._internal();
+  @pragma('vm:entry-point')
   static StorageService get instance => _instance;
   StorageService._internal();
 
   late SharedPreferences _prefs;
   late FlutterSecureStorage _secureStorage;
 
+  @pragma('vm:entry-point')
   Future<void> initialize() async {
     _prefs = await SharedPreferences.getInstance();
     _secureStorage = const FlutterSecureStorage(

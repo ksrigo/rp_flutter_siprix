@@ -8,9 +8,13 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'navigation_service.dart';
 import 'sip_service.dart';
+import '../../shared/services/storage_service.dart';
 
+@pragma('vm:entry-point')
 class NotificationService {
+  @pragma('vm:entry-point')
   static final NotificationService _instance = NotificationService._internal();
+  @pragma('vm:entry-point')
   static NotificationService get instance => _instance;
   NotificationService._internal();
 
@@ -36,6 +40,7 @@ class NotificationService {
   Stream<Map<String, dynamic>> get notificationStream => _notificationController.stream;
   Stream<String> get incomingCallStream => _incomingCallController.stream;
 
+  @pragma('vm:entry-point')
   Future<void> initialize() async {
     try {
       if (kIsWeb) {
@@ -147,7 +152,7 @@ class NotificationService {
     debugPrint('Android: Foreground FCM message received: ${message.data}');
     
     final data = message.data;
-    if (data['type'] == 'incoming_call') {
+    if (data['type'] == 'INCOMING_CALL' || data['type'] == 'incoming_call') {
       await _handleIncomingCallNotification(data);
     } else if (data['type'] == 'voicemail') {
       await _handleVoicemailNotification(data);
@@ -156,31 +161,78 @@ class NotificationService {
     _notificationController.add(data);
   }
 
+  @pragma('vm:entry-point')
   static Future<void> _handleBackgroundMessage(RemoteMessage message) async {
     debugPrint('Android: Background FCM message received: ${message.data}');
     
     final data = message.data;
-    if (data['type'] == 'incoming_call') {
+    if (data['type'] == 'INCOMING_CALL' || data['type'] == 'incoming_call') {
       // Wake up the app and trigger SIP registration to receive the call
-      await _wakeUpAndRegisterForIncomingCall(data);
+      await wakeUpAndRegisterForIncomingCall(data);
     }
   }
 
-  static Future<void> _wakeUpAndRegisterForIncomingCall(Map<String, dynamic> data) async {
+  @pragma('vm:entry-point')
+  static Future<void> wakeUpAndRegisterForIncomingCall(Map<String, dynamic> data) async {
     try {
-      debugPrint('Android: Waking up app for incoming call');
+      debugPrint('🔥 Android: STARTING wake-up process for incoming call push notification');
+      debugPrint('🔥 Android: Push data: $data');
+      debugPrint('🔥 Android: Caller: ${data['caller_name']} (${data['caller_uri']})');
+      debugPrint('🔥 Android: Callee: ${data['callee_uri']}');
+      
+      // Initialize core services required by SIP service
+      debugPrint('🔥 Android: Initializing storage service...');
+      await StorageService.instance.initialize();
+      debugPrint('🔥 Android: Storage service initialized');
+      
+      // Initialize notification service 
+      debugPrint('🔥 Android: Initializing notification service...');
+      await NotificationService.instance.initialize();
+      debugPrint('🔥 Android: Notification service initialized');
       
       // Initialize SIP service if not already done
+      debugPrint('🔥 Android: Initializing SIP service...');
       final sipService = SipService.instance;
-      await sipService.initialize();
       
-      // Re-register to receive the incoming call
-      if (!sipService.isRegistered) {
-        // The SIP service will handle re-registration automatically
-        debugPrint('Android: SIP not registered, service will auto-register');
+      try {
+        await sipService.initialize();
+        debugPrint('🔥 Android: SIP service initialized, isRegistered: ${sipService.isRegistered}');
+      } catch (e) {
+        debugPrint('🔥 Android: SIP service initialization failed: $e');
+        debugPrint('🔥 Android: Will try background re-registration anyway...');
       }
       
-      debugPrint('Android: App wake-up complete, ready for incoming call');
+      // ALWAYS force re-registration on push notification to ensure fresh REGISTER is sent
+      debugPrint('🔥 Android: 🎯 FORCING background re-registration on push notification (ignoring current status)');
+      
+      try {
+        debugPrint('🔥 Android: Attempting background re-registration...');
+        final success = await sipService.attemptBackgroundReregistration();
+        
+        if (success) {
+          debugPrint('🔥 Android: ✅ SIP registration successful from background wake-up');
+        } else {
+          debugPrint('🔥 Android: ❌ SIP registration failed from background wake-up');
+        }
+        
+        // Wait a bit for registration to complete
+        debugPrint('🔥 Android: Waiting 3 seconds for registration to complete...');
+        await Future.delayed(const Duration(seconds: 3));
+        
+        try {
+          if (sipService.isRegistered) {
+            debugPrint('🔥 Android: ✅ SIP successfully registered, ready for incoming call');
+          } else {
+            debugPrint('🔥 Android: ⚠️ Warning - SIP registration may still be in progress');
+          }
+        } catch (e) {
+          debugPrint('🔥 Android: Could not check final registration status: $e');
+        }
+      } catch (e) {
+        debugPrint('🔥 Android: ❌ Failed to register SIP from background: $e');
+      }
+      
+      debugPrint('🔥 Android: 🎯 App wake-up complete, waiting for incoming SIP call');
     } catch (e) {
       debugPrint('Android: Error waking up app for incoming call: $e');
     }
@@ -190,7 +242,7 @@ class NotificationService {
     debugPrint('Android: Notification tapped: ${message.data}');
     
     final data = message.data;
-    if (data['type'] == 'incoming_call') {
+    if (data['type'] == 'INCOMING_CALL' || data['type'] == 'incoming_call') {
       final callId = data['call_id'];
       final callerName = data['caller_name'] ?? 'Unknown';
       final callerNumber = data['caller_number'] ?? 'Unknown';

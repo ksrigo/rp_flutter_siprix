@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 import '../../../../core/services/sip_service.dart';
 import '../../../../core/services/navigation_service.dart';
@@ -29,16 +30,19 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
   Timer? _callTimer;
   int _callDuration = 0;
   StreamSubscription<CallInfo?>? _callStateSubscription;
+  StreamSubscription<ConnectivityResult>? _connectivitySubscription;
   AppCallState _currentCallState = AppCallState.connecting;
   bool _isCallAnswered = false;
   CallInfo? _currentCallInfo;
   bool _isNavigatingAway = false;
+  bool _isNetworkConnected = true;
   ContactInfo? _contactInfo;
 
   @override
   void initState() {
     super.initState();
     _listenToCallStateChanges();
+    _setupNetworkMonitoring();
     _loadContactInfo();
     _checkInitialCallState();
   }
@@ -47,6 +51,7 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
   void dispose() {
     _callTimer?.cancel();
     _callStateSubscription?.cancel();
+    _connectivitySubscription?.cancel();
     super.dispose();
   }
 
@@ -63,6 +68,41 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
     final minutes = (_callDuration / 60).floor().toString().padLeft(2, '0');
     final seconds = (_callDuration % 60).toString().padLeft(2, '0');
     return '$minutes:$seconds';
+  }
+
+  void _setupNetworkMonitoring() async {
+    try {
+      // Check initial connectivity
+      final initialResult = await Connectivity().checkConnectivity();
+      _isNetworkConnected = initialResult != ConnectivityResult.none;
+      
+      // Listen to connectivity changes
+      _connectivitySubscription = Connectivity().onConnectivityChanged.listen(
+        (ConnectivityResult result) {
+          final wasConnected = _isNetworkConnected;
+          _isNetworkConnected = result != ConnectivityResult.none;
+          
+          if (mounted) {
+            setState(() {
+              // Update call state based on network connectivity
+              if (!_isNetworkConnected && wasConnected) {
+                // Network lost
+                debugPrint('InCallScreen: Network lost during call');
+                _currentCallState = AppCallState.reconnecting;
+              } else if (_isNetworkConnected && !wasConnected) {
+                // Network restored
+                debugPrint('InCallScreen: Network restored during call');
+                if (_isCallAnswered) {
+                  _currentCallState = AppCallState.answered;
+                }
+              }
+            });
+          }
+        },
+      );
+    } catch (e) {
+      debugPrint('InCallScreen: Error setting up network monitoring: $e');
+    }
   }
 
   void _loadContactInfo() async {
@@ -101,6 +141,7 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
         _currentCallState = currentCall.state;
         _currentCallInfo = currentCall;
         _isMuted = currentCall.isMuted ?? false;
+        _isOnHold = currentCall.isOnHold ?? false;
       });
       
       // If the call is already answered, start the timer immediately
@@ -123,6 +164,8 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
           _currentCallInfo = callInfo;
           // Sync mute state from call info
           _isMuted = callInfo.isMuted ?? false;
+          // Sync hold state from call info
+          _isOnHold = callInfo.isOnHold ?? false;
         });
         
         // Start timer when call is answered
@@ -348,7 +391,8 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
           displayText = 'On Hold - ${_formatCallDuration()}';
           break;
         case AppCallState.reconnecting:
-          displayText = 'Reconnecting... ${_formatCallDuration()}';
+          // Show only "Reconnecting" without timer during network issues
+          displayText = _isNetworkConnected ? 'Reconnecting... ${_formatCallDuration()}' : 'Reconnecting...';
           textColor = Colors.orange[600]!;
           break;
         case AppCallState.failed:
@@ -640,14 +684,19 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
     }
   }
 
-  void _toggleHold() {
-    setState(() {
-      _isOnHold = !_isOnHold;
-    });
-    if (_isOnHold) {
-      SipService.instance.holdCall(widget.callId);
-    } else {
-      SipService.instance.unholdCall(widget.callId);
+  void _toggleHold() async {
+    try {
+      if (_isOnHold) {
+        debugPrint('InCallScreen: Resuming call');
+        await SipService.instance.unholdCall(widget.callId);
+      } else {
+        debugPrint('InCallScreen: Putting call on hold');
+        await SipService.instance.holdCall(widget.callId);
+      }
+    } catch (e) {
+      debugPrint('InCallScreen: Hold/Unhold failed: $e');
+      // The state will be synced from the SIP service via the stream
+      // so we don't need to manage UI state manually here
     }
   }
 

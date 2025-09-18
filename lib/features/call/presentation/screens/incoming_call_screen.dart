@@ -31,6 +31,8 @@ class _IncomingCallScreenState extends ConsumerState<IncomingCallScreen>
   @override
   void initState() {
     super.initState();
+    debugPrint('🔥 IncomingCallScreen: initState called for callId: ${widget.callId}');
+    debugPrint('🔥 IncomingCallScreen: callerName: ${widget.callerName}, callerNumber: ${widget.callerNumber}');
     _initializeAnimations();
     _setupCallStateListener();
   }
@@ -53,26 +55,38 @@ class _IncomingCallScreenState extends ConsumerState<IncomingCallScreen>
   }
 
   void _setupCallStateListener() {
-    debugPrint('IncomingCallScreen: Setting up call state listener for callId: ${widget.callId}');
+    debugPrint('🔥 IncomingCallScreen: Setting up call state listener for callId: ${widget.callId}');
+    debugPrint('🔥 IncomingCallScreen: Initial _isNavigatingAway state: $_isNavigatingAway');
     _callStateSubscription = SipService.instance.currentCallStream.listen((callInfo) {
-      debugPrint('IncomingCallScreen: Received call state update - callId: ${callInfo?.id}, state: ${callInfo?.state}, widgetCallId: ${widget.callId}');
+      debugPrint('🔥 IncomingCallScreen: ========== CALL STATE UPDATE ==========');
+      debugPrint('🔥 IncomingCallScreen: Received call state update - callId: ${callInfo?.id}, state: ${callInfo?.state}, widgetCallId: ${widget.callId}');
+      debugPrint('🔥 IncomingCallScreen: Current _isNavigatingAway: $_isNavigatingAway');
       
       if (callInfo == null) {
         // Call was cleared/ended
-        debugPrint('IncomingCallScreen: Call was cleared, returning to keypad');
+        debugPrint('🔥 IncomingCallScreen: Call was cleared, calling _handleCallEnded()');
         _handleCallEnded();
       } else if (callInfo.id == widget.callId) {
         // This is our call, check if it ended or failed
+        debugPrint('🔥 IncomingCallScreen: This is our call, state: ${callInfo.state}');
         if (callInfo.state == AppCallState.ended || callInfo.state == AppCallState.failed) {
-          debugPrint('IncomingCallScreen: Call ${callInfo.state.name}, returning to keypad');
+          debugPrint('🔥 IncomingCallScreen: Call ${callInfo.state.name}, calling _handleCallEnded()');
           _handleCallEnded();
+        } else {
+          debugPrint('🔥 IncomingCallScreen: Call state is ${callInfo.state.name}, not ending - buttons should be responsive');
         }
+      } else {
+        debugPrint('🔥 IncomingCallScreen: Different call ID, ignoring: ${callInfo.id} vs ${widget.callId}');
       }
     });
   }
 
   void _handleCallEnded() async {
+    debugPrint('🔥 IncomingCallScreen: ========== _handleCallEnded CALLED ==========');
+    debugPrint('🔥 IncomingCallScreen: mounted: $mounted, _isNavigatingAway: $_isNavigatingAway');
+    
     if (mounted && !_isNavigatingAway) {
+      debugPrint('🔥 IncomingCallScreen: Setting _isNavigatingAway = true and navigating to keypad');
       _isNavigatingAway = true;
       debugPrint('IncomingCallScreen: Navigating back to keypad due to call termination');
       // Add small delay before navigation to prevent GlobalKey conflicts
@@ -80,6 +94,8 @@ class _IncomingCallScreenState extends ConsumerState<IncomingCallScreen>
       if (mounted) {
         NavigationService.goToKeypad();
       }
+    } else {
+      debugPrint('🔥 IncomingCallScreen: Not navigating - mounted: $mounted, _isNavigatingAway: $_isNavigatingAway');
     }
   }
 
@@ -91,9 +107,18 @@ class _IncomingCallScreenState extends ConsumerState<IncomingCallScreen>
   }
 
   Future<void> _answerCall() async {
-    if (_isNavigatingAway) return;
+    debugPrint('🔥 IncomingCallScreen: ========== ANSWER CALL HANDLER STARTED ==========');
+    debugPrint('🔥 IncomingCallScreen: Answer button pressed! CallId: ${widget.callId}');
+    debugPrint('🔥 IncomingCallScreen: Current mounted state: $mounted');
+    debugPrint('🔥 IncomingCallScreen: Current _isNavigatingAway: $_isNavigatingAway');
+    
+    if (_isNavigatingAway) {
+      debugPrint('🔥 IncomingCallScreen: Already navigating away, ignoring answer');
+      return;
+    }
     
     try {
+      debugPrint('🔥 IncomingCallScreen: Attempting to answer call...');
       _isNavigatingAway = true;
       await SipService.instance.answerCall(widget.callId);
       if (mounted) {
@@ -114,9 +139,18 @@ class _IncomingCallScreenState extends ConsumerState<IncomingCallScreen>
   }
 
   Future<void> _declineCall() async {
-    if (_isNavigatingAway) return;
+    debugPrint('🔥 IncomingCallScreen: ========== DECLINE CALL HANDLER STARTED ==========');
+    debugPrint('🔥 IncomingCallScreen: Decline button pressed! CallId: ${widget.callId}');
+    debugPrint('🔥 IncomingCallScreen: Current mounted state: $mounted');
+    debugPrint('🔥 IncomingCallScreen: Current _isNavigatingAway: $_isNavigatingAway');
+    
+    if (_isNavigatingAway) {
+      debugPrint('🔥 IncomingCallScreen: Already navigating away, ignoring decline');
+      return;
+    }
     
     try {
+      debugPrint('🔥 IncomingCallScreen: Attempting to decline call...');
       _isNavigatingAway = true;
       await SipService.instance.hangupCall(widget.callId);
       if (mounted) {
@@ -314,23 +348,29 @@ class _IncomingCallScreenState extends ConsumerState<IncomingCallScreen>
 
   Widget _buildCallActions() {
     return Container(
-      padding: const EdgeInsets.all(40),
+      padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 40),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Decline button
+          // Decline button - positioned on the left
           _buildActionButton(
             icon: Icons.call_end,
             color: const Color(0xFFE53E3E),
-            onPressed: _declineCall,
+            onPressed: () {
+              debugPrint('🔥 IncomingCallScreen: Decline button onPressed callback invoked');
+              _declineCall();
+            },
             label: 'Decline',
           ),
           
-          // Answer button
+          // Answer button - positioned on the right
           _buildActionButton(
             icon: Icons.call,
             color: const Color(0xFF00C853),
-            onPressed: _answerCall,
+            onPressed: () {
+              debugPrint('🔥 IncomingCallScreen: Accept button onPressed callback invoked');
+              _answerCall();
+            },
             label: 'Accept',
           ),
         ],
@@ -344,11 +384,26 @@ class _IncomingCallScreenState extends ConsumerState<IncomingCallScreen>
     required VoidCallback onPressed,
     required String label,
   }) {
+    debugPrint('🔥 IncomingCallScreen: Building action button: $label');
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         GestureDetector(
-          onTap: onPressed,
+          behavior: HitTestBehavior.opaque,
+          onTapDown: (details) {
+            debugPrint('🔥 IncomingCallScreen: onTapDown detected for: $label');
+          },
+          onTapUp: (details) {
+            debugPrint('🔥 IncomingCallScreen: onTapUp detected for: $label');
+          },
+          onTap: () {
+            debugPrint('🔥 IncomingCallScreen: ========== GESTURE DETECTOR onTap ==========');
+            debugPrint('🔥 IncomingCallScreen: GestureDetector onTap triggered for: $label');
+            debugPrint('🔥 IncomingCallScreen: mounted: $mounted');
+            debugPrint('🔥 IncomingCallScreen: _isNavigatingAway: $_isNavigatingAway');
+            debugPrint('🔥 IncomingCallScreen: About to call onPressed callback');
+            onPressed();
+          },
           child: Container(
             width: 100,
             height: 100,
