@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:siprix_voip_sdk/cdrs_model.dart';
 
 import '../../../../core/services/call_history_service.dart';
@@ -14,13 +15,23 @@ class RecentsScreen extends ConsumerStatefulWidget {
 
 class _RecentsScreenState extends ConsumerState<RecentsScreen>
     with SingleTickerProviderStateMixin {
+  static const Color _primaryColor = Color(0xFF6B46C1);
+  static const Color _mutedTextColor = Color(0xFF6B7280);
+
   late TabController _tabController;
   bool _isLoading = true;
+  bool _selectionMode = false;
+  final Set<String> _selectedCallKeys = <String>{};
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        _exitSelectionMode();
+      }
+    });
     _initializeCallHistory();
   }
 
@@ -35,13 +46,9 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen>
       if (!CallHistoryService.instance.isInitialized) {
         await CallHistoryService.instance.initialize();
       }
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
     } catch (e) {
       debugPrint('RecentsScreen: Error initializing call history: $e');
+    } finally {
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -53,12 +60,15 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeader(),
+            _selectionMode ? _buildSelectionHeader() : _buildHeader(),
+            const SizedBox(height: 16),
             _buildTabBar(),
+            const SizedBox(height: 12),
             Expanded(
               child: _isLoading ? _buildLoadingState() : _buildTabBarView(),
             ),
@@ -69,54 +79,111 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen>
   }
 
   Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
-      child: const Text(
+    return const Padding(
+      padding: EdgeInsets.fromLTRB(24, 12, 24, 0),
+      child: Text(
         'Recents',
         style: TextStyle(
           fontSize: 28,
-          fontWeight: FontWeight.w600,
-          color: Colors.black87,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF1F2933),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSelectionHeader() {
+    final selectedCount = _selectedCallKeys.length;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 18,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.close, color: Color(0xFF111827)),
+              tooltip: 'Cancel selection',
+              onPressed: _exitSelectionMode,
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                '$selectedCount selected',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF111827),
+                ),
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
+              tooltip: 'Delete selected',
+              onPressed: selectedCount == 0 ? null : _confirmBulkDelete,
+            ),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildTabBar() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE5E7EB),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: TabBar(
-        controller: _tabController,
-        indicator: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Container(
+        height: 44,
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF7F8FA),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: TabBar(
+          controller: _tabController,
+          indicator: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(9),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 4,
+                offset: const Offset(0, 1),
+              ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          indicatorPadding: const EdgeInsets.all(3),
+          labelColor: _primaryColor,
+          unselectedLabelColor: _mutedTextColor,
+          labelStyle: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.2,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+            letterSpacing: -0.2,
+          ),
+          tabs: const [
+            Tab(text: 'All'),
+            Tab(text: 'Missed'),
           ],
         ),
-        indicatorPadding: const EdgeInsets.all(2),
-        labelColor: const Color(0xFF6B46C1),
-        unselectedLabelColor: const Color(0xFF6B7280),
-        labelStyle: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-        ),
-        unselectedLabelStyle: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-        ),
-        tabs: const [
-          Tab(text: 'All'),
-          Tab(text: 'Missed'),
-        ],
       ),
     );
   }
@@ -139,7 +206,7 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen>
   Widget _buildLoadingState() {
     return const Center(
       child: CircularProgressIndicator(
-        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6B46C1)),
+        valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
       ),
     );
   }
@@ -149,11 +216,34 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen>
       return _buildEmptyState();
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_selectionMode) return;
+      final validKeys = calls.map(_callKey).toSet();
+      bool removed = false;
+      for (final key in _selectedCallKeys.toList()) {
+        if (!validKeys.contains(key)) {
+          _selectedCallKeys.remove(key);
+          removed = true;
+        }
+      }
+      if (removed && mounted) {
+        setState(() {
+          if (_selectedCallKeys.isEmpty) {
+            _selectionMode = false;
+          }
+        });
+      }
+    });
+
+    return ListView.separated(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
       itemCount: calls.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
-        return _buildCallItem(calls[index]);
+        final call = calls[index];
+        final isSelected = _selectedCallKeys.contains(_callKey(call));
+        return _buildDismissibleCall(call, isSelected);
       },
     );
   }
@@ -161,28 +251,24 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen>
   Widget _buildEmptyState() {
     return Center(
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.access_time,
-            size: 64,
-            color: Colors.grey[400],
-          ),
-          const SizedBox(height: 16),
+        mainAxisSize: MainAxisSize.min,
+        children: const [
+          Icon(Icons.history, size: 48, color: Color(0xFFCBD5F5)),
+          SizedBox(height: 12),
           Text(
-            'No recent calls',
+            'No recent calls yet',
             style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
-              color: Colors.grey[600],
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1F2933),
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 6),
           Text(
-            'Your call history will appear here',
+            'New calls will appear here automatically.',
             style: TextStyle(
               fontSize: 14,
-              color: Colors.grey[500],
+              color: _mutedTextColor,
             ),
           ),
         ],
@@ -190,117 +276,264 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen>
     );
   }
 
-  Widget _buildCallItem(CdrModel call) {
-    final callType = CallHistoryService.getCallType(call);
-    final displayName = _getDisplayName(call);
-    final phoneNumber = call.remoteExt;
-    final timeText = CallHistoryService.formatCallTime(call.madeAt);
-    final durationText = CallHistoryService.formatDuration(call.duration);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+  Widget _buildDismissibleCall(CdrModel call, bool isSelected) {
+    final callKey = _callKey(call);
+    return Dismissible(
+      key: ValueKey(callKey),
+      direction: _selectionMode ? DismissDirection.none : DismissDirection.endToStart,
+      confirmDismiss: (_) => _confirmSingleDelete(call),
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        color: const Color(0xFFFEF2F2),
+        child: const Icon(Icons.delete_outline, color: Color(0xFFDC2626), size: 28),
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: _buildCallTypeIcon(callType),
-        title: Text(
-          displayName,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
+      child: _buildCallTile(call, isSelected),
+    );
+  }
+
+  Widget _buildCallTile(CdrModel call, bool isSelected) {
+    final callType = CallHistoryService.getCallType(call);
+    final style = _CallVisualStyle.fromCall(call, callType);
+    final displayName = _getDisplayName(call, callType);
+
+    final subtitleSegments = <String>[
+      CallHistoryService.formatCallTime(call.madeAt),
+    ];
+
+    if (_isAnswered(call)) {
+      final durationText = _resolveDuration(call);
+      if (durationText != null) {
+        subtitleSegments.add(durationText);
+      }
+    } else {
+      final statusLabel = _getStatusLabel(call, callType);
+      if (statusLabel != null && callType != CallType.missed) {
+        subtitleSegments.add(statusLabel);
+      }
+    }
+
+    final subtitle = subtitleSegments.join(' · ');
+
+    final highlightColor = isSelected
+        ? _primaryColor.withValues(alpha: 0.12)
+        : Colors.transparent;
+
+    return Material(
+      color: highlightColor,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _onCallTap(call, isSelected),
+        onLongPress: () => _enterSelectionMode(call),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _buildCallAvatar(style, isSelected),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      displayName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: callType == CallType.missed
+                            ? const Color(0xFFDC2626)
+                            : const Color(0xFF1F2933),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w500,
+                        color: _mutedTextColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              _buildInfoButton(call),
+            ],
           ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
         ),
-        subtitle: Text(
-          '$timeText${call.connected && call.duration.isNotEmpty ? ' • $durationText' : ''}',
-          style: const TextStyle(
-            fontSize: 14,
-            color: Color(0xFF6B7280),
-          ),
-        ),
-        trailing: IconButton(
-          icon: const Icon(
-            Icons.info_outline,
-            color: Color(0xFF6B7280),
-            size: 20,
-          ),
-          onPressed: () => _showCallDetails(call),
-        ),
-        onTap: () => _callNumber(phoneNumber),
       ),
     );
   }
 
-  Widget _buildCallTypeIcon(CallType callType) {
-    Color iconColor;
-    Color backgroundColor;
-    IconData iconData;
-
-    switch (callType) {
-      case CallType.incoming:
-        iconColor = const Color(0xFF6B46C1);
-        backgroundColor = const Color(0xFFE0E7FF);
-        iconData = Icons.call_received;
-        break;
-      case CallType.outgoing:
-        iconColor = const Color(0xFF6B46C1);
-        backgroundColor = const Color(0xFFE0E7FF);
-        iconData = Icons.call_made;
-        break;
-      case CallType.missed:
-        iconColor = const Color(0xFFEF4444);
-        backgroundColor = const Color(0xFFFEE2E2);
-        iconData = Icons.call_received;
-        break;
-    }
-
-    return Container(
+  Widget _buildCallAvatar(_CallVisualStyle style, bool isSelected) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeInOut,
       width: 48,
       height: 48,
       decoration: BoxDecoration(
-        color: backgroundColor,
+        color: isSelected ? _primaryColor : style.backgroundColor,
         shape: BoxShape.circle,
       ),
       child: Icon(
-        iconData,
-        color: iconColor,
-        size: 24,
+        isSelected ? Icons.check : style.icon,
+        color: isSelected ? Colors.white : style.iconColor,
+        size: 22,
       ),
     );
   }
 
-  String _getDisplayName(CdrModel call) {
-    if (call.displName.isNotEmpty && 
-        call.displName != call.remoteExt && 
-        call.displName.toLowerCase() != 'unknown') {
-      return call.displName;
+  Widget _buildInfoButton(CdrModel call) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: _selectionMode ? null : () => _showCallDetails(call),
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFEFF1FB),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.info_outline, color: _mutedTextColor, size: 20),
+        ),
+      ),
+    );
+  }
+
+  void _onCallTap(CdrModel call, bool isSelected) {
+    if (_selectionMode) {
+      _toggleSelection(call);
+      return;
     }
-    
-    if (call.remoteExt.isNotEmpty) {
-      return call.remoteExt;
+
+    final phoneNumber = call.remoteExt;
+    if (phoneNumber.isEmpty) {
+      debugPrint('RecentsScreen: No number available for this entry');
+      return;
     }
-    
-    return 'Unknown';
+
+    _callNumber(phoneNumber);
+  }
+
+  void _enterSelectionMode(CdrModel call) {
+    final key = _callKey(call);
+    setState(() {
+      if (_selectionMode) {
+        _toggleSelection(call);
+      } else {
+        _selectionMode = true;
+        _selectedCallKeys.add(key);
+      }
+    });
+  }
+
+  void _toggleSelection(CdrModel call) {
+    final key = _callKey(call);
+    setState(() {
+      if (_selectedCallKeys.contains(key)) {
+        _selectedCallKeys.remove(key);
+        if (_selectedCallKeys.isEmpty) {
+          _selectionMode = false;
+        }
+      } else {
+        _selectedCallKeys.add(key);
+      }
+    });
+  }
+
+  void _exitSelectionMode() {
+    if (_selectionMode) {
+      setState(() {
+        _selectionMode = false;
+        _selectedCallKeys.clear();
+      });
+    }
+  }
+
+  Future<bool?> _confirmSingleDelete(CdrModel call) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Delete call?'),
+          content: const Text('This call will be removed from Recents.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: TextButton.styleFrom(foregroundColor: const Color(0xFFDC2626)),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldDelete == true) {
+      CallHistoryService.instance.removeCall(call);
+      setState(() {
+        _selectedCallKeys.remove(_callKey(call));
+        if (_selectedCallKeys.isEmpty) {
+          _selectionMode = false;
+        }
+      });
+      return true;
+    }
+    return false;
+  }
+
+  Future<void> _confirmBulkDelete() async {
+    final count = _selectedCallKeys.length;
+    if (count == 0) return;
+
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Delete selected calls?'),
+          content: Text('Remove $count selected call${count > 1 ? 's' : ''} from Recents?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: TextButton.styleFrom(foregroundColor: const Color(0xFFDC2626)),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldDelete == true) {
+      final allCalls = CallHistoryService.instance.getAllCalls();
+      final callsToRemove = allCalls
+          .where((call) => _selectedCallKeys.contains(_callKey(call)))
+          .toList();
+      CallHistoryService.instance.removeCalls(callsToRemove);
+      setState(() {
+        _selectedCallKeys.clear();
+        _selectionMode = false;
+      });
+    }
   }
 
   void _callNumber(String phoneNumber) {
-    if (phoneNumber.isNotEmpty) {
-      NavigationService.goToKeypad();
-      // TODO: Auto-fill the keypad with the phone number
-      debugPrint('RecentsScreen: Calling $phoneNumber');
-    }
+    NavigationService.goToKeypad();
+    debugPrint('RecentsScreen: Calling $phoneNumber');
   }
 
   void _showCallDetails(CdrModel call) {
@@ -314,125 +547,143 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen>
 
   Widget _buildCallDetailsSheet(CdrModel call) {
     final callType = CallHistoryService.getCallType(call);
-    final displayName = _getDisplayName(call);
-    final timeText = CallHistoryService.formatCallTime(call.madeAt);
-    final durationText = CallHistoryService.formatDuration(call.duration);
+    final style = _CallVisualStyle.fromCall(call, callType);
+    final displayName = _getDisplayName(call, callType);
+    final phoneNumber = call.remoteExt.isNotEmpty ? call.remoteExt : 'Unknown number';
+    final isAnswered = _isAnswered(call);
+    final status = isAnswered ? (_resolveDuration(call) ?? 'Connected') : _describeStatus(call, callType);
+    final statusLabel = isAnswered ? 'Duration' : 'Status';
+    final direction = call.incoming ? 'Incoming call' : 'Outgoing call';
 
     return Container(
       margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 40,
-            height: 4,
-            margin: const EdgeInsets.only(top: 12),
-            decoration: BoxDecoration(
-              color: Colors.grey[300],
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    _buildCallTypeIcon(callType),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            displayName,
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black87,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            call.remoteExt,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: Color(0xFF6B7280),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 44,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5E7EB),
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                const SizedBox(height: 24),
-                _buildDetailRow('Time', timeText),
-                if (call.connected && call.duration.isNotEmpty)
-                  _buildDetailRow('Duration', durationText),
-                _buildDetailRow('Type', _getCallTypeText(callType)),
-                _buildDetailRow('Status', call.connected ? 'Connected' : 'Not connected'),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          _callNumber(call.remoteExt);
-                        },
-                        icon: const Icon(Icons.call),
-                        label: const Text('Call'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6B46C1),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: style.backgroundColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(style.icon, color: style.iconColor, size: 26),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayName,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1F2933),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    IconButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        // TODO: Add to contacts functionality
-                      },
-                      icon: const Icon(Icons.person_add),
-                      style: IconButton.styleFrom(
-                        backgroundColor: Colors.grey[100],
-                        foregroundColor: Colors.grey[700],
-                        padding: const EdgeInsets.all(12),
+                      const SizedBox(height: 4),
+                      Text(
+                        phoneNumber,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: _mutedTextColor,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
-          ),
-        ],
+            const SizedBox(height: 24),
+            _buildDetailRow('Date & time', _formatFullDateTime(call.madeAt)),
+            _buildDetailRow('Direction', direction),
+            _buildDetailRow(statusLabel, status),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      if (call.remoteExt.isNotEmpty) {
+                        _callNumber(call.remoteExt);
+                      }
+                    },
+                    icon: const Icon(Icons.call),
+                    label: const Text('Call back'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      debugPrint('RecentsScreen: Add to contacts tapped for ${call.remoteExt}');
+                    },
+                    icon: const Icon(Icons.person_add_alt_1_outlined),
+                    label: const Text('Add to contacts'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _primaryColor,
+                      side: const BorderSide(color: _primaryColor),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildDetailRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 80,
+            width: 120,
             child: Text(
               label,
               style: const TextStyle(
                 fontSize: 14,
-                color: Color(0xFF6B7280),
+                fontWeight: FontWeight.w600,
+                color: _mutedTextColor,
               ),
             ),
           ),
@@ -440,9 +691,9 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen>
             child: Text(
               value,
               style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Colors.black87,
+                fontSize: 15,
+                color: Color(0xFF1F2933),
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -451,14 +702,149 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen>
     );
   }
 
-  String _getCallTypeText(CallType callType) {
+  String _callKey(CdrModel call) {
+    return '${call.myCallId}_${call.madeAt.millisecondsSinceEpoch}_${call.incoming}_${call.remoteExt}_${call.duration}_${call.statusCode}';
+  }
+
+  String _getDisplayName(CdrModel call, CallType callType) {
+    if (call.displName.isNotEmpty &&
+        call.displName != call.remoteExt &&
+        call.displName.toLowerCase() != 'unknown') {
+      return call.displName;
+    }
+
+    if (call.remoteExt.isNotEmpty) {
+      return call.remoteExt;
+    }
+
+    return 'Unknown caller';
+  }
+
+  String? _getStatusLabel(CdrModel call, CallType callType) {
+    final answered = _isAnswered(call);
+    if (call.incoming) {
+      return answered ? null : 'Missed';
+    }
+    if (!answered) {
+      return 'Not answered';
+    }
+    return null;
+  }
+
+  String _describeStatus(CdrModel call, CallType callType) {
+    if (_isAnswered(call)) {
+      return _resolveDuration(call) ?? 'Connected';
+    }
+    if (call.incoming) {
+      return 'Missed call';
+    }
+    return 'Not answered';
+  }
+
+  bool _isAnswered(CdrModel call) {
+    // A call is answered if it's connected OR has positive duration
+    return call.connected || _hasPositiveDuration(call);
+  }
+
+  bool _hasPositiveDuration(CdrModel call) {
+    final duration = call.duration.trim();
+    if (duration.isEmpty) {
+      return false;
+    }
+
+    final numeric = int.tryParse(duration);
+    if (numeric != null) {
+      return numeric > 0;
+    }
+
+    final segments = duration.split(':');
+    if (segments.isEmpty) {
+      return false;
+    }
+
+    int totalSeconds = 0;
+    for (final segment in segments) {
+      final part = int.tryParse(segment);
+      if (part == null) {
+        return false;
+      }
+      totalSeconds = totalSeconds * 60 + part;
+    }
+    return totalSeconds > 0;
+  }
+
+  String? _resolveDuration(CdrModel call) {
+    final duration = call.duration.trim();
+    if (duration.isEmpty) {
+      return null;
+    }
+
+    final numeric = int.tryParse(duration);
+    if (numeric != null) {
+      if (numeric <= 0) {
+        return null;
+      }
+      return _formatDurationAsHMS(duration);
+    }
+
+    return _hasPositiveDuration(call) ? duration : null;
+  }
+
+  String _formatDurationAsHMS(String duration) {
+    try {
+      // Duration comes as seconds, format as HH:MM:SS
+      final seconds = int.tryParse(duration) ?? 0;
+      final hours = seconds ~/ 3600;
+      final minutes = (seconds % 3600) ~/ 60;
+      final remainingSeconds = seconds % 60;
+      
+      if (hours > 0) {
+        return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
+      } else {
+        return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
+      }
+    } catch (e) {
+      return '00:00';
+    }
+  }
+
+  String _formatFullDateTime(DateTime dateTime) {
+    final formatter = DateFormat('EEE, MMM d · h:mm a');
+    return formatter.format(dateTime);
+  }
+}
+
+class _CallVisualStyle {
+  final Color iconColor;
+  final Color backgroundColor;
+  final IconData icon;
+
+  const _CallVisualStyle({
+    required this.iconColor,
+    required this.backgroundColor,
+    required this.icon,
+  });
+
+  static _CallVisualStyle fromCall(CdrModel call, CallType callType) {
     switch (callType) {
       case CallType.incoming:
-        return 'Incoming';
+        return _CallVisualStyle(
+          iconColor: const Color(0xFF6B46C1),
+          backgroundColor: const Color(0xFFF0E9FF),
+          icon: Icons.call_received,
+        );
       case CallType.outgoing:
-        return 'Outgoing';
+        return _CallVisualStyle(
+          iconColor: const Color(0xFF6B46C1),
+          backgroundColor: const Color(0xFFE8F5FF),
+          icon: Icons.call_made,
+        );
       case CallType.missed:
-        return 'Missed';
+        return _CallVisualStyle(
+          iconColor: const Color(0xFFDC2626),
+          backgroundColor: const Color(0xFFFEE2E2),
+          icon: Icons.call_missed_outgoing,
+        );
     }
   }
 }

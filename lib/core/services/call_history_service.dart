@@ -112,6 +112,32 @@ class CallHistoryService extends ChangeNotifier {
     return null;
   }
 
+  int _findRecordIndex(CdrModel call) {
+    if (_cdrsModel == null || _cdrsModel!.isEmpty) {
+      return -1;
+    }
+
+    for (int i = 0; i < _cdrsModel!.length; i++) {
+      final record = _cdrsModel![i];
+
+      final hasValidId = call.myCallId != 0 && record.myCallId != 0;
+      if (hasValidId && record.myCallId == call.myCallId) {
+        return i;
+      }
+
+      final sameTimestamp =
+          record.madeAt.isAtSameMomentAs(call.madeAt);
+      final sameRemote = record.remoteExt == call.remoteExt;
+      final sameDirection = record.incoming == call.incoming;
+
+      if (!hasValidId && sameTimestamp && sameRemote && sameDirection) {
+        return i;
+      }
+    }
+
+    return -1;
+  }
+
   void _applyCallModelData(CdrModel record, CallModel callModel) {
     record.displName = callModel.displName;
     record.remoteExt = callModel.remoteExt;
@@ -127,6 +153,77 @@ class CallHistoryService extends ChangeNotifier {
 
     final wasConnected = callModel.isConnected || callModel.state == CallState.connected || durationMs > 0;
     record.connected = wasConnected;
+  }
+
+  /// Manually update a call's duration and connected status
+  void updateCallDuration(int callId, int durationMs) {
+    try {
+      final record = _findRecordById(callId);
+      if (record != null) {
+        final durationSeconds = (durationMs / 1000).round();
+        final minutes = durationSeconds ~/ 60;
+        final seconds = durationSeconds % 60;
+        final durationStr = '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+        
+        record.duration = durationStr;
+        record.connected = true; // Mark as connected since it has duration
+        
+        debugPrint('CallHistory: Updated call $callId duration to $durationStr (${durationMs}ms) and marked as connected');
+        
+        _cdrsModel?.notifyListeners();
+        _saveCallHistoryToStorage();
+      } else {
+        debugPrint('CallHistory: Could not find call $callId to update duration');
+      }
+    } catch (e) {
+      debugPrint('CallHistory: Error updating call duration: $e');
+    }
+  }
+
+  bool removeCall(CdrModel call) {
+    try {
+      final index = _findRecordIndex(call);
+      if (index == -1) {
+        return false;
+      }
+      _cdrsModel?.remove(index);
+      return true;
+    } catch (e) {
+      debugPrint('CallHistory: Error removing call: $e');
+      return false;
+    }
+  }
+
+  int removeCalls(Iterable<CdrModel> calls) {
+    if (_cdrsModel == null) {
+      return 0;
+    }
+
+    try {
+      final indices = <int>[];
+      for (final call in calls) {
+        final idx = _findRecordIndex(call);
+        if (idx != -1) {
+          indices.add(idx);
+        }
+      }
+
+      if (indices.isEmpty) {
+        return 0;
+      }
+
+      indices.sort();
+      for (final index in indices.reversed) {
+        if (index >= 0 && index < _cdrsModel!.length) {
+          _cdrsModel!.remove(index);
+        }
+      }
+
+      return indices.length;
+    } catch (e) {
+      debugPrint('CallHistory: Error removing calls: $e');
+      return 0;
+    }
   }
 
   /// Get all call records

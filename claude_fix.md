@@ -2198,3 +2198,57 @@ The page must be integrated into the existing app and preserve the current Botto
 Display the list of recent calls with details from CdrModel (caller/callee, time, duration, direction, status).
 Ensure the UI updates dynamically when CdrsModel changes (e.g., a new call is added).
 Add placeholder logic where real persistence or API integration will be needed.
+
+---
+
+on Info Window on Recent calls:
+For answered calls (both incoming and outgoing), show call duration representing call duration in format 00:00:00 (instead of status)
+For outgoing answered calls, there is a bug: they are incorrectly marked as “Not answered” in with label status, Fix: mark them as answered with duration.
+
+still now showing for answered incoming/outgoing calls, status. We have to make sure we have call duration for calls in CDR/CallModel.
+
+Still not shwoing durration for answered calls:
+
+I/flutter (22501): CallHistory: Call history changed, updating listeners
+I/flutter (22501): CallHistory: Added new call record - CallId: 201
+I/flutter (22501): CallHistory: Call history changed, updating listeners
+I/flutter (22501): SIP Service: Successfully added connected CallModel to CDR history
+I/flutter (22501): CallHistory: Saved 10 calls to storage
+I/flutter (22501): CallHistory: Saved 10 calls to storage
+...
+I/flutter (22501): event OnCallTerminated {callId: 201, statusCode: 0}
+I/flutter (22501): SIP Service: Direct call terminated - callId: 201, statusCode: 0
+I/flutter (22501): SIP Service: Adding call to history on termination - callId: 201, statusCode: 0
+I/flutter (22501): SIP Service: Call 201 already exists in CDR history, skipping duplicate
+I/flutter (22501): SipService: \_updateCurrentCall called - callId: 201, state: AppCallState.ended
+I/flutter (22501): InCallScreen: Received call state update - callId: 201, state: AppCallState.ended, widgetCallId: 201
+I/flutter (22501): InCallScreen: Call ended: Navigating back to keypad
+
+\_addCallToHistoryOnTermination is not executed til calculating duration. Because CDR is created at begining
+
+Incoming calls now shows Duration properly. We need to do the same thing for outgoing calls.
+
+Outgoing call was answered, was active for 6s:
+
+I/flutter (23936): SIP Service: Adding connected call to history - callId: 205, isIncoming: false
+I/flutter (23936): SIP Service: CallsModel has 2 calls during connected event
+I/flutter (23936): SIP Service: CallsModel[0] - ID: 204, Remote: 1001
+I/flutter (23936): SIP Service: CallsModel[1] - ID: 205, Remote: 1001
+I/flutter (23936): SIP Service: Found connected call in CallsModel - adding to CDR and storing for duration tracking
+I/flutter (23936): SIP Service: Stored CallModel in \_connectedCallModel for duration tracking
+I/flutter (23936): CallHistory: Call history changed, updating listeners
+I/flutter (23936): CallHistory: Added new call record - CallId: 205
+I/flutter (23936): CallHistory: Call history changed, updating listeners
+I/flutter (23936): SIP Service: Successfully added connected call 205 to CDR history
+I/flutter (23936): CallHistory: Saved 10 calls to storage
+I/flutter (23936): CallHistory: Saved 10 calls to storage
+...
+I/flutter (23936): SIP Service: Direct call terminated - callId: 205, statusCode: 0
+I/flutter (23936): SIP Service: Adding call to history on termination - callId: 205, statusCode: 0, currentCallState: AppCallState.answered
+I/flutter (23936): SIP Service: Call 205 already exists in CDR history - updating with final duration
+I/flutter (23936): SIP Service: Duration update check - hasConnectedModel: true, modelCallId: 205, targetCallId: 205, callIdsMatch: true, currentState: AppCallState.answered
+I/flutter (23936): SIP Service: Updating existing answered call with final duration
+I/flutter (23936): SIP Service: Final call duration - durationStr: 00:00, durationMs: 0ms
+I/flutter (23936): CallHistory: Call history changed, updating listeners
+I/flutter (23936): SIP Service: Updated existing CDR record with final duration
+I/flutter (23936): SipService: \_updateCurrentCall called - callId: 1758284386306, state: AppCallState.ended

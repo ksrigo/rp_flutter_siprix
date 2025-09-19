@@ -61,3 +61,64 @@ Ensure cancelled calls do not trigger “On Call” UI.
 Answered calls → show On Call screen.
 Missed/Cancelled calls → skip On Call screen, add to Recents as missed.
 Keep the fix minimal and clean.
+
+---
+
+We have already implemented the Recents page in our Flutter softphone app.
+Now we need to improve the UI based on the design provided in mockup/recents_call.jpg.
+Requirements:
+Follow the mockup closely for layout and styling.
+Preserve the existing Bottom Navigation bar.
+Background color: white.
+Maintain the purple theme for interactive elements.
+Recents List:
+Display recent calls from CdrModel (caller/callee, time, duration, direction, status).
+The list must update dynamically when CdrsModel changes (e.g., a new call is added).
+Call Info View:
+When tapping the info button on a call entry, show a details page with:
+Caller or callee name + number (depending on direction).
+Date/Time of the call.
+If incoming + connected → show call duration.
+If incoming + not answered → show as missed call.
+If outgoing + connected → show call duration.
+If outgoing + not connected → show as not answered.
+Actions:
+Button to call the number.
+Button to add to contacts (placeholder for now).
+Call Management
+Support deleting calls:
+Single entry (swipe left + confirm).
+Multiple entries (selection mode).
+You decide the best UX approach.
+Other Notes:
+Add placeholder logic where persistence or API integration is required.
+Keep the code clean, modular, and null-safe.
+
+---
+
+We need to fix several bugs in the Recents page UI and logic of our Flutter softphone app.
+UI Fixes:
+All / Missed toggle:
+Current toggle button is too small compared to the text.
+Fix: the toggle indicator should be half the height of the gray bar for proper visibility.
+Remove the vertical separator after the “All / Missed” title.
+Call list entries:
+Currently, each call is shown on a card.
+Fix: remove the card background.
+Display as a list separated by a thin vertical divider, consistent with the mockup (mockup/recents_call.jpg).
+Missed calls display:
+Currently shows “Missed Call” text.
+Fix: show Name/Number (like other calls) but styled in red to indicate a missed call.
+Info Window Fixes:
+For answered calls (both incoming and outgoing):
+Show call duration instead of the label “Answered”.
+For outgoing answered calls:
+Bug: they are incorrectly marked as “Not answered”.
+Fix: mark them as answered with duration.
+Requirements:
+Follow the existing purple theme.
+Preserve the current Bottom Navigation bar.
+Keep code clean, modular, and null-safe.
+
+- Multi select only allow to select Missed calls.
+- Call Back button, is not calling back. It's jst go back to Keypad window

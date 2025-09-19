@@ -345,12 +345,56 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
         return;
       }
 
-      debugPrint('SIP Service: Adding call to history on termination - callId: $callId, statusCode: $statusCode');
+      final currentCallState = _currentCall?.state;
+      debugPrint('SIP Service: Adding call to history on termination - callId: $callId, statusCode: $statusCode, currentCallState: $currentCallState');
 
-      // Check if this call is already in CDR history to prevent duplicates
+      // Check if this call is already in CDR history 
       final existingCall = CallHistoryService.instance.getCallById(callId);
       if (existingCall != null) {
-        debugPrint('SIP Service: Call $callId already exists in CDR history, skipping duplicate');
+        debugPrint('SIP Service: Call $callId already exists in CDR history - updating with final duration');
+        
+        // For answered calls, update the existing CallModel with final duration
+        // Check if we have a connected model for this call - this indicates it was answered
+        final hasConnectedModel = _connectedCallModel != null;
+        final modelCallId = _connectedCallModel?.myCallId;
+        final callIdsMatch = modelCallId == callId;
+        
+        debugPrint('SIP Service: Duration update check - hasConnectedModel: $hasConnectedModel, modelCallId: $modelCallId, targetCallId: $callId, callIdsMatch: $callIdsMatch, currentState: ${_currentCall!.state}');
+        
+        // If we have a connected model for this call, it means it was answered at some point
+        if (hasConnectedModel && callIdsMatch) {
+          debugPrint('SIP Service: Updating existing answered call with final duration');
+          
+          // Try to calculate duration ourselves since CallModel.calcDuration() might not be working properly
+          final callStartTime = _currentCall?.startTime ?? DateTime.now();
+          final callEndTime = DateTime.now();
+          final actualDurationMs = callEndTime.difference(callStartTime).inMilliseconds;
+          final actualDurationSeconds = (actualDurationMs / 1000).round();
+          
+          debugPrint('SIP Service: Manual duration calculation - Start: $callStartTime, End: $callEndTime, Duration: ${actualDurationMs}ms (${actualDurationSeconds}s)');
+          
+          // Trigger duration calculation on the CallModel
+          _connectedCallModel!.calcDuration();
+          
+          final modelDurationStr = _connectedCallModel!.durationStr;
+          final modelDurationMs = _connectedCallModel!.duration.inMilliseconds;
+          debugPrint('SIP Service: CallModel duration - durationStr: $modelDurationStr, durationMs: ${modelDurationMs}ms');
+          debugPrint('SIP Service: CallModel startTime: ${_connectedCallModel!.startTime}');
+          
+          // If CallModel duration is 0 but we have actual duration, manually update the CDR
+          if (modelDurationMs == 0 && actualDurationMs > 1000) {
+            debugPrint('SIP Service: CallModel duration is 0 but actual duration is ${actualDurationMs}ms - using manual duration update');
+            // Manually update the CDR record with our calculated duration
+            CallHistoryService.instance.updateCallDuration(callId, actualDurationMs);
+          } else {
+            // Update the CallModel in CDR with the calculated duration
+            CallHistoryService.instance.addCallRecord(_connectedCallModel!);
+            debugPrint('SIP Service: Updated existing CDR record with CallModel duration');
+          }
+        } else {
+          debugPrint('SIP Service: Skipping duration update - condition not met');
+        }
+        
         return;
       }
 
@@ -371,8 +415,8 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       debugPrint('SIP Service: No CallModel in CallsModel - Call was ${wasAnswered ? "ANSWERED" : "MISSED/REJECTED"}');
       
       if (wasAnswered) {
-        debugPrint('SIP Service: Answered call should have been added when connected - skipping termination tracking');
-        return; // Answered calls are handled in connected event
+        debugPrint('SIP Service: Answered call should have been handled above - this should not happen');
+        return; // Answered calls are handled above when call already exists
       }
       
       debugPrint('SIP Service: Creating CallModel for missed/rejected call');
@@ -422,7 +466,8 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
 
   void _addConnectedCallToHistory(int callId) {
     try {
-      debugPrint('SIP Service: Adding connected call to history - callId: $callId');
+      final isIncoming = _currentCall?.isIncoming ?? false;
+      debugPrint('SIP Service: Adding connected call to history - callId: $callId, isIncoming: $isIncoming');
       
       // Check if already exists to prevent duplicates
       final existingCall = CallHistoryService.instance.getCallById(callId);
@@ -438,7 +483,12 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
           final call = _callsModel![i];
           debugPrint('SIP Service: CallsModel[$i] - ID: ${call.myCallId}, Remote: ${call.remoteExt}');
           if (call.myCallId == callId) {
-            debugPrint('SIP Service: Found connected call in CallsModel - adding to CDR');
+            debugPrint('SIP Service: Found connected call in CallsModel - adding to CDR and storing for duration tracking');
+            
+            // Store this CallModel for duration tracking at termination
+            _connectedCallModel = call;
+            debugPrint('SIP Service: Stored CallModel in _connectedCallModel for duration tracking');
+            
             CallHistoryService.instance.addCallRecord(call);
             debugPrint('SIP Service: Successfully added connected call $callId to CDR history');
             return;
@@ -473,7 +523,10 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
           }
 
           // Mark the synthesized CallModel as connected so CDR history categorizes it correctly
+          // This will set the startTime internally and mark it as connected
           _connectedCallModel!.onConnected('', '', false);
+          
+          debugPrint('SIP Service: Called onConnected() - CallModel startTime: ${_connectedCallModel!.startTime}');
 
           debugPrint('SIP Service: Created and stored connected CallModel for callId: $callId');
 
@@ -526,8 +579,6 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       debugPrint('🔥 SIP Service: Active call from model: ${activeCall?.myCallId}, switched ID: $switchedCallId');
       
       if (_currentCall!.state == AppCallState.ringing) {
-        final timeSinceStart = DateTime.now().difference(_currentCall!.startTime);
-        
         // Check multiple conditions for background acceptance detection
         bool backgroundAcceptanceDetected = false;
         String detectionReason = '';
@@ -824,6 +875,7 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
     debugPrint(
         '🔥 SIP Service: Call connected - callId: $callId, from: $from, to: $to, withVideo: $withVideo');
     debugPrint('🔥 SIP Service: Current call ID: ${_currentCall?.id}');
+    debugPrint('🔥 SIP Service: Current call incoming: ${_currentCall?.isIncoming}');
     debugPrint('🔥 SIP Service: Is hanging up: $_isHangingUp');
 
     // Ignore connected events if we're in the middle of hanging up
