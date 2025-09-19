@@ -2252,3 +2252,71 @@ I/flutter (23936): SIP Service: Final call duration - durationStr: 00:00, durati
 I/flutter (23936): CallHistory: Call history changed, updating listeners
 I/flutter (23936): SIP Service: Updated existing CDR record with final duration
 I/flutter (23936): SipService: \_updateCurrentCall called - callId: 1758284386306, state: AppCallState.ended
+
+---
+
+Active tab selector doesnt match the mockup design. If it's complicate to implement this toggle for All/Missed Call. Change the UI for this to something easier but with modern look.
+
+Call Back button on info view, is not calling back. It's jst go back to Keypad window. We should dial when this button is pressed.
+
+When we press Call back, it now calls the number. But On call screen is not showing up.
+
+---
+
+I need to update the Contacts screen with the same UI as shown in mockup/contact_screen.png.
+Remove phone contact toggle.
+Apply our primary colors.
+Align ABCD... on the right side to start on the same level as All/Favorites button.
+Align title Contact on the left
+
+---
+
+We are building a Flutter softphone app. We need to implement contacts management with both API phonebook and device contacts support.
+Requirements:
+Contacts Sources
+API Phonebook (default source):
+Retrieve phonebook from our backend API (for connected extension).
+Display these contacts in the Contacts tab by default.
+Each API contact should be marked with a distinct API icon.
+Later we will add the ability to create new API contacts via POST call (leave placeholder).
+Device Contacts (optional source):
+Use the flutter_contacts package to access device contacts.
+If enabled in Settings → merge device contacts into the contact list.
+If disabled in Settings → hide all device contacts.
+Device contacts should be marked with a distinct device icon.
+Implement real-time sync with watchContacts().
+Provide a manual refresh button to re-sync device contacts.
+Local Cache:
+Use Isar (preferred) or SQLite for local storage.
+Cache both API and device contacts for fast searching/filtering.
+Merge results but keep their source identification (API vs Device).
+UI Requirements:
+Top bar: toggle in Settings controls whether device contacts are loaded.
+Tabs: All / Favorites.
+Search bar at the top.
+Contact list grouped alphabetically (A, B, C…).
+Each contact row shows:
+Avatar
+Name
+Label (e.g., Mobile / Work)
+Call button
+Source icon (API vs Device)
+Background color: white
+Theme color: purple
+Bottom navigation bar must stay consistent with the app.
+Deliverables
+contacts_repository.dart
+Fetches contacts from API and flutter_contacts.
+Caches them in Isar.
+Handles watchContacts() for real-time device sync.
+Exposes method refreshContacts() for manual refresh.
+contacts_page.dart
+Displays search bar, tabs, and list.
+Reacts to repository updates dynamically.
+Shows both API and device contacts (depending on Settings).
+Notes:
+API endpoints for GET: https://api.ringplus.co.uk/v1/extension/<extension_id>/contacts
+extension_id is returned as id in the response of /extensions/mobile
+Adding a contact to API phonebook: leave a placeholder call.
+Must be null-safe and modular (repository + data models + UI).
+Ensure clean separation between UI, data layer, and settings control.

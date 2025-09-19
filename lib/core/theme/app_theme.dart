@@ -2,44 +2,41 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class AppTheme {
-  // Purple-centered color palette
-  static const Color primaryPurple = Color(0xFF6200EA);
-  static const Color primaryPurpleLight = Color(0xFF8B5CF6);
-  static const Color primaryPurpleDark = Color(0xFF553C9A);
+  // Brand color palette
+  static const Color primary = Color(0xFF6200EA);
+  static const Color secondary = Color(0xFF8B5CF6);
+  static const Color accent = Color(0xFFA855F7);
+  static const Color error = Color(0xFFEF4444);
+  static const Color info = Color(0xFF3B82F6);
+  static const Color success = Color(0xFF10B981);
+  static const Color warning = Color(0xFFF59E0B);
+  static const Color background = Color(0xFFF7F6F6);
+  static const Color surface = Color(0xFFFFFFFF);
+  static const Color surfaceVariant = Color(0xFFF8FAFC);
+  static const Color onSurface = Color(0xFF1F2937);
+  static const Color onSurfaceVariant = Color(0xFF6B7280);
 
-  static const Color secondaryPurple = Color(0xFF9333EA);
-  static const Color accentPurple = Color(0xFFDDD6FE);
-
-  static const Color backgroundLight = Color(0xFFFAFAFA);
+  // Dark theme variants
   static const Color backgroundDark = Color(0xFF121212);
-
-  static const Color surfaceLight = Color(0xFFFFFFFF);
   static const Color surfaceDark = Color(0xFF1E1E1E);
-
-  static const Color errorColor = Color(0xFFDC2626);
-  static const Color successColor = Color(0xFF059669);
-  static const Color warningColor = Color(0xFFD97706);
-  static const Color infoColor = Color(0xFF2563EB);
-
-  // Text colors
-  static const Color textPrimaryLight = Color(0xFF1F2937);
-  static const Color textSecondaryLight = Color(0xFF6B7280);
-  static const Color textPrimaryDark = Color(0xFFE5E7EB);
-  static const Color textSecondaryDark = Color(0xFF9CA3AF);
+  static const Color onSurfaceDark = Color(0xFFE5E7EB);
+  static const Color onSurfaceVariantDark = Color(0xFF9CA3AF);
 
   static ThemeData get lightTheme {
     const colorScheme = ColorScheme.light(
-      primary: primaryPurple,
-      primaryContainer: accentPurple,
-      secondary: secondaryPurple,
-      secondaryContainer: Color(0xFFF3E8FF),
-      surface: surfaceLight,
-      error: errorColor,
+      primary: primary,
+      primaryContainer: accent,
+      secondary: secondary,
+      secondaryContainer: surfaceVariant,
+      surface: background,
+      surfaceContainerHighest: surfaceVariant,
+      error: error,
       onPrimary: Colors.white,
-      onPrimaryContainer: primaryPurpleDark,
+      onPrimaryContainer: onSurface,
       onSecondary: Colors.white,
-      onSecondaryContainer: primaryPurpleDark,
-      onSurface: textPrimaryLight,
+      onSecondaryContainer: onSurface,
+      onSurface: onSurface,
+      onSurfaceVariant: onSurfaceVariant,
       onError: Colors.white,
       outline: Color(0xFFD1D5DB),
       outlineVariant: Color(0xFFE5E7EB),
@@ -52,24 +49,23 @@ class AppTheme {
 
       // App Bar Theme
       appBarTheme: const AppBarTheme(
-        backgroundColor: surfaceLight,
-        foregroundColor: textPrimaryLight,
+        backgroundColor: surface,
+        foregroundColor: onSurface,
         elevation: 0,
         scrolledUnderElevation: 1,
         systemOverlayStyle: SystemUiOverlayStyle.dark,
         titleTextStyle: TextStyle(
-          color: textPrimaryLight,
+          color: onSurface,
           fontSize: 20,
           fontWeight: FontWeight.w600,
-          // fontFamily: 'Roboto', // Use system font
         ),
       ),
 
       // Bottom Navigation Bar Theme
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: surfaceLight,
-        selectedItemColor: primaryPurple,
-        unselectedItemColor: textSecondaryLight,
+        backgroundColor: surface,
+        selectedItemColor: primary,
+        unselectedItemColor: onSurfaceVariant,
         type: BottomNavigationBarType.fixed,
         elevation: 8,
         selectedLabelStyle:
@@ -80,7 +76,7 @@ class AppTheme {
 
       // Card Theme
       cardTheme: const CardThemeData(
-        color: surfaceLight,
+        color: surface,
         elevation: 2,
         shadowColor: Color.fromRGBO(0, 0, 0, 0.1),
         shape: RoundedRectangleBorder(
@@ -90,10 +86,10 @@ class AppTheme {
       // Elevated Button Theme
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primaryPurple,
+          backgroundColor: primary,
           foregroundColor: Colors.white,
           elevation: 2,
-          shadowColor: primaryPurple.withValues(alpha: 0.3),
+          shadowColor: primary.withValues(alpha: 0.3),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           textStyle: const TextStyle(
@@ -106,7 +102,7 @@ class AppTheme {
       // Text Button Theme
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: primaryPurple,
+          foregroundColor: primary,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         ),
@@ -115,8 +111,8 @@ class AppTheme {
       // Outlined Button Theme
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: primaryPurple,
-          side: const BorderSide(color: primaryPurple),
+          foregroundColor: primary,
+          side: const BorderSide(color: primary),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         ),
@@ -125,7 +121,7 @@ class AppTheme {
       // Input Decoration Theme
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: backgroundLight,
+        fillColor: background,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
@@ -136,11 +132,11 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: primaryPurple, width: 2),
+          borderSide: const BorderSide(color: primary, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: errorColor),
+          borderSide: const BorderSide(color: error),
         ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -148,7 +144,7 @@ class AppTheme {
 
       // Floating Action Button Theme
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: primaryPurple,
+        backgroundColor: primary,
         foregroundColor: Colors.white,
         elevation: 4,
         shape: CircleBorder(),
@@ -158,13 +154,13 @@ class AppTheme {
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return primaryPurple;
+            return primary;
           }
-          return const Color(0xFF9CA3AF);
+          return onSurfaceVariant;
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return primaryPurple.withValues(alpha: 0.5);
+            return primary.withValues(alpha: 0.5);
           }
           return const Color(0xFFE5E7EB);
         }),
@@ -187,17 +183,19 @@ class AppTheme {
 
   static ThemeData get darkTheme {
     const colorScheme = ColorScheme.dark(
-      primary: primaryPurpleLight,
-      primaryContainer: primaryPurpleDark,
-      secondary: secondaryPurple,
+      primary: secondary,
+      primaryContainer: accent,
+      secondary: accent,
       secondaryContainer: Color(0xFF4C1D95),
-      surface: surfaceDark,
-      error: errorColor,
+      surface: backgroundDark,
+      surfaceContainerHighest: Color(0xFF2D2D2D),
+      error: error,
       onPrimary: Colors.black,
-      onPrimaryContainer: accentPurple,
+      onPrimaryContainer: onSurfaceDark,
       onSecondary: Colors.white,
-      onSecondaryContainer: accentPurple,
-      onSurface: textPrimaryDark,
+      onSecondaryContainer: onSurfaceDark,
+      onSurface: onSurfaceDark,
+      onSurfaceVariant: onSurfaceVariantDark,
       onError: Colors.white,
       outline: Color(0xFF4B5563),
       outlineVariant: Color(0xFF374151),
@@ -211,23 +209,22 @@ class AppTheme {
       // App Bar Theme
       appBarTheme: const AppBarTheme(
         backgroundColor: surfaceDark,
-        foregroundColor: textPrimaryDark,
+        foregroundColor: onSurfaceDark,
         elevation: 0,
         scrolledUnderElevation: 1,
         systemOverlayStyle: SystemUiOverlayStyle.light,
         titleTextStyle: TextStyle(
-          color: textPrimaryDark,
+          color: onSurfaceDark,
           fontSize: 20,
           fontWeight: FontWeight.w600,
-          // fontFamily: 'Roboto', // Use system font
         ),
       ),
 
       // Bottom Navigation Bar Theme
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: surfaceDark,
-        selectedItemColor: primaryPurpleLight,
-        unselectedItemColor: textSecondaryDark,
+        selectedItemColor: secondary,
+        unselectedItemColor: onSurfaceVariantDark,
         type: BottomNavigationBarType.fixed,
         elevation: 8,
         selectedLabelStyle:
@@ -248,10 +245,10 @@ class AppTheme {
       // Elevated Button Theme
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primaryPurpleLight,
+          backgroundColor: secondary,
           foregroundColor: Colors.black,
           elevation: 2,
-          shadowColor: primaryPurpleLight.withValues(alpha: 0.3),
+          shadowColor: secondary.withValues(alpha: 0.3),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           textStyle: const TextStyle(
@@ -264,7 +261,7 @@ class AppTheme {
       // Text Button Theme
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: primaryPurpleLight,
+          foregroundColor: secondary,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         ),
@@ -273,8 +270,8 @@ class AppTheme {
       // Outlined Button Theme
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: primaryPurpleLight,
-          side: const BorderSide(color: primaryPurpleLight),
+          foregroundColor: secondary,
+          side: const BorderSide(color: secondary),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         ),
@@ -294,11 +291,11 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: primaryPurpleLight, width: 2),
+          borderSide: const BorderSide(color: secondary, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: errorColor),
+          borderSide: const BorderSide(color: error),
         ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -306,7 +303,7 @@ class AppTheme {
 
       // Floating Action Button Theme
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: primaryPurpleLight,
+        backgroundColor: secondary,
         foregroundColor: Colors.black,
         elevation: 4,
         shape: CircleBorder(),
@@ -316,13 +313,13 @@ class AppTheme {
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return primaryPurpleLight;
+            return secondary;
           }
-          return const Color(0xFF6B7280);
+          return onSurfaceVariantDark;
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return primaryPurpleLight.withValues(alpha: 0.5);
+            return secondary.withValues(alpha: 0.5);
           }
           return const Color(0xFF374151);
         }),

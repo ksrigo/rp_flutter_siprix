@@ -120,5 +120,41 @@ Follow the existing purple theme.
 Preserve the current Bottom Navigation bar.
 Keep code clean, modular, and null-safe.
 
-- Multi select only allow to select Missed calls.
-- Call Back button, is not calling back. It's jst go back to Keypad window
+I have placed the current output screenshot in mockup/recent_call_output.JPG.
+The toggle between All / Missed is not displayed correctly.
+Task:
+Fix the toggle so that it matches the design in mockup/recents_call.jpg.
+Ensure size, alignment, and style are consistent with the mockup.
+
+---
+
+I need to implement the Contacts screen with the same UI as shown in mockup/contact_screen.png.
+Requirements:
+Top bar:
+Left: toggle switch labeled Phone Contacts (Purple color)
+Center: title Contacts.
+Right: + button to add a new contact.
+Search bar:
+Full-width rounded search box with placeholder text: "Search contacts".
+Tabs:
+Two options: All and Favorites.
+Active tab underlined with purple accent.
+Contact list:
+Grouped by alphabet letters (A, B, C, …).
+Each contact row shows:
+Left: circular avatar with contact image/placeholder.
+Center: contact name (bold) and label (e.g., Mobile).
+Right: call icon.
+Groups separated by section headers with letter titles.
+Alphabet index on the right side (A–Z) in vertical alignment, purple text, allowing quick navigation.
+Bottom navigation bar:
+Tabs: Keypad, Recents, Contacts, Voicemail, Settings.
+Contacts tab highlighted in purple (active).
+Theme:
+Background: white.
+Primary accent color: purple.
+Consistent with the mockup design.
+Notes:
+The contact list should be scrollable.
+Include placeholder data for contacts (e.g., names and avatars).
+Code must be null-safe and modular.

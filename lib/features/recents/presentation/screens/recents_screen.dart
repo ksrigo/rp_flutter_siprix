@@ -6,6 +6,7 @@ import 'package:siprix_voip_sdk/cdrs_model.dart';
 import '../../../../core/services/call_history_service.dart';
 import '../../../../core/services/navigation_service.dart';
 import '../../../../core/services/sip_service.dart';
+import '../../../../core/theme/app_theme.dart';
 
 class RecentsScreen extends ConsumerStatefulWidget {
   const RecentsScreen({super.key});
@@ -15,8 +16,7 @@ class RecentsScreen extends ConsumerStatefulWidget {
 }
 
 class _RecentsScreenState extends ConsumerState<RecentsScreen> {
-  static const Color _primaryColor = Color(0xFF6B46C1);
-  static const Color _mutedTextColor = Color(0xFF6B7280);
+  // Theme colors are accessed via Theme.of(context) in build methods
 
   int _selectedTabIndex = 0;
   bool _isLoading = true;
@@ -67,14 +67,14 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
   }
 
   Widget _buildHeader() {
-    return const Padding(
-      padding: EdgeInsets.fromLTRB(24, 12, 24, 0),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
       child: Text(
         'Recents',
         style: TextStyle(
           fontSize: 28,
           fontWeight: FontWeight.w700,
-          color: Color(0xFF1F2933),
+          color: Theme.of(context).colorScheme.onSurface,
         ),
       ),
     );
@@ -100,7 +100,7 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
         child: Row(
           children: [
             IconButton(
-              icon: const Icon(Icons.close, color: Color(0xFF111827)),
+              icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface),
               tooltip: 'Cancel selection',
               onPressed: _exitSelectionMode,
             ),
@@ -108,15 +108,15 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
             Expanded(
               child: Text(
                 '$selectedCount selected',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF111827),
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
+              icon: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.error),
               tooltip: 'Delete selected',
               onPressed: selectedCount == 0 ? null : _confirmBulkDelete,
             ),
@@ -132,7 +132,7 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
       child: Container(
         height: 40,
         decoration: BoxDecoration(
-          color: const Color(0xFFF5F6F8),
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
@@ -187,7 +187,7 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
             style: TextStyle(
               fontSize: 14,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-              color: isSelected ? _primaryColor : _mutedTextColor,
+              color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
               letterSpacing: -0.1,
             ),
             child: Text(text),
@@ -242,9 +242,9 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
   }
 
   Widget _buildLoadingState() {
-    return const Center(
+    return Center(
       child: CircularProgressIndicator(
-        valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+        valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
       ),
     );
   }
@@ -326,10 +326,10 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
       padding: const EdgeInsets.only(left: 4),
       child: Text(
         CallHistoryService.getDisplayDate(dateKey),
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w600,
-          color: Color(0xFF374151),
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
           letterSpacing: -0.2,
         ),
       ),
@@ -340,23 +340,23 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        children: const [
-          Icon(Icons.history, size: 48, color: Color(0xFFCBD5F5)),
-          SizedBox(height: 12),
+        children: [
+          Icon(Icons.history, size: 48, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.6)),
+          const SizedBox(height: 12),
           Text(
             'No recent calls yet',
             style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF1F2933),
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
-          SizedBox(height: 6),
+          const SizedBox(height: 6),
           Text(
             'New calls will appear here automatically.',
             style: TextStyle(
               fontSize: 14,
-              color: _mutedTextColor,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -373,8 +373,8 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.symmetric(horizontal: 24),
-        color: const Color(0xFFFEF2F2),
-        child: const Icon(Icons.delete_outline, color: Color(0xFFDC2626), size: 28),
+        color: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
+        child: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.error, size: 28),
       ),
       child: _buildCallTile(call, isSelected),
     );
@@ -404,7 +404,7 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
     final subtitle = subtitleSegments.join(' · ');
 
     final highlightColor = isSelected
-        ? _primaryColor.withValues(alpha: 0.12)
+        ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.12)
         : Colors.transparent;
 
     return Material(
@@ -433,8 +433,8 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: callType == CallType.missed
-                            ? const Color(0xFFDC2626)
-                            : const Color(0xFF1F2933),
+                            ? Theme.of(context).colorScheme.error
+                            : Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -442,10 +442,10 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
                       subtitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w500,
-                        color: _mutedTextColor,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -467,7 +467,7 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
       width: 48,
       height: 48,
       decoration: BoxDecoration(
-        color: isSelected ? _primaryColor : style.backgroundColor,
+        color: isSelected ? Theme.of(context).colorScheme.primary : style.backgroundColor,
         shape: BoxShape.circle,
       ),
       child: Icon(
@@ -487,10 +487,10 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
         child: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: const Color(0xFFEFF1FB),
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.info_outline, color: _mutedTextColor, size: 20),
+          child: Icon(Icons.info_outline, color: Theme.of(context).colorScheme.onSurfaceVariant, size: 20),
         ),
       ),
     );
@@ -554,7 +554,7 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
-              style: TextButton.styleFrom(foregroundColor: const Color(0xFFDC2626)),
+              style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
               child: const Text('Delete'),
             ),
           ],
@@ -592,7 +592,7 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
-              style: TextButton.styleFrom(foregroundColor: const Color(0xFFDC2626)),
+              style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
               child: const Text('Delete'),
             ),
           ],
@@ -665,7 +665,7 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
                 width: 44,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE5E7EB),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -690,18 +690,18 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
                     children: [
                       Text(
                         displayName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF1F2933),
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         phoneNumber,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
-                          color: _mutedTextColor,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -726,7 +726,7 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
                     icon: const Icon(Icons.call),
                     label: const Text('Call back'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _primaryColor,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
@@ -745,8 +745,8 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
                     icon: const Icon(Icons.person_add_alt_1_outlined),
                     label: const Text('Add to contacts'),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: _primaryColor,
-                      side: const BorderSide(color: _primaryColor),
+                      foregroundColor: Theme.of(context).colorScheme.primary,
+                      side: BorderSide(color: Theme.of(context).colorScheme.primary),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -772,19 +772,19 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
             width: 120,
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: _mutedTextColor,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 15,
-                color: Color(0xFF1F2933),
+                color: Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -921,20 +921,20 @@ class _CallVisualStyle {
     switch (callType) {
       case CallType.incoming:
         return _CallVisualStyle(
-          iconColor: const Color(0xFF6B46C1),
-          backgroundColor: const Color(0xFFF0E9FF),
+          iconColor: AppTheme.primary,
+          backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
           icon: Icons.call_received,
         );
       case CallType.outgoing:
         return _CallVisualStyle(
-          iconColor: const Color(0xFF6B46C1),
-          backgroundColor: const Color(0xFFE8F5FF),
+          iconColor: AppTheme.info,
+          backgroundColor: AppTheme.info.withValues(alpha: 0.1),
           icon: Icons.call_made,
         );
       case CallType.missed:
         return _CallVisualStyle(
-          iconColor: const Color(0xFFDC2626),
-          backgroundColor: const Color(0xFFFEE2E2),
+          iconColor: AppTheme.error,
+          backgroundColor: AppTheme.error.withValues(alpha: 0.1),
           icon: Icons.call_missed_outgoing,
         );
     }

@@ -5,6 +5,7 @@ import '../../features/auth/presentation/screens/splash_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/call/presentation/screens/incoming_call_screen.dart';
 import '../../features/call/presentation/screens/in_call_screen.dart';
+import '../../features/contacts/presentation/screens/contacts_screen.dart';
 import '../../features/dialpad/presentation/screens/dialpad_screen.dart';
 import '../../features/recents/presentation/screens/recents_screen.dart';
 import '../../shared/widgets/main_navigation.dart';
@@ -237,13 +238,6 @@ class NavigationService {
 }
 
 // Placeholder screens - these will be implemented in later phases
-
-class ContactsScreen extends StatelessWidget {
-  const ContactsScreen({super.key});
-  @override
-  Widget build(BuildContext context) =>
-      const Scaffold(body: Center(child: Text('Contacts')));
-}
 
 class AddContactScreen extends StatelessWidget {
   const AddContactScreen({super.key});
