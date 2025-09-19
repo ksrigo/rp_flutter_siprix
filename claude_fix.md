@@ -2320,3 +2320,135 @@ extension_id is returned as id in the response of /extensions/mobile
 Adding a contact to API phonebook: leave a placeholder call.
 Must be null-safe and modular (repository + data models + UI).
 Ensure clean separation between UI, data layer, and settings control.
+
+---
+
+We are building a Flutter softphone app.
+I need to implement a “Create a new Contact” page that matches the design in mockup/add_contact.png and connects to an API for saving contacts.
+Header:
+Top left: close (X) icon to dismiss.
+Title: New Contact centered.
+Top right: Save button (purple).
+Avatar Section
+Large circular avatar placeholder in the center.
+Small purple circular button with a pencil/edit icon overlay to change picture.
+Form Fields:
+First Name → text input.
+Last Name → text input.
+Phone Numbers:
+Row with dropdown (type: Mobile, Work, Home) + text input for number.
+Multiple numbers allowed.
+Each extra row has a red delete “−” icon.
+Purple “+ Add phone number” button to add more.
+Email → text input.
+Company → text input.
+Notes → multiline text input.
+Styling
+Background: light gray/white.
+Field labels in purple.
+Inputs: rounded corners, light gray background.
+Accent color: purple.
+Scrollable form (SingleChildScrollView).
+Placeholder for avatar upload (not implemented yet).
+🌐 API Integration
+Endpoint
+POST /v1/extension/<extension_id>/contacts
+Payload (JSON array of contacts)
+[
+{
+"is_shared": false,
+"first_name": "string",
+"last_name": "string",
+"company": "string",
+"notes": "string",
+"numbers": [
+{
+"type": "mobile", // allowed: mobile, work, home
+"number": "string"
+}
+],
+"email": "string"
+}
+]
+Behavior
+When the Save button is pressed:
+Validate required fields (first_name, at least one number).
+Build JSON payload from form inputs.
+Call the API endpoint.
+Show success or error message (SnackBar/Alert) and on success refresh contacts list and update sqllite.
+
+---
+
+We need to implement an Edit Contact page for our Flutter softphone app.
+Requirements
+UI
+Reuse the same UI layout as the Add Contact page
+Pre-fill the form fields with the contact data retrieved from the GET API.
+At the bottom of the page, add a red Delete button.
+API Integration
+Fetch contacts (GET) (This is done when we load contact page)
+[
+{
+"id": 32,
+"is_shared": false,
+"first_name": "Chelsiess",
+"last_name": "Rohans",
+"company": "Ferry - Hickles",
+"notes": "622",
+"numbers": [
+{
+"type": "home",
+"number": "36623"
+}
+],
+"added_on": "2025-02-21T11:14:59.350126Z",
+"added_by": "548df9cd-c0ce-4bf3-8ed6-fd32cf83c2c1",
+"email": "fakedata59075@gmail.com"
+}
+]
+
+The id is returned when fetching contacts and will be used for edit/delete actions.
+Update contact (PATCH)
+PATCH /contact/<contact_id>
+Payload format is the same as for POST /v1/extension/<extension_id>/contacts. You can only send modifiy field payload with PATCH method
+Triggered when the user taps Save.
+Delete contact (DELETE)
+DELETE /contact/<contact_id>
+Triggered when the user taps the Delete button at the bottom.
+Behavior
+When the user taps on a contact in the list, open the Edit Contact page with all fields populated.
+Pressing Save should call the PATCH API and update the local cache/UI.
+Pressing Delete should call the DELETE API and remove the contact from the list.
+Show success/error messages (SnackBar or Alert).
+
+---
+
+We need to implement Call Contact functionality in our Flutter softphone app.
+Requirements
+Trigger
+Each contact row has a Call button.
+When pressed:
+If the contact has multiple numbers → show a dialog/list with available numbers.
+Each entry should display Label (Mobile/Home/Work) – Number.
+User selects which number to call.
+If the contact has only one number → dial it immediately.
+Dialing Behavior
+Once the number is chosen, initiate a call through the Siprix SDK.
+After dialing, navigate to the On Call screen.
+UI
+Use a simple modal bottom sheet or dialog for the number selection.
+Style consistent with the app’s white background and purple theme.
+
+---
+
+Claude Code Prompt:
+
+Ensure that the Recents page title and the Contacts page title are consistent:
+
+Same font size
+
+Same font style
+
+Same horizontal alignment/position in the AppBar
+
+Update both pages so the titles visually match.

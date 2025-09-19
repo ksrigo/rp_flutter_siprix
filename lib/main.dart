@@ -11,6 +11,7 @@ import 'core/services/navigation_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/auth_service.dart';
 import 'core/services/api_service.dart';
+import 'core/services/contacts_service.dart';
 import 'shared/services/storage_service.dart';
 
 void main() async {
@@ -50,6 +51,9 @@ Future<void> _initializeServices() async {
     
     // Initialize notification service
     await NotificationService.instance.initialize();
+    
+    // Initialize contacts service
+    await ContactsService.instance.initialize();
     
     // SIP service will be initialized after successful authentication
     

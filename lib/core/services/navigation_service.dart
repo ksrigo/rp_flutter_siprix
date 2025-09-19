@@ -5,7 +5,11 @@ import '../../features/auth/presentation/screens/splash_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/call/presentation/screens/incoming_call_screen.dart';
 import '../../features/call/presentation/screens/in_call_screen.dart';
-import '../../features/contacts/presentation/screens/contacts_screen.dart';
+import '../../features/contacts/presentation/screens/contacts_page.dart';
+import '../../features/contacts/presentation/screens/add_contact_screen.dart';
+import '../../features/contacts/presentation/screens/edit_contact_screen.dart';
+import '../../features/contacts/presentation/widgets/device_contacts_setting.dart';
+import '../../features/contacts/data/models/contact_model.dart';
 import '../../features/dialpad/presentation/screens/dialpad_screen.dart';
 import '../../features/recents/presentation/screens/recents_screen.dart';
 import '../../shared/widgets/main_navigation.dart';
@@ -49,7 +53,7 @@ class NavigationService {
           GoRoute(
             path: '/contacts',
             name: 'contacts',
-            builder: (context, state) => const ContactsScreen(),
+            builder: (context, state) => const ContactsPage(),
             routes: [
               GoRoute(
                 path: 'add',
@@ -57,19 +61,11 @@ class NavigationService {
                 builder: (context, state) => const AddContactScreen(),
               ),
               GoRoute(
-                path: 'edit/:id',
+                path: 'edit',
                 name: 'edit-contact',
                 builder: (context, state) {
-                  final contactId = state.pathParameters['id']!;
-                  return EditContactScreen(contactId: contactId);
-                },
-              ),
-              GoRoute(
-                path: 'details/:id',
-                name: 'contact-details',
-                builder: (context, state) {
-                  final contactId = state.pathParameters['id']!;
-                  return ContactDetailsScreen(contactId: contactId);
+                  final contact = state.extra as ContactModel;
+                  return EditContactScreen(contact: contact);
                 },
               ),
             ],
@@ -197,6 +193,8 @@ class NavigationService {
   static void goToKeypad() => router.go('/keypad');
   static void goToRecents() => router.go('/recents');
   static void goToContacts() => router.go('/contacts');
+  static void goToAddContact() => router.go('/contacts/add');
+  static void goToEditContact(ContactModel contact) => router.go('/contacts/edit', extra: contact);
   static void goToVoicemail() => router.go('/voicemail');
   static void goToSettings() => router.go('/settings');
 
@@ -228,38 +226,9 @@ class NavigationService {
     }
   }
 
-  static void goToContactDetails(String contactId) {
-    router.go('/contacts/details/$contactId');
-  }
-
   static void goToVoicemailDetails(String voicemailId) {
     router.go('/voicemail/details/$voicemailId');
   }
-}
-
-// Placeholder screens - these will be implemented in later phases
-
-class AddContactScreen extends StatelessWidget {
-  const AddContactScreen({super.key});
-  @override
-  Widget build(BuildContext context) =>
-      const Scaffold(body: Center(child: Text('Add Contact')));
-}
-
-class EditContactScreen extends StatelessWidget {
-  final String contactId;
-  const EditContactScreen({super.key, required this.contactId});
-  @override
-  Widget build(BuildContext context) =>
-      Scaffold(body: Center(child: Text('Edit Contact $contactId')));
-}
-
-class ContactDetailsScreen extends StatelessWidget {
-  final String contactId;
-  const ContactDetailsScreen({super.key, required this.contactId});
-  @override
-  Widget build(BuildContext context) =>
-      Scaffold(body: Center(child: Text('Contact Details $contactId')));
 }
 
 class VoicemailScreen extends StatelessWidget {
@@ -301,24 +270,27 @@ class SettingsScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              const Text(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+              child: Text(
                 'Settings',
                 style: TextStyle(
                   fontSize: 28,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
+                  fontWeight: FontWeight.w700,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
-              const SizedBox(height: 32),
-              
-              // Settings Items
-              Expanded(
+            ),
+            const SizedBox(height: 32),
+            
+            // Settings Items
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: ListView(
                   children: [
                     _buildSettingsItem(
@@ -327,6 +299,7 @@ class SettingsScreen extends StatelessWidget {
                       subtitle: 'Manage your account',
                       onTap: () => context.go('/settings/account'),
                     ),
+                    const DeviceContactsSetting(),
                     _buildSettingsItem(
                       icon: Icons.call_outlined,
                       title: 'Call Options',
@@ -390,8 +363,8 @@ class SettingsScreen extends StatelessWidget {
                   ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
