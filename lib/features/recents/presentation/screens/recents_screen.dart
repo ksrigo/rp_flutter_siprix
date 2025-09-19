@@ -13,12 +13,11 @@ class RecentsScreen extends ConsumerStatefulWidget {
   ConsumerState<RecentsScreen> createState() => _RecentsScreenState();
 }
 
-class _RecentsScreenState extends ConsumerState<RecentsScreen>
-    with SingleTickerProviderStateMixin {
+class _RecentsScreenState extends ConsumerState<RecentsScreen> {
   static const Color _primaryColor = Color(0xFF6B46C1);
   static const Color _mutedTextColor = Color(0xFF6B7280);
 
-  late TabController _tabController;
+  int _selectedTabIndex = 0;
   bool _isLoading = true;
   bool _selectionMode = false;
   final Set<String> _selectedCallKeys = <String>{};
@@ -26,19 +25,7 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) {
-        _exitSelectionMode();
-      }
-    });
     _initializeCallHistory();
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
   }
 
   Future<void> _initializeCallHistory() async {
@@ -142,62 +129,112 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen>
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Container(
-        height: 44,
-        padding: const EdgeInsets.all(3),
+        height: 40,
         decoration: BoxDecoration(
-          color: const Color(0xFFF7F8FA),
-          borderRadius: BorderRadius.circular(12),
+          color: const Color(0xFFF5F6F8),
+          borderRadius: BorderRadius.circular(10),
         ),
-        child: TabBar(
-          controller: _tabController,
-          indicator: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(9),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 4,
-                offset: const Offset(0, 1),
+        child: Row(
+          children: [
+            Expanded(
+              child: _buildTabButton(
+                text: 'All',
+                isSelected: _selectedTabIndex == 0,
+                onTap: () => _onTabSelected(0),
               ),
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.02),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
+            ),
+            Expanded(
+              child: _buildTabButton(
+                text: 'Missed',
+                isSelected: _selectedTabIndex == 1,
+                onTap: () => _onTabSelected(1),
               ),
-            ],
-          ),
-          indicatorPadding: const EdgeInsets.all(3),
-          labelColor: _primaryColor,
-          unselectedLabelColor: _mutedTextColor,
-          labelStyle: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            letterSpacing: -0.2,
-          ),
-          unselectedLabelStyle: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w500,
-            letterSpacing: -0.2,
-          ),
-          tabs: const [
-            Tab(text: 'All'),
-            Tab(text: 'Missed'),
+            ),
           ],
         ),
       ),
     );
   }
 
+  Widget _buildTabButton({
+    required String text,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        margin: const EdgeInsets.all(2),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ]
+              : null,
+        ),
+        child: Center(
+          child: AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 200),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+              color: isSelected ? _primaryColor : _mutedTextColor,
+              letterSpacing: -0.1,
+            ),
+            child: Text(text),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _onTabSelected(int index) {
+    if (index != _selectedTabIndex) {
+      setState(() {
+        _selectedTabIndex = index;
+        _exitSelectionMode();
+      });
+    }
+  }
+
   Widget _buildTabBarView() {
     return AnimatedBuilder(
       animation: CallHistoryService.instance,
       builder: (context, child) {
-        return TabBarView(
-          controller: _tabController,
-          children: [
-            _buildCallList(CallHistoryService.instance.getAllCalls()),
-            _buildCallList(CallHistoryService.instance.getMissedCalls()),
-          ],
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 250),
+          transitionBuilder: (child, animation) {
+            return FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0.1, 0),
+                  end: Offset.zero,
+                ).animate(CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeOutCubic,
+                )),
+                child: child,
+              ),
+            );
+          },
+          child: _selectedTabIndex == 0
+              ? _buildGroupedCallList(
+                  CallHistoryService.instance.getCallsGroupedByDate(),
+                  key: const ValueKey('all'),
+                )
+              : _buildGroupedCallList(
+                  CallHistoryService.instance.getMissedCallsGroupedByDate(),
+                  key: const ValueKey('missed'),
+                ),
         );
       },
     );
@@ -211,14 +248,21 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen>
     );
   }
 
-  Widget _buildCallList(List<CdrModel> calls) {
-    if (calls.isEmpty) {
-      return _buildEmptyState();
+
+  Widget _buildGroupedCallList(Map<String, List<CdrModel>> groupedCalls, {Key? key}) {
+    if (groupedCalls.isEmpty) {
+      return Container(
+        key: key,
+        child: _buildEmptyState(),
+      );
     }
 
+    // Get all calls for selection validation
+    final allCalls = groupedCalls.values.expand((calls) => calls).toList();
+    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_selectionMode) return;
-      final validKeys = calls.map(_callKey).toSet();
+      final validKeys = allCalls.map(_callKey).toSet();
       bool removed = false;
       for (final key in _selectedCallKeys.toList()) {
         if (!validKeys.contains(key)) {
@@ -235,16 +279,59 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen>
       }
     });
 
-    return ListView.separated(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
-      itemCount: calls.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        final call = calls[index];
-        final isSelected = _selectedCallKeys.contains(_callKey(call));
-        return _buildDismissibleCall(call, isSelected);
-      },
+    // Get sorted date keys (Today first, then Yesterday, then chronological)
+    final sortedDateKeys = groupedCalls.keys.toList();
+    sortedDateKeys.sort((a, b) {
+      if (a == 'Today') return -1;
+      if (b == 'Today') return 1;
+      if (a == 'Yesterday') return -1;
+      if (b == 'Yesterday') return 1;
+      // For other dates, maintain chronological order
+      return a.compareTo(b);
+    });
+
+    return Container(
+      key: key,
+      child: ListView.builder(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+        itemCount: sortedDateKeys.length,
+        itemBuilder: (context, index) {
+          final dateKey = sortedDateKeys[index];
+          final calls = groupedCalls[dateKey]!;
+          
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (index > 0) const SizedBox(height: 16),
+              _buildDateHeader(dateKey),
+              const SizedBox(height: 8),
+              ...calls.map((call) {
+                final isSelected = _selectedCallKeys.contains(_callKey(call));
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: _buildDismissibleCall(call, isSelected),
+                );
+              }),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildDateHeader(String dateKey) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Text(
+        CallHistoryService.getDisplayDate(dateKey),
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF374151),
+          letterSpacing: -0.2,
+        ),
+      ),
     );
   }
 
@@ -327,7 +414,7 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen>
         onTap: () => _onCallTap(call, isSelected),
         onLongPress: () => _enterSelectionMode(call),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 10),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -349,7 +436,7 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen>
                             : const Color(0xFF1F2933),
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       subtitle,
                       maxLines: 1,
@@ -414,13 +501,7 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen>
       return;
     }
 
-    final phoneNumber = call.remoteExt;
-    if (phoneNumber.isEmpty) {
-      debugPrint('RecentsScreen: No number available for this entry');
-      return;
-    }
-
-    _callNumber(phoneNumber);
+    // No action when not in selection mode - row tap disabled
   }
 
   void _enterSelectionMode(CdrModel call) {

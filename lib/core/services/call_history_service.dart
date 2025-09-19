@@ -22,8 +22,8 @@ class CallHistoryService extends ChangeNotifier {
     try {
       debugPrint('CallHistory: Initializing call history service...');
       
-      // Create CdrsModel instance
-      _cdrsModel = CdrsModel();
+      // Create CdrsModel instance with increased capacity
+      _cdrsModel = CdrsModel(maxItems: 30);
       
       // Set up listener for changes
       _cdrsModel?.addListener(_onCallHistoryChanged);
@@ -258,6 +258,77 @@ class CallHistoryService extends ChangeNotifier {
       debugPrint('CallHistory: Error getting missed calls: $e');
       return [];
     }
+  }
+
+  /// Group calls by date
+  Map<String, List<CdrModel>> getCallsGroupedByDate() {
+    try {
+      final calls = getAllCalls();
+      final groupedCalls = <String, List<CdrModel>>{};
+      
+      for (final call in calls) {
+        final dateKey = _getDateKey(call.madeAt);
+        if (groupedCalls[dateKey] == null) {
+          groupedCalls[dateKey] = [];
+        }
+        groupedCalls[dateKey]!.add(call);
+      }
+      
+      return groupedCalls;
+    } catch (e) {
+      debugPrint('CallHistory: Error grouping calls by date: $e');
+      return {};
+    }
+  }
+
+  /// Group missed calls by date
+  Map<String, List<CdrModel>> getMissedCallsGroupedByDate() {
+    try {
+      final missedCalls = getMissedCalls();
+      final groupedCalls = <String, List<CdrModel>>{};
+      
+      for (final call in missedCalls) {
+        final dateKey = _getDateKey(call.madeAt);
+        if (groupedCalls[dateKey] == null) {
+          groupedCalls[dateKey] = [];
+        }
+        groupedCalls[dateKey]!.add(call);
+      }
+      
+      return groupedCalls;
+    } catch (e) {
+      debugPrint('CallHistory: Error grouping missed calls by date: $e');
+      return {};
+    }
+  }
+
+  /// Get a readable date key for grouping
+  String _getDateKey(DateTime dateTime) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final callDate = DateTime(dateTime.year, dateTime.month, dateTime.day);
+    
+    if (callDate == today) {
+      return 'Today';
+    } else if (callDate == yesterday) {
+      return 'Yesterday';
+    } else {
+      final daysDifference = today.difference(callDate).inDays;
+      if (daysDifference <= 7) {
+        // Show day of week for this week
+        const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        return weekdays[dateTime.weekday - 1];
+      } else {
+        // Show date for older calls
+        return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
+      }
+    }
+  }
+
+  /// Get display date for a date key
+  static String getDisplayDate(String dateKey) {
+    return dateKey;
   }
 
   /// Get call count
