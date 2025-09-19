@@ -57,41 +57,59 @@ class _IncomingCallScreenState extends ConsumerState<IncomingCallScreen>
   void _setupCallStateListener() {
     debugPrint('🔥 IncomingCallScreen: Setting up call state listener for callId: ${widget.callId}');
     debugPrint('🔥 IncomingCallScreen: Initial _isNavigatingAway state: $_isNavigatingAway');
-    _callStateSubscription = SipService.instance.currentCallStream.listen((callInfo) {
-      debugPrint('🔥 IncomingCallScreen: ========== CALL STATE UPDATE ==========');
-      debugPrint('🔥 IncomingCallScreen: Received call state update - callId: ${callInfo?.id}, state: ${callInfo?.state}, widgetCallId: ${widget.callId}');
-      debugPrint('🔥 IncomingCallScreen: Current _isNavigatingAway: $_isNavigatingAway');
-      
-      if (callInfo == null) {
-        // Call was cleared/ended
-        debugPrint('🔥 IncomingCallScreen: Call was cleared, calling _handleCallEnded()');
-        _handleCallEnded();
-      } else if (callInfo.id == widget.callId) {
-        // This is our call, check state changes
-        debugPrint('🔥 IncomingCallScreen: This is our call, state: ${callInfo.state}');
-        
-        if (callInfo.state == AppCallState.answered) {
-          // Call was accepted (possibly from background) - navigate to in-call screen immediately
-          debugPrint('🔥 IncomingCallScreen: Call answered (background acceptance), navigating to in-call screen IMMEDIATELY');
-          if (!_isNavigatingAway) {
-            _isNavigatingAway = true;
-            // Navigate immediately without delay for background acceptance
-            NavigationService.goToInCall(
-              widget.callId,
-              phoneNumber: widget.callerNumber,
-              contactName: widget.callerName,
-            );
-          }
-        } else if (callInfo.state == AppCallState.ended || callInfo.state == AppCallState.failed) {
-          debugPrint('🔥 IncomingCallScreen: Call ${callInfo.state.name}, calling _handleCallEnded()');
-          _handleCallEnded();
-        } else {
-          debugPrint('🔥 IncomingCallScreen: Call state is ${callInfo.state.name}, not ending - buttons should be responsive');
-        }
-      } else {
-        debugPrint('🔥 IncomingCallScreen: Different call ID, ignoring: ${callInfo.id} vs ${widget.callId}');
+    _callStateSubscription =
+        SipService.instance.currentCallStream.listen(_handleCallStateChange);
+
+    // Evaluate the current call state immediately in case the call already ended
+    _handleCallStateChange(SipService.instance.currentCall);
+  }
+
+  void _handleCallStateChange(CallInfo? callInfo) {
+    debugPrint('''🔥 IncomingCallScreen: ========== CALL STATE UPDATE ==========
+🔥 IncomingCallScreen: Received call state update - callId: ${callInfo?.id}, state: ${callInfo?.state}, widgetCallId: ${widget.callId}
+🔥 IncomingCallScreen: Current _isNavigatingAway: $_isNavigatingAway''');
+
+    if (callInfo == null) {
+      // Call was cleared/ended
+      debugPrint('🔥 IncomingCallScreen: Call was cleared, calling _handleCallEnded()');
+      _handleCallEnded();
+      return;
+    }
+
+    if (callInfo.id != widget.callId) {
+      debugPrint('🔥 IncomingCallScreen: Different call ID, ignoring: ${callInfo.id} vs ${widget.callId}');
+
+      // If another call replaced ours and this screen is still visible, close it to avoid stale UI
+      _handleCallEnded();
+      return;
+    }
+
+    debugPrint('🔥 IncomingCallScreen: This is our call, state: ${callInfo.state}');
+
+    if (callInfo.state == AppCallState.answered) {
+      debugPrint(
+          '🔥 IncomingCallScreen: Call answered (background acceptance), navigating to in-call screen IMMEDIATELY');
+      if (!_isNavigatingAway) {
+        _isNavigatingAway = true;
+        NavigationService.goToInCall(
+          widget.callId,
+          phoneNumber: widget.callerNumber,
+          contactName: widget.callerName,
+        );
       }
-    });
+      return;
+    }
+
+    if (callInfo.state == AppCallState.ended ||
+        callInfo.state == AppCallState.failed) {
+      debugPrint(
+          '🔥 IncomingCallScreen: Call ${callInfo.state.name}, calling _handleCallEnded()');
+      _handleCallEnded();
+      return;
+    }
+
+    debugPrint(
+        '🔥 IncomingCallScreen: Call state is ${callInfo.state.name}, keeping screen active');
   }
 
   void _handleCallAnswered() async {
@@ -475,4 +493,3 @@ class _IncomingCallScreenState extends ConsumerState<IncomingCallScreen>
     );
   }
 }
-

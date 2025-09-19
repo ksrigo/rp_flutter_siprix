@@ -466,14 +466,17 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
             false,                           // hasSecureMedia
             false,                           // hasVideo
           );
-          
+
           // Set display name if available
           if (_currentCall!.remoteName.isNotEmpty && _currentCall!.remoteName != _currentCall!.remoteNumber) {
             _connectedCallModel!.displName = _currentCall!.remoteName;
           }
-          
+
+          // Mark the synthesized CallModel as connected so CDR history categorizes it correctly
+          _connectedCallModel!.onConnected('', '', false);
+
           debugPrint('SIP Service: Created and stored connected CallModel for callId: $callId');
-          
+
           // Add to CDR immediately
           CallHistoryService.instance.addCallRecord(_connectedCallModel!);
           debugPrint('SIP Service: Successfully added connected CallModel to CDR history');
@@ -535,14 +538,7 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
           detectionReason = 'Active call shows connected state';
         }
         
-        // Method 2: Check if we've been ringing for more than 3 seconds without connection
-        else if (timeSinceStart.inSeconds > 3) {
-          // For calls that have been ringing too long, assume background acceptance
-          backgroundAcceptanceDetected = true;
-          detectionReason = 'Call ringing too long (${timeSinceStart.inSeconds}s)';
-        }
-        
-        // Method 3: Check if there's a switched call that matches our call
+        // Method 2: Check if there's a switched call that matches our call
         else if (switchedCallId > 0) {
           final ourCallId = int.tryParse(_currentCall!.id);
           if (ourCallId != null && switchedCallId == ourCallId) {

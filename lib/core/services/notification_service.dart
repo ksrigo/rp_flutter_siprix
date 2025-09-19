@@ -197,62 +197,56 @@ class NotificationService {
       debugPrint('🔥 Android: Push data: $data');
       debugPrint('🔥 Android: Caller: ${data['caller_name']} (${data['caller_uri']})');
       debugPrint('🔥 Android: Callee: ${data['callee_uri']}');
-      
+
       // Initialize core services required by SIP service
       debugPrint('🔥 Android: Initializing storage service...');
       await StorageService.instance.initialize();
       debugPrint('🔥 Android: Storage service initialized');
-      
+
       // Initialize notification service 
       debugPrint('🔥 Android: Initializing notification service...');
       await NotificationService.instance.initialize();
       debugPrint('🔥 Android: Notification service initialized');
-      
-      // Initialize SIP service if not already done
-      debugPrint('🔥 Android: Initializing SIP service...');
-      final sipService = SipService.instance;
-      
-      try {
-        await sipService.initialize();
-        debugPrint('🔥 Android: SIP service initialized, isRegistered: ${sipService.isRegistered}');
-      } catch (e) {
-        debugPrint('🔥 Android: SIP service initialization failed: $e');
-        debugPrint('🔥 Android: Will try background re-registration anyway...');
+
+      final success = await _ensureSipRegistrationForPush('Background push wake-up');
+      if (success) {
+        debugPrint('🔥 Android: ✅ SIP registration successful from background wake-up');
+      } else {
+        debugPrint('🔥 Android: ❌ SIP registration failed from background wake-up');
       }
-      
-      // ALWAYS force re-registration on push notification to ensure fresh REGISTER is sent
-      debugPrint('🔥 Android: 🎯 FORCING background re-registration on push notification (ignoring current status)');
-      
+
       try {
-        debugPrint('🔥 Android: Attempting background re-registration...');
-        final success = await sipService.attemptBackgroundReregistration();
-        
-        if (success) {
-          debugPrint('🔥 Android: ✅ SIP registration successful from background wake-up');
-        } else {
-          debugPrint('🔥 Android: ❌ SIP registration failed from background wake-up');
-        }
-        
-        // Wait a bit for registration to complete
-        debugPrint('🔥 Android: Waiting 3 seconds for registration to complete...');
-        await Future.delayed(const Duration(seconds: 3));
-        
-        try {
-          if (sipService.isRegistered) {
-            debugPrint('🔥 Android: ✅ SIP successfully registered, ready for incoming call');
-          } else {
-            debugPrint('🔥 Android: ⚠️ Warning - SIP registration may still be in progress');
-          }
-        } catch (e) {
-          debugPrint('🔥 Android: Could not check final registration status: $e');
-        }
+        debugPrint('🔥 Android: Background wake-up final registration status: ${SipService.instance.isRegistered}');
       } catch (e) {
-        debugPrint('🔥 Android: ❌ Failed to register SIP from background: $e');
+        debugPrint('🔥 Android: Could not verify final registration status: $e');
       }
-      
+
       debugPrint('🔥 Android: 🎯 App wake-up complete, waiting for incoming SIP call');
     } catch (e) {
       debugPrint('Android: Error waking up app for incoming call: $e');
+    }
+  }
+
+  @pragma('vm:entry-point')
+  static Future<bool> _ensureSipRegistrationForPush(String contextLabel) async {
+    try {
+      final sipService = SipService.instance;
+
+      debugPrint('🔥 Android: [$contextLabel] Ensuring SIP service is initialized');
+      try {
+        await sipService.initialize();
+        debugPrint('🔥 Android: [$contextLabel] SIP service initialization complete');
+      } catch (e) {
+        debugPrint('🔥 Android: [$contextLabel] SIP service initialization issue: $e');
+      }
+
+      debugPrint('🔥 Android: [$contextLabel] Triggering SIP re-registration');
+      final success = await sipService.attemptBackgroundReregistration();
+      debugPrint('🔥 Android: [$contextLabel] Re-registration result: $success');
+      return success;
+    } catch (e) {
+      debugPrint('🔥 Android: [$contextLabel] Error ensuring SIP registration: $e');
+      return false;
     }
   }
 
@@ -460,14 +454,19 @@ class NotificationService {
   Future<void> _handleIncomingCallNotification(Map<String, dynamic> data) async {
     try {
       debugPrint('Android: Handling incoming call notification: $data');
-      
+
       final callerName = data['caller_name'] ?? 'Unknown';
       final callerNumber = data['caller_number'] ?? 'Unknown';
       final callId = data['call_id'];
-      
+
+      // Kick off SIP registration refresh so the proxy sees the device as reachable
+      unawaited(
+        _ensureSipRegistrationForPush('Foreground incoming push').then((_) {}),
+      );
+
       // Trigger the incoming call stream
       _incomingCallController.add(callId ?? callerNumber);
-      
+
       debugPrint('Android: Incoming call notification processed for $callerName ($callerNumber)');
     } catch (e) {
       debugPrint('Android: Error handling incoming call notification: $e');
@@ -605,4 +604,3 @@ class NotificationService {
     _incomingCallController.close();
   }
 }
-

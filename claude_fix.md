@@ -1983,3 +1983,218 @@ Check this doc:
 - https://pub.dev/documentation/siprix_voip_sdk/latest/calls_model/CallsModel-class.html
 
 Try to use onAcceptNotif or onConnected
+
+---
+
+Still showing incoming call screen when the background call accepted through notification button:
+
+I/flutter (25345): 🔥 IncomingCallScreen: initState called for callId: 204
+I/flutter (25345): 🔥 IncomingCallScreen: callerName: Test, callerNumber: 1003
+I/flutter (25345): 🔥 IncomingCallScreen: Setting up call state listener for callId: 204
+I/flutter (25345): 🔥 IncomingCallScreen: Initial \_isNavigatingAway state: false
+I/flutter (25345): 🔥 IncomingCallScreen: Building action button: Decline
+I/flutter (25345): 🔥 IncomingCallScreen: Building action button: Accept
+D/VRI[MainActivity](25345): vri.reportDrawFinished
+W/WindowOnBackDispatcher(25345): OnBackInvokedCallback is not enabled for the application.
+W/WindowOnBackDispatcher(25345): Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+I/flutter (25345): SIP Service: App resumed
+I/HandWritingStubImpl(25345): refreshLastKeyboardType: 1
+I/HandWritingStubImpl(25345): getCurrentKeyboardType: 1
+I/flutter (25345): 🔥 SIP Service: Checking background acceptance - call count: 0, current state: AppCallState.ringing
+I/flutter (25345): 🔥 SIP Service: Checking background acceptance - call count: 0, current state: AppCallState.ringing
+I/MIUIInput(25345): [MotionEvent] ViewRootImpl windowName 'com.ringplus.app/com.ringplus.app.MainActivity', { action=ACTION_DOWN, id[0]=0, pointerCount=1, eventTime=54116835, downTime=54116835, phoneEventTime=19:58:41.375 } moveCount:0
+I/flutter (25345): 🔥 IncomingCallScreen: onTapDown detected for: Accept
+I/MIUIInput(25345): [MotionEvent] ViewRootImpl windowName 'com.ringplus.app/com.ringplus.app.MainActivity', { action=ACTION_UP, id[0]=0, pointerCount=1, eventTime=54116943, downTime=54116835, phoneEventTime=19:58:41.483 } moveCount:0
+I/flutter (25345): 🔥 IncomingCallScreen: onTapUp detected for: Accept
+I/flutter (25345): 🔥 IncomingCallScreen: ========== GESTURE DETECTOR onTap ==========
+I/flutter (25345): 🔥 IncomingCallScreen: GestureDetector onTap triggered for: Accept
+I/flutter (25345): 🔥 IncomingCallScreen: mounted: true
+I/flutter (25345): 🔥 IncomingCallScreen: \_isNavigatingAway: false
+I/flutter (25345): 🔥 IncomingCallScreen: About to call onPressed callback
+I/flutter (25345): 🔥 IncomingCallScreen: Accept button onPressed callback invoked
+I/flutter (25345): 🔥 IncomingCallScreen: ========== ANSWER CALL HANDLER STARTED ==========
+I/flutter (25345): 🔥 IncomingCallScreen: Answer button pressed! CallId: 204
+I/flutter (25345): 🔥 IncomingCallScreen: Current mounted state: true
+I/flutter (25345): 🔥 IncomingCallScreen: Current \_isNavigatingAway: false
+I/flutter (25345): 🔥 IncomingCallScreen: Attempting to answer call...
+I/flutter (25345): 🔥 SipService: ========== ANSWER CALL STARTED ==========
+I/flutter (25345): 🔥 SipService: Answer call: 204
+I/flutter (25345): 🔥 Answer call: Proceeding with answer call attempt for current call
+I/flutter (25345): SIP Service: Ensuring single codec configuration (PCMU+DTMF only)
+I/flutter (25345): SIP Service: ❌ Error ensuring single codec configuration: Can't update/delete account as is has unfinished calls
+I/flutter (25345): Answer call: Accepting call with ID 204
+I/siprix (25345): (SiprixModule.cpp:951): accept callId:204 withVideo:0
+W/siprix (25345): (Callbacks.cpp:264): Callback: 34 started:0
+
+---
+
+This is what happens, when I get an incoming call and press accept button on the notification. Unfortunately it opens the APP on incoming call screen:
+
+I/flutter (31426): 🔥 IncomingCallScreen: initState called for callId: 205
+I/flutter (31426): 🔥 IncomingCallScreen: callerName: Test, callerNumber: 1003
+I/flutter (31426): 🔥 IncomingCallScreen: Setting up call state listener for callId: 205
+I/flutter (31426): 🔥 IncomingCallScreen: Initial \_isNavigatingAway state: false
+I/flutter (31426): 🔥 IncomingCallScreen: Building action button: Decline
+I/flutter (31426): 🔥 IncomingCallScreen: Building action button: Accept
+W/WindowOnBackDispatcher(31426): OnBackInvokedCallback is not enabled for the application.
+W/WindowOnBackDispatcher(31426): Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+I/om.ringplus.app(31426): DynamicFPS DF top: com.ringplus.app : 0.000000
+D/VRI[MainActivity](31426): vri.reportDrawFinished
+I/flutter (31426): SIP Service: App resumed
+I/HandWritingStubImpl(31426): refreshLastKeyboardType: 1
+I/HandWritingStubImpl(31426): getCurrentKeyboardType: 1
+I/flutter (31426): 🔥 SIP Service: Checking background acceptance - call count: 0, current state: AppCallState.ringing
+I/flutter (31426): 🔥 SIP Service: Active call from model: null, switched ID: 0
+I/flutter (31426): 🔥 SIP Service: Checking background acceptance - call count: 0, current state: AppCallState.ringing
+I/flutter (31426): 🔥 SIP Service: Active call from model: null, switched ID: 0
+I/flutter (31426): 🔥 SIP Service: Checking background acceptance - call count: 0, current state: AppCallState.ringing
+I/flutter (31426): 🔥 SIP Service: Active call from model: null, switched ID: 0
+I/flutter (31426): 🔥 SIP Service: Checking background acceptance - call count: 0, current state: AppCallState.ringing
+I/flutter (31426): 🔥 SIP Service: Active call from model: null, switched ID: 0
+I/flutter (31426): 🔥 SIP Service: ========== BACKGROUND ACCEPTANCE DETECTED ==========
+I/flutter (31426): 🔥 SIP Service: Detection reason: Call ringing too long (4s)
+I/flutter (31426): 🔥 SIP Service: ATTEMPTING to trigger connected event for background acceptance
+I/flutter (31426): 🔥 SIP Service: ========== CALL CONNECTED EVENT ==========
+I/flutter (31426): 🔥 SIP Service: Call connected - callId: 205, from: Test, to: 1003, withVideo: false
+I/flutter (31426): 🔥 SIP Service: Current call ID: 205
+I/flutter (31426): 🔥 SIP Service: Is hanging up: false
+I/flutter (31426): 🔥 SIP Service: Stopped background acceptance timer - call connected
+I/flutter (31426): SipService: \_updateCurrentCall called - callId: 205, state: AppCallState.answered
+I/flutter (31426): SIP Service: Incoming call connected, navigating to OnCallScreen
+I/flutter (31426): 🔥 IncomingCallScreen: ========== CALL STATE UPDATE ==========
+I/flutter (31426): 🔥 IncomingCallScreen: Received call state update - callId: 205, state: AppCallState.answered, widgetCallId: 205
+I/flutter (31426): 🔥 IncomingCallScreen: Current \_isNavigatingAway: false
+I/flutter (31426): 🔥 IncomingCallScreen: This is our call, state: AppCallState.answered
+I/flutter (31426): 🔥 IncomingCallScreen: Call answered (background acceptance), navigating to in-call screen IMMEDIATELY
+I/flutter (31426): InCallScreen: Setting up call state listener for callId: 205
+I/flutter (31426): InCallScreen: Loading contact info for: 1003
+I/flutter (31426): InCallScreen: ContactService does not have permission, skipping lookup
+I/flutter (31426): InCallScreen: Found existing call on init - state: AppCallState.answered
+I/flutter (31426): InCallScreen: Call was already answered on init, starting timer
+W/WindowOnBackDispatcher(31426): OnBackInvokedCallback is not enabled for the application.
+W/WindowOnBackDispatcher(31426): Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+D/AudioManager(31426): getMode: mode=0, callApp=com.ringplus.app
+W/siprix (31426): (Transport.cxx:403): RX 'Req CANCEL/cseq=101' from: [68.183.254.236:5060 UDP]
+I/siprix (31426): (InviteSession.cxx:2841): Transition UAS_EarlyOffer -> InviteSession::Terminated
+I/siprix (31426): (RemoteParticipant.cxx:531): RemoteParticipant::stateTransition of handle=205 to state=Terminating
+I/siprix (31426): (RemoteParticipant.cxx:1660): onTerminated: handle=205, received a CANCEL from peer
+I/siprix (31426): (SiprixConvManager.cpp:164): onParticipantTerminated callId:205, statusCode:0
+W/siprix (31426): (Callbacks.cpp:280): Callback:42 callId:205 statusCode:0 sendToApp:1
+I/siprix (31426): (ConversationManager.cxx:348): Switch to call: 0
+I/siprix (31426): (audio_device_impl.cc:813): StopPlayout
+I/siprix (31426): (LibWebRTCRemoteParticipant.cxx:115): LibWebRTCRemoteParticipant destroyed, handle=205
+I/siprix (31426): (audio_device_template.h:190): Playing
+
+---
+
+Looking at the logs, there's no call active when the user taps "accept" on the notification (call count: 0, active call: null). This means:
+
+1. Push notification arrives → User sees notification
+2. User taps "Accept" → App tries to answer call but call doesn't exist in SIP yet
+3. App navigates to incoming call screen (because answer failed)
+4. 4 seconds later → Timer triggers "background acceptance detected"
+5. But call gets CANCELLED by server due to timeout
+
+This is a wrong conclusion. When the notification shows up the call is already ringing state.
+
+---
+
+Now, accepting the call on notification open the app, on on call screen. But the call is not really accepted phone keeps ringing despite we are on the oncall screen and timer shows up:
+
+I/flutter (14184): 🔥 SIP Service: Started background acceptance monitoring timer
+I/flutter (14184): 🔥 SIP Service: Started background acceptance timer for incoming call: 204
+I/flutter (14184): SIP Service: Android - Showing custom incoming call screen for call: 204
+I/flutter (14184): SIP Service: Android - Successfully navigated to incoming call screen
+I/flutter (14184): SIP Service: Android - Custom incoming call screen displayed
+I/flutter (14184): event OnCallSwitched {callId: 204}
+I/flutter (14184): SIP Service: Direct call switched - callId: 204
+I/flutter (14184): SIP Service: Direct call switched to active call: 204
+D/Ringtone(14184): Successfully created local player
+V/MediaPlayer(14184): resetDrmState: mDrmInfo=null mDrmProvisioningThread=null mPrepareDrmInProgress=false mActiveDrmScheme=false
+V/MediaPlayer(14184): cleanDrmObj: mDrmObj=null mDrmSessionId=null
+V/MediaPlayer(14184): resetDrmState: mDrmInfo=null mDrmProvisioningThread=null mPrepareDrmInProgress=false mActiveDrmScheme=false
+V/MediaPlayer(14184): cleanDrmObj: mDrmObj=null mDrmSessionId=null
+D/Ringtone(14184): Successfully created local player
+E/FileUtils(14184): err write to mi_exception_log
+I/flutter (14184): 🔥 SIP Service: Checking background acceptance - call count: 0, current state: AppCallState.ringing
+I/flutter (14184): 🔥 SIP Service: Active call from model: null, switched ID: 0
+D/AppScoutStateMachine(14184): 14184-ScoutStateMachinecreated
+I/SiprixVoipSdkPlugin(14184): handleIntent 'onNewIntent' Intent { act=kActionIncomingCallAccept cat=[android.intent.category.LAUNCHER] flg=0x10400000 pkg=com.ringplus.app cmp=com.ringplus.app/.MainActivity (has extras) }
+I/SiprixVoipSdkPlugin(14184): raiseIncomingCallEvent: Intent { act=kActionIncomingCallAccept cat=[android.intent.category.LAUNCHER] flg=0x10400000 pkg=com.ringplus.app cmp=com.ringplus.app/.MainActivity (has extras) }
+I/SiprixVoipSdkPlugin(14184): raise onCallIncoming 204
+I/flutter (14184): event OnCallIncoming {callId: 204, withVideo: false, accId: 1, from: "Test" <sip:1003@408708399.ringplus.co.uk>, to: sip:1002@408708399.ringplus.co.uk}
+I/flutter (14184): SIP Service: Incoming call - callId: 204, from: "Test" <sip:1003@408708399.ringplus.co.uk>, to: sip:1002@408708399.ringplus.co.uk, withVideo: false
+I/flutter (14184): SIP Service: Raw from header: "Test" <sip:1003@408708399.ringplus.co.uk>
+I/flutter (14184): SIP Service: Raw name before quote removal: ""Test""
+I/flutter (14184): SIP Service: Raw name after quote removal: "Test"
+I/flutter (14184): SIP Service: Parsed name: "Test", number: "1003"
+I/flutter (14184): SIP Service: Parsed caller - name: Test, number: 1003
+I/flutter (14184): SIP Service: Stored Siprix call ID for operations: 204
+I/flutter (14184): SipService: \_updateCurrentCall called - callId: 204, state: AppCallState.ringing
+I/flutter (14184): 🔥 SIP Service: Started background acceptance monitoring timer
+I/flutter (14184): 🔥 SIP Service: Started background acceptance timer for incoming call: 204
+I/flutter (14184): SIP Service: Android - Showing custom incoming call screen for call: 204
+I/flutter (14184): SIP Service: Android - Successfully navigated to incoming call screen
+I/flutter (14184): SIP Service: Android - Custom incoming call screen displayed
+I/SiprixVoipSdkPlugin(14184): raise onCallAcceptNotif 204
+I/flutter (14184): event OnCallAcceptNotif {callId: 204, withVideo: false}
+I/flutter (14184): 🔥 SIP Service: ========== ONCALLACCEPTNOTIF EVENT ==========
+I/flutter (14184): 🔥 SIP Service: OnCallAcceptNotif triggered - callId: 204, withVideo: false
+I/flutter (14184): 🔥 SIP Service: User accepted call from Android notification
+I/flutter (14184): 🔥 SIP Service: Call matches current call, updating state to answered
+I/flutter (14184): SipService: \_updateCurrentCall called - callId: 204, state: AppCallState.answered
+I/flutter (14184): 🔥 SIP Service: Navigating to OnCallScreen due to notification acceptance
+D/SecurityManager(14184): checkAccessControl flag0
+I/flutter (14184): SIP Service: App hidden
+I/flutter (14184): SIP Service: App inactive
+W/libc (14184): Access denied finding property "vendor.display.enable_optimal_refresh_rate"
+W/libc (14184): Access denied finding property "vendor.gpp.create_frc_extension"
+I/om.ringplus.app(14184): 【MiuiBoosterUtils】checkUtil disable.
+I/om.ringplus.app(14184): 【MiuiBoosterUtils】package permission check disable.
+I/om.ringplus.app(14184): 【MiuiBoosterUtils】get Service disable.
+W/om.ringplus.app(14184): type=1400 audit(0.0:25285): avc: denied { read } for name="u:object_r:vendor_display_prop:s0" dev="tmpfs" ino=460 scontext=u:r:untrusted_app:s0:c161,c257,c512,c768 tcontext=u:object_r:vendor_display_prop:s0 tclass=file permissive=0 app=com.ringplus.app
+W/om.ringplus.app(14184): type=1400 audit(0.0:25286): avc: denied { read } for name="u:object_r:vendor_display_prop:s0" dev="tmpfs" ino=460 scontext=u:r:untrusted_app:s0:c161,c257,c512,c768 tcontext=u:object_r:vendor_display_prop:s0 tclass=file permissive=0 app=com.ringplus.app
+
+---
+
+Still ringing while on the oncallscreen:
+
+I/flutter (15483): 🔥 SIP Service: Started background acceptance monitoring timer
+I/flutter (15483): 🔥 SIP Service: Started background acceptance timer for incoming call: 201
+I/flutter (15483): SIP Service: Android - Showing custom incoming call screen for call: 201
+I/flutter (15483): SIP Service: Android - Successfully navigated to incoming call screen
+I/flutter (15483): SIP Service: Android - Custom incoming call screen displayed
+I/SiprixVoipSdkPlugin(15483): raise onCallAcceptNotif 201
+I/flutter (15483): event OnCallAcceptNotif {callId: 201, withVideo: false}
+I/flutter (15483): 🔥 SIP Service: ========== ONCALLACCEPTNOTIF EVENT ==========
+I/flutter (15483): 🔥 SIP Service: OnCallAcceptNotif triggered - callId: 201, withVideo: false
+I/flutter (15483): 🔥 SIP Service: User accepted call from Android notification
+I/flutter (15483): 🔥 SIP Service: Call matches current call, answering SIP call now
+I/flutter (15483): SipService: \_updateCurrentCall called - callId: 201, state: AppCallState.answered
+I/flutter (15483): 🔥 SIP Service: Navigating to OnCallScreen due to notification acceptance
+D/SecurityManager(15483): checkAccessControl flag0
+I/flutter (15483): SIP Service: App hidden
+I/flutter (15483): SIP Service: App inactive
+....
+I/om.ringplus.app(15483): DynamicFPS DF top: com.ringplus.app : 0.000000
+E/FileUtils(15483): err write to mi_exception_log
+I/flutter (15483): 🔥 SIP Service: Performing SIP answer for notification acceptance
+I/flutter (15483): 🔥 SipService: ========== ANSWER CALL STARTED ==========
+I/flutter (15483): 🔥 SipService: Answer call: 201
+I/flutter (15483): 🔥 Answer call: Call is already answered, navigating to in-call screen
+I/flutter (15483): 🔥 SIP Service: SIP call answered successfully from notification
+I/flutter (15483): InCallScreen: Setting up call state listener for callId: 201
+I/flutter (15483): InCallScreen: Loading contact info for: 1003
+I/flutter (15483): InCallScreen: ContactService does not have permission, skipping lookup
+I/flutter (15483): InCallScreen: Found existing call on init - state: AppCallState.answered
+
+---
+
+We need to implement a Recents Call page in our Flutter softphone app.
+Requirements:
+Use CdrModel and CdrsModel from the Siprix SDK for call history data. Documentation: https://pub.dev/documentation/siprix_voip_sdk/latest/cdrs_model/
+The UI design is provided in mockup/recents_call.jpg. Please follow this mockup closely for layout and styling.
+The page must be integrated into the existing app and preserve the current Bottom Navigation bar.
+Display the list of recent calls with details from CdrModel (caller/callee, time, duration, direction, status).
+Ensure the UI updates dynamically when CdrsModel changes (e.g., a new call is added).
+Add placeholder logic where real persistence or API integration will be needed.

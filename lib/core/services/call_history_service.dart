@@ -72,16 +72,61 @@ class CallHistoryService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Add a new call record
+  /// Add a new call record or update the existing entry for the call
   void addCallRecord(CallModel callModel) {
     try {
-      if (_cdrsModel != null) {
-        _cdrsModel!.add(callModel);
-        debugPrint('CallHistory: Added new call record - CallId: ${callModel.myCallId}');
+      if (_cdrsModel == null) {
+        return;
+      }
+
+      final existingRecord = _findRecordById(callModel.myCallId);
+      if (existingRecord != null) {
+        _applyCallModelData(existingRecord, callModel);
+        _cdrsModel?.notifyListeners();
+        return;
+      }
+
+      _cdrsModel!.add(callModel);
+      debugPrint('CallHistory: Added new call record - CallId: ${callModel.myCallId}');
+
+      final createdRecord = _findRecordById(callModel.myCallId);
+      if (createdRecord != null) {
+        _applyCallModelData(createdRecord, callModel);
+        _cdrsModel?.notifyListeners();
       }
     } catch (e) {
       debugPrint('CallHistory: Error adding call record: $e');
     }
+  }
+
+  CdrModel? _findRecordById(int callId) {
+    if (_cdrsModel == null || _cdrsModel!.isEmpty) {
+      return null;
+    }
+    for (int i = 0; i < _cdrsModel!.length; i++) {
+      final record = _cdrsModel![i];
+      if (record.myCallId == callId) {
+        return record;
+      }
+    }
+    return null;
+  }
+
+  void _applyCallModelData(CdrModel record, CallModel callModel) {
+    record.displName = callModel.displName;
+    record.remoteExt = callModel.remoteExt;
+    record.accUri = callModel.accUri;
+    record.hasVideo = callModel.hasVideo;
+    record.madeAt = callModel.startTime;
+    record.incoming = callModel.isIncoming;
+
+    final durationMs = callModel.duration.inMilliseconds;
+    if (durationMs > 0) {
+      record.duration = callModel.durationStr;
+    }
+
+    final wasConnected = callModel.isConnected || callModel.state == CallState.connected || durationMs > 0;
+    record.connected = wasConnected;
   }
 
   /// Get all call records
