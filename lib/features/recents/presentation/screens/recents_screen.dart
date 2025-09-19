@@ -5,6 +5,7 @@ import 'package:siprix_voip_sdk/cdrs_model.dart';
 
 import '../../../../core/services/call_history_service.dart';
 import '../../../../core/services/navigation_service.dart';
+import '../../../../core/services/sip_service.dart';
 
 class RecentsScreen extends ConsumerStatefulWidget {
   const RecentsScreen({super.key});
@@ -612,9 +613,20 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
     }
   }
 
-  void _callNumber(String phoneNumber) {
-    NavigationService.goToKeypad();
-    debugPrint('RecentsScreen: Calling $phoneNumber');
+  Future<void> _callNumber(String phoneNumber) async {
+    try {
+      Navigator.of(context).pop(); // Close the modal first
+      final callId = await SipService.instance.makeCall(phoneNumber);
+      if (callId != null) {
+        // Navigate to call screen with the phone number
+        NavigationService.goToInCall(callId, phoneNumber: phoneNumber);
+        debugPrint('RecentsScreen: Initiated call to $phoneNumber with callId: $callId');
+      } else {
+        debugPrint('RecentsScreen: Failed to initiate call to $phoneNumber - callId is null');
+      }
+    } catch (e) {
+      debugPrint('RecentsScreen: Error making call to $phoneNumber: $e');
+    }
   }
 
   void _showCallDetails(CdrModel call) {
@@ -706,10 +718,9 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.of(context).pop();
+                    onPressed: () async {
                       if (call.remoteExt.isNotEmpty) {
-                        _callNumber(call.remoteExt);
+                        await _callNumber(call.remoteExt);
                       }
                     },
                     icon: const Icon(Icons.call),
