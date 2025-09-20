@@ -1,5 +1,5 @@
 name: Ringplus
-description: A production-ready multitenant PBX softphone built with Flutter + WebRTC
+description: A Cloud Pbx
 publish_to: "none"
 version: 1.0.0+1
 

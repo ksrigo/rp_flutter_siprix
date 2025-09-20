@@ -39,6 +39,25 @@ class ContactsService extends ChangeNotifier {
     }
   }
 
+  /// Initialize the contacts service without making API call (cache only)
+  Future<void> initializeWithoutApiCall() async {
+    try {
+      debugPrint('ContactsService: Initializing without API call...');
+      
+      await _repository.initialize();
+      
+      // Listen to repository changes
+      _repository.addListener(_onRepositoryChanged);
+      
+      _isInitialized = true;
+      debugPrint('ContactsService: Initialized successfully (cache only)');
+      notifyListeners();
+    } catch (e) {
+      debugPrint('ContactsService: Error initializing: $e');
+      rethrow;
+    }
+  }
+
   /// Handle repository changes
   void _onRepositoryChanged() {
     notifyListeners();

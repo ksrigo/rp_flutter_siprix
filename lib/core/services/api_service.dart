@@ -37,7 +37,15 @@ class ApiService {
               options.headers['Authorization'] = 'Bearer $token';
               debugPrint('API: Added Authorization header for $path');
             } else {
-              debugPrint('API: No valid token available for $path');
+              debugPrint('API: No valid token available for $path - blocking request');
+              // Block the request immediately if no valid token
+              handler.reject(DioException(
+                requestOptions: options,
+                type: DioExceptionType.cancel,
+                error: 'Authentication required: No valid access token available',
+                message: 'Request blocked due to missing authentication token',
+              ));
+              return;
             }
           } else {
             debugPrint('API: Skipping Authorization header for $path');
@@ -93,6 +101,7 @@ class ApiService {
     Options? options,
   }) async {
     try {
+      debugPrint('API: Making GET request to $path');
       return await _dio.get<T>(
         path,
         queryParameters: queryParameters,
@@ -103,6 +112,17 @@ class ApiService {
       rethrow;
     }
   }
+  
+  // Safe GET request that ensures authentication
+  Future<Response<T>?> getAuthenticated<T>(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+  }) async {
+    return await AuthService.instance.executeAuthenticated<Response<T>>(
+      () => get<T>(path, queryParameters: queryParameters, options: options),
+    );
+  }
 
   // Generic POST request
   Future<Response<T>> post<T>(
@@ -112,6 +132,7 @@ class ApiService {
     Options? options,
   }) async {
     try {
+      debugPrint('API: Making POST request to $path');
       return await _dio.post<T>(
         path,
         data: data,
@@ -122,6 +143,18 @@ class ApiService {
       _handleApiError(e);
       rethrow;
     }
+  }
+  
+  // Safe POST request that ensures authentication
+  Future<Response<T>?> postAuthenticated<T>(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+  }) async {
+    return await AuthService.instance.executeAuthenticated<Response<T>>(
+      () => post<T>(path, data: data, queryParameters: queryParameters, options: options),
+    );
   }
 
   // Generic PUT request
@@ -172,6 +205,7 @@ class ApiService {
     Options? options,
   }) async {
     try {
+      debugPrint('API: Making PATCH request to $path');
       return await _dio.patch<T>(
         path,
         data: data,
@@ -182,6 +216,30 @@ class ApiService {
       _handleApiError(e);
       rethrow;
     }
+  }
+  
+  // Safe PATCH request that ensures authentication
+  Future<Response<T>?> patchAuthenticated<T>(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+  }) async {
+    return await AuthService.instance.executeAuthenticated<Response<T>>(
+      () => patch<T>(path, data: data, queryParameters: queryParameters, options: options),
+    );
+  }
+
+  // Safe DELETE request that ensures authentication
+  Future<Response<T>?> deleteAuthenticated<T>(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+  }) async {
+    return await AuthService.instance.executeAuthenticated<Response<T>>(
+      () => delete<T>(path, data: data, queryParameters: queryParameters, options: options),
+    );
   }
 
   void _handleApiError(DioException error) {

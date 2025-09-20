@@ -25,6 +25,49 @@ class AuthService extends ChangeNotifier {
   bool get isAuthenticated => _isAuthenticated;
   String? get accessToken => _accessToken;
   ExtensionDetails? get extensionDetails => _extensionDetails;
+  
+  /// Check if user has valid authentication without triggering token refresh
+  /// This is useful for UI components that need to check auth status
+  bool get hasValidAuthentication {
+    return _accessToken != null && _isTokenValid() && _isAuthenticated;
+  }
+  
+  /// Check if user has any tokens available (access or refresh)
+  bool get hasAnyTokens {
+    return _accessToken != null || _refreshToken != null;
+  }
+  
+  /// Execute a function that requires authentication
+  /// This method ensures the user is authenticated before executing the operation
+  /// Returns null if authentication fails, otherwise returns the result of the operation
+  Future<T?> executeAuthenticated<T>(Future<T> Function() operation) async {
+    try {
+      final token = await getValidAccessToken();
+      if (token == null) {
+        debugPrint('Auth: Cannot execute authenticated operation - no valid token');
+        return null;
+      }
+      
+      debugPrint('Auth: Executing authenticated operation');
+      return await operation();
+    } catch (e) {
+      debugPrint('Auth: Error executing authenticated operation: $e');
+      return null;
+    }
+  }
+  
+  /// Ensure the user is authenticated, redirect to login if not
+  /// Returns true if authenticated, false if redirected to login
+  Future<bool> ensureAuthenticated() async {
+    final token = await getValidAccessToken();
+    if (token == null) {
+      debugPrint('Auth: User not authenticated, redirecting to login');
+      await handleAuthenticationFailure();
+      return false;
+    }
+    debugPrint('Auth: User is authenticated');
+    return true;
+  }
 
   Future<void> initialize() async {
     try {
@@ -119,10 +162,13 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<String?> getValidAccessToken() async {
-    // If no access token, check if we have refresh token to attempt login recovery
+    debugPrint('Auth: getValidAccessToken called - checking token validity');
+    
+    // First, check if we have any access token at all
     if (_accessToken == null) {
       debugPrint('Auth: No access token available');
       
+      // If no access token but we have a refresh token, try to refresh
       if (_refreshToken != null) {
         debugPrint('Auth: No access token but refresh token exists, attempting token refresh');
         final refreshed = await _refreshAccessToken();
@@ -138,46 +184,55 @@ class AuthService extends ChangeNotifier {
           
           return _accessToken;
         } else {
-          debugPrint('Auth: Failed to recover access token, redirecting to login');
+          debugPrint('Auth: Failed to recover access token, clearing session');
           await handleAuthenticationFailure();
           return null;
         }
       } else {
-        debugPrint('Auth: No tokens available, user needs to login');
+        debugPrint('Auth: No tokens available - user must login');
+        // No tokens at all - redirect to login
+        if (_isAuthenticated) {
+          await handleAuthenticationFailure();
+        }
         return null;
       }
     }
 
-    // Check if current access token is valid
+    // We have an access token - check if it's still valid
     if (!_isTokenValid()) {
-      debugPrint('Auth: Access token is expired or expiring soon, attempting refresh');
+      debugPrint('Auth: Access token is expired or expiring soon');
       debugPrint('Auth: Current token expiry: $_tokenExpiresAt');
       debugPrint('Auth: Current time: ${DateTime.now()}');
       
+      // Token is expired/expiring - try to refresh if we have a refresh token
       if (_refreshToken != null) {
+        debugPrint('Auth: Attempting to refresh expired access token');
         final refreshed = await _refreshAccessToken();
-        if (!refreshed) {
-          debugPrint('Auth: Token refresh failed (response code != 200), redirecting to login');
+        if (refreshed) {
+          debugPrint('Auth: Token successfully refreshed');
+          _isAuthenticated = true;
+          notifyListeners();
+          
+          // Fetch extension details if we don't have them
+          if (_extensionDetails == null) {
+            await _fetchExtensionDetailsAndInitializeSIP();
+          }
+          
+          return _accessToken;
+        } else {
+          debugPrint('Auth: Token refresh failed - clearing session');
           await handleAuthenticationFailure();
           return null;
         }
-        debugPrint('Auth: Token successfully refreshed');
-        _isAuthenticated = true;
-        notifyListeners();
-        
-        // Fetch extension details if we don't have them
-        if (_extensionDetails == null) {
-          await _fetchExtensionDetailsAndInitializeSIP();
-        }
       } else {
-        debugPrint('Auth: No refresh token available, redirecting to login');
+        debugPrint('Auth: No refresh token available - clearing session');
         await handleAuthenticationFailure();
         return null;
       }
-    } else {
-      debugPrint('Auth: Access token is still valid');
     }
     
+    // Token is valid
+    debugPrint('Auth: Access token is valid - returning token');
     return _accessToken;
   }
 
@@ -317,17 +372,25 @@ class AuthService extends ChangeNotifier {
   Future<void> _loadTokensFromStorage() async {
     debugPrint('Auth: Loading tokens from storage...');
     final storage = StorageService.instance;
+    
+    debugPrint('Auth: Getting access token from storage...');
     _accessToken = await storage.getAccessToken();
+    debugPrint('Auth: Access token retrieved: ${_accessToken != null ? 'present' : 'null'}');
+    
+    debugPrint('Auth: Getting refresh token from storage...');
     _refreshToken = await storage.getRefreshToken();
+    debugPrint('Auth: Refresh token retrieved: ${_refreshToken != null ? 'present' : 'null'}');
 
     debugPrint('Auth: Loaded from storage - accessToken: ${_accessToken?.substring(0, 20) ?? 'null'}..., refreshToken: ${_refreshToken?.substring(0, 20) ?? 'null'}...');
 
     if (_accessToken != null) {
+      debugPrint('Auth: Updating token expiry...');
       _updateTokenExpiry(_accessToken!);
       debugPrint('Auth: Token expiry set to: $_tokenExpiresAt');
     } else {
       debugPrint('Auth: No access token found in storage');
     }
+    debugPrint('Auth: _loadTokensFromStorage completed');
   }
 
   Future<void> _saveTokensToStorage() async {

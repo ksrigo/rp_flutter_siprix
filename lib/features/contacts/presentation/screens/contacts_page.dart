@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/services/contacts_service.dart';
 import '../../../../core/services/sip_service.dart';
 import '../../../../core/services/navigation_service.dart';
+import '../../../../core/services/auth_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../data/models/contact_model.dart';
 
@@ -30,6 +31,7 @@ class _ContactsPageState extends State<ContactsPage> {
   bool _isRefreshing = false;
   StreamSubscription<List<ContactModel>>? _contactsSubscription;
   List<ContactModel> _currentContacts = [];
+  static bool _hasInitialApiCallBeenMade = false;
 
   @override
   void initState() {
@@ -53,18 +55,35 @@ class _ContactsPageState extends State<ContactsPage> {
     });
 
     try {
-      // Initialize contacts service if not already done
+      // Initialize contacts service if not already done (this sets up SQLite but doesn't call API)
       if (!ContactsService.instance.isInitialized) {
-        await ContactsService.instance.initialize();
+        await _initializeServiceWithoutApiCall();
       }
       
-      // Subscribe to contacts stream
+      // Subscribe to contacts stream first (loads from cache)
       _subscribeToContacts();
+      
+      // Check if we need to make the initial API call
+      if (!_hasInitialApiCallBeenMade && 
+          AuthService.instance.isAuthenticated && 
+          AuthService.instance.extensionDetails != null) {
+        
+        debugPrint('ContactsPage: Making initial API call');
+        _hasInitialApiCallBeenMade = true;
+        
+        // Make API call in background to not block UI
+        _makeInitialApiCall();
+      } else {
+        debugPrint('ContactsPage: Loading contacts from cache only');
+      }
+      
     } catch (e) {
       debugPrint('ContactsPage: Error initializing contacts: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading contacts: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading contacts: $e')),
+        );
+      }
     } finally {
       setState(() {
         _isLoading = false;
@@ -112,6 +131,7 @@ class _ContactsPageState extends State<ContactsPage> {
     });
 
     try {
+      debugPrint('ContactsPage: Manual refresh - calling API and updating cache');
       await ContactsService.instance.refreshContacts();
     } catch (e) {
       debugPrint('ContactsPage: Error refreshing contacts: $e');
@@ -126,6 +146,33 @@ class _ContactsPageState extends State<ContactsPage> {
       });
     }
   }
+
+  /// Initialize ContactsService without making API call (SQLite setup only)
+  Future<void> _initializeServiceWithoutApiCall() async {
+    try {
+      debugPrint('ContactsPage: Initializing service without API call...');
+      // We'll need to add a new method to ContactsService for this
+      await ContactsService.instance.initializeWithoutApiCall();
+    } catch (e) {
+      debugPrint('ContactsPage: Error initializing service: $e');
+      rethrow;
+    }
+  }
+
+  /// Make initial API call in background
+  Future<void> _makeInitialApiCall() async {
+    try {
+      // Don't block UI - make API call in background
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await ContactsService.instance.refreshContacts();
+        debugPrint('ContactsPage: Initial API call completed');
+      });
+    } catch (e) {
+      debugPrint('ContactsPage: Initial API call failed: $e');
+      // Don't show error for background call
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -534,7 +581,7 @@ class _ContactRow extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        contact.phones.isNotEmpty ? contact.phones.first.label : 'No phone',
+                        _getFormattedPhoneLabels(contact.phones),
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
@@ -763,5 +810,26 @@ class _ContactRow extends StatelessWidget {
     } else {
       return Icons.phone;
     }
+  }
+
+  /// Format phone labels for display
+  String _getFormattedPhoneLabels(List<ContactPhoneModel> phones) {
+    if (phones.isEmpty) {
+      return 'No phone';
+    }
+    
+    // Get all unique labels, capitalize them, and join with commas
+    final labels = phones
+        .map((phone) => _capitalizeLabel(phone.label))
+        .toSet() // Remove duplicates
+        .toList();
+    
+    return labels.join(', ');
+  }
+
+  /// Capitalize the first letter of a label
+  String _capitalizeLabel(String label) {
+    if (label.isEmpty) return label;
+    return label[0].toUpperCase() + label.substring(1).toLowerCase();
   }
 }

@@ -174,7 +174,13 @@ class ContactsRepository extends ChangeNotifier {
       }
 
       final extensionId = authService.extensionDetails!.id;
-      final response = await apiService.get('/extension/$extensionId/contacts');
+      final response = await apiService.getAuthenticated('/extension/$extensionId/contacts');
+      
+      // Check if authentication failed (response is null)
+      if (response == null) {
+        debugPrint('ContactsRepository: Authentication failed - redirected to login');
+        return;
+      }
       
       // Only process if response is 200 OK, ignore other status codes
       if (response.statusCode == 200) {
@@ -490,10 +496,16 @@ class ContactsRepository extends ChangeNotifier {
       }
 
       final extensionId = authService.extensionDetails!.id;
-      final response = await apiService.post(
+      final response = await apiService.postAuthenticated(
         '/extension/$extensionId/contacts',
         data: contact.toApiJson(),
       );
+      
+      // Check if authentication failed (response is null)
+      if (response == null) {
+        debugPrint('ContactsRepository: Authentication failed during contact creation');
+        throw Exception('Authentication failed');
+      }
       
       if (response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 202) {
         // Parse the created contact from response
@@ -527,10 +539,16 @@ class ContactsRepository extends ChangeNotifier {
         throw Exception('Not authenticated');
       }
 
-      final response = await apiService.patch(
+      final response = await apiService.patchAuthenticated(
         '/contact/${contact.contactId}',
         data: contact.toApiJson(),
       );
+      
+      // Check if authentication failed (response is null)
+      if (response == null) {
+        debugPrint('ContactsRepository: Authentication failed during contact update');
+        throw Exception('Authentication failed');
+      }
       
       if (response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 202) {
         // Parse the updated contact from response
@@ -568,7 +586,13 @@ class ContactsRepository extends ChangeNotifier {
         throw Exception('Not authenticated');
       }
 
-      final response = await apiService.delete('/contact/$contactId');
+      final response = await apiService.deleteAuthenticated('/contact/$contactId');
+      
+      // Check if authentication failed (response is null)
+      if (response == null) {
+        debugPrint('ContactsRepository: Authentication failed during contact deletion');
+        throw Exception('Authentication failed');
+      }
       
       if (response.statusCode == 200 || response.statusCode == 202 || response.statusCode == 204) {
         // Remove from local cache

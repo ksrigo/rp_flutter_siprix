@@ -21,6 +21,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   @override
   void initState() {
     super.initState();
+    debugPrint('🚀 SplashScreen: initState called');
     _initializeAnimations();
     _initializeApp();
   }
@@ -51,36 +52,62 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   Future<void> _initializeApp() async {
+    debugPrint('🔄 SplashScreen: _initializeApp started');
+    
     try {
+      debugPrint('🕒 SplashScreen: Starting 2-second delay...');
       // Add a minimum splash duration for better UX
       await Future.delayed(const Duration(seconds: 2));
+      debugPrint('✅ SplashScreen: 2-second delay completed');
 
-      debugPrint('Splash: Checking authentication state...');
+      debugPrint('🔧 SplashScreen: Initializing AuthService...');
+      
+      // Initialize AuthService first
+      await AuthService.instance.initialize();
+      debugPrint('✅ SplashScreen: AuthService initialization completed');
+      
+      debugPrint('🔍 SplashScreen: Checking authentication state...');
       
       // Use AuthService to check if user is authenticated and get valid token
       // This will trigger token refresh if needed
       final validToken = await AuthService.instance.getValidAccessToken();
+      debugPrint('🎟️ SplashScreen: getValidAccessToken result: ${validToken != null ? "token present" : "no token"}');
       
+      debugPrint('📱 SplashScreen: Checking if widget is mounted: $mounted');
       if (mounted) {
         if (validToken != null) {
-          debugPrint('Splash: User has valid token, navigating to keypad');
+          debugPrint('🎯 SplashScreen: User has valid token, navigating to keypad');
           // User is authenticated, navigate to main app
           // ignore: use_build_context_synchronously
           context.go('/keypad');
+          debugPrint('✅ SplashScreen: Navigation to keypad completed');
         } else {
-          debugPrint('Splash: No valid token, navigating to login');
+          debugPrint('🔐 SplashScreen: No valid token, navigating to login');
           // User is not authenticated, navigate to login screen
           // ignore: use_build_context_synchronously
           context.go('/login');
+          debugPrint('✅ SplashScreen: Navigation to login completed');
         }
+      } else {
+        debugPrint('❌ SplashScreen: Widget not mounted, skipping navigation');
       }
     } catch (e) {
-      debugPrint('Error during app initialization: $e');
+      debugPrint('❌ SplashScreen: Error during app initialization: $e');
+      debugPrint('❌ SplashScreen: Error stack trace: ${e.toString()}');
       if (mounted) {
-        debugPrint('Splash: Error occurred, navigating to login');
-        context.go('/login');
+        debugPrint('🔐 SplashScreen: Error occurred, navigating to login as fallback');
+        try {
+          context.go('/login');
+          debugPrint('✅ SplashScreen: Emergency navigation to login completed');
+        } catch (navError) {
+          debugPrint('❌ SplashScreen: Failed to navigate to login: $navError');
+        }
+      } else {
+        debugPrint('❌ SplashScreen: Widget not mounted during error handling');
       }
     }
+    
+    debugPrint('🏁 SplashScreen: _initializeApp finished');
   }
 
   @override
@@ -225,6 +252,11 @@ class _GradientSplashScreenState extends ConsumerState<GradientSplashScreen>
   Future<void> _initializeApp() async {
     await Future.delayed(const Duration(seconds: 3));
 
+    debugPrint('GradientSplash: Initializing AuthService...');
+    
+    // Initialize AuthService first
+    await AuthService.instance.initialize();
+    
     debugPrint('GradientSplash: Checking authentication state...');
     
     // Use AuthService to check if user is authenticated and get valid token

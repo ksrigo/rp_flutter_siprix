@@ -18,6 +18,7 @@ import '../../features/recents/presentation/screens/recents_screen.dart';
 import '../../shared/widgets/main_navigation.dart';
 import '../services/sip_service.dart';
 import '../services/auth_service.dart';
+import '../services/api_service.dart';
 
 class NavigationService {
   static final GlobalKey<NavigatorState> navigatorKey =
@@ -26,12 +27,16 @@ class NavigationService {
   static final GoRouter router = GoRouter(
     navigatorKey: navigatorKey,
     initialLocation: '/splash',
+    debugLogDiagnostics: true,
     routes: [
       // Splash and Authentication Routes
       GoRoute(
         path: '/splash',
         name: 'splash',
-        builder: (context, state) => const SplashScreen(),
+        builder: (context, state) {
+          debugPrint('🏗️ NavigationService: Building SplashScreen');
+          return const SplashScreen();
+        },
       ),
       GoRoute(
         path: '/login',
@@ -800,26 +805,17 @@ class _CallsSettingsScreenState extends State<CallsSettingsScreen> {
 
       debugPrint('📋 CallsSettings: Extension ID: ${extensionDetails.id}');
 
-      final accessToken = await authService.getValidAccessToken();
-      if (accessToken == null) {
-        debugPrint('❌ CallsSettings: No valid access token');
-        return;
-      }
-
-      debugPrint('🔑 CallsSettings: Access token available: ${accessToken.substring(0, 20)}...');
-
-      final url = 'https://api.ringplus.co.uk/v1/extension/${extensionDetails.id}';
+      final url = '/extension/${extensionDetails.id}';
       debugPrint('🌐 CallsSettings: Making GET request to: $url');
 
-      final response = await Dio().get(
+      final response = await ApiService.instance.getAuthenticated(
         url,
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $accessToken',
-            'Content-Type': 'application/json',
-          },
-        ),
       );
+      
+      if (response == null) {
+        debugPrint('❌ CallsSettings: Authentication failed - redirected to login');
+        return;
+      }
 
       debugPrint('📥 CallsSettings: GET response - Status: ${response.statusCode}');
       debugPrint('📥 CallsSettings: GET response - Data: ${response.data}');
@@ -885,31 +881,29 @@ class _CallsSettingsScreenState extends State<CallsSettingsScreen> {
 
       final authService = AuthService.instance;
       final extensionDetails = authService.extensionDetails;
-      final accessToken = await authService.getValidAccessToken();
       
-      if (extensionDetails == null || accessToken == null) {
-        throw Exception('Authentication required');
+      if (extensionDetails == null) {
+        throw Exception('Extension details required');
       }
 
       // CLIR logic: UI value true (show caller ID) = API clir: false
       final clirValue = !value;
       debugPrint('📊 CallsSettings: UI value: $value -> API clir value: $clirValue');
 
-      final url = 'https://api.ringplus.co.uk/v1/extension/${extensionDetails.id}';
+      final url = '/extension/${extensionDetails.id}';
       final payload = {'clir': clirValue};
       debugPrint('🌐 CallsSettings: Making PATCH request to: $url');
       debugPrint('📤 CallsSettings: PATCH payload: $payload');
 
-      final response = await Dio().patch(
+      final response = await ApiService.instance.patchAuthenticated(
         url,
         data: payload,
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $accessToken',
-            'Content-Type': 'application/json',
-          },
-        ),
       );
+      
+      if (response == null) {
+        debugPrint('❌ CallsSettings: Authentication failed - redirected to login');
+        return;
+      }
 
       debugPrint('📥 CallsSettings: PATCH response - Status: ${response.statusCode}');
       debugPrint('📥 CallsSettings: PATCH response - Data: ${response.data}');
@@ -976,27 +970,25 @@ class _CallsSettingsScreenState extends State<CallsSettingsScreen> {
 
       final authService = AuthService.instance;
       final extensionDetails = authService.extensionDetails;
-      final accessToken = await authService.getValidAccessToken();
       
-      if (extensionDetails == null || accessToken == null) {
-        throw Exception('Authentication required');
+      if (extensionDetails == null) {
+        throw Exception('Extension details required');
       }
 
-      final url = 'https://api.ringplus.co.uk/v1/extension/${extensionDetails.id}';
+      final url = '/extension/${extensionDetails.id}';
       final payload = {'record': value};
       debugPrint('🌐 CallsSettings: Making PATCH request to: $url');
       debugPrint('📤 CallsSettings: PATCH payload: $payload');
 
-      final response = await Dio().patch(
+      final response = await ApiService.instance.patchAuthenticated(
         url,
         data: payload,
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $accessToken',
-            'Content-Type': 'application/json',
-          },
-        ),
       );
+      
+      if (response == null) {
+        debugPrint('❌ CallsSettings: Authentication failed - redirected to login');
+        return;
+      }
 
       debugPrint('📥 CallsSettings: PATCH response - Status: ${response.statusCode}');
       debugPrint('📥 CallsSettings: PATCH response - Data: ${response.data}');
