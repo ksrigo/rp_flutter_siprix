@@ -95,32 +95,6 @@ class NavigationService {
                 name: 'account-settings',
                 builder: (context, state) => const AccountSettingsScreen(),
               ),
-              GoRoute(
-                path: 'call-options',
-                name: 'call-options',
-                builder: (context, state) => const CallOptionsScreen(),
-              ),
-              GoRoute(
-                path: 'notifications',
-                name: 'notification-settings',
-                builder: (context, state) => const NotificationSettingsScreen(),
-              ),
-              GoRoute(
-                path: 'audio-network',
-                name: 'audio-network-settings',
-                builder: (context, state) => const AudioNetworkSettingsScreen(),
-              ),
-              GoRoute(
-                path: 'privacy-security',
-                name: 'privacy-security-settings',
-                builder: (context, state) =>
-                    const PrivacySecuritySettingsScreen(),
-              ),
-              GoRoute(
-                path: 'appearance',
-                name: 'appearance-settings',
-                builder: (context, state) => const AppearanceSettingsScreen(),
-              ),
             ],
           ),
         ],
@@ -300,36 +274,6 @@ class SettingsScreen extends StatelessWidget {
                       onTap: () => context.go('/settings/account'),
                     ),
                     const DeviceContactsSetting(),
-                    _buildSettingsItem(
-                      icon: Icons.call_outlined,
-                      title: 'Call Options',
-                      subtitle: 'Configure call settings',
-                      onTap: () => context.go('/settings/call-options'),
-                    ),
-                    _buildSettingsItem(
-                      icon: Icons.notifications_outlined,
-                      title: 'Notifications',
-                      subtitle: 'Notification preferences',
-                      onTap: () => context.go('/settings/notifications'),
-                    ),
-                    _buildSettingsItem(
-                      icon: Icons.network_check_outlined,
-                      title: 'Audio & Network',
-                      subtitle: 'Audio and network settings',
-                      onTap: () => context.go('/settings/audio-network'),
-                    ),
-                    _buildSettingsItem(
-                      icon: Icons.security_outlined,
-                      title: 'Privacy & Security',
-                      subtitle: 'Privacy and security options',
-                      onTap: () => context.go('/settings/privacy-security'),
-                    ),
-                    _buildSettingsItem(
-                      icon: Icons.palette_outlined,
-                      title: 'Appearance',
-                      subtitle: 'Theme and appearance',
-                      onTap: () => context.go('/settings/appearance'),
-                    ),
                     
                     const SizedBox(height: 32),
                     const Divider(),
@@ -421,44 +365,322 @@ class SettingsScreen extends StatelessWidget {
   }
 }
 
-class AccountSettingsScreen extends StatelessWidget {
+class AccountSettingsScreen extends StatefulWidget {
   const AccountSettingsScreen({super.key});
+
   @override
-  Widget build(BuildContext context) =>
-      const Scaffold(body: Center(child: Text('Account Settings')));
+  State<AccountSettingsScreen> createState() => _AccountSettingsScreenState();
 }
 
-class CallOptionsScreen extends StatelessWidget {
-  const CallOptionsScreen({super.key});
+class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
+  String _selectedTransport = 'UDP';
+  bool _isReregistering = false;
+
   @override
-  Widget build(BuildContext context) =>
-      const Scaffold(body: Center(child: Text('Call Options')));
+  void initState() {
+    super.initState();
+    _loadCurrentTransport();
+  }
+
+  void _loadCurrentTransport() async {
+    // Get current transport from SIP service (which now reads from storage)
+    try {
+      final currentTransport = await SipService.instance.getCurrentTransportAsync();
+      setState(() {
+        _selectedTransport = currentTransport;
+      });
+      debugPrint('Account Settings: Loaded current transport: $currentTransport');
+    } catch (e) {
+      debugPrint('Account Settings: Failed to load transport: $e');
+      setState(() {
+        _selectedTransport = 'UDP'; // Default fallback
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final authService = AuthService.instance;
+    final extensionDetails = authService.extensionDetails;
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          'Account Settings',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+      ),
+      body: SafeArea(
+        child: extensionDetails == null
+            ? const Center(
+                child: Text('No extension details available'),
+              )
+            : Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildReadOnlyField(
+                              label: 'Name',
+                              value: extensionDetails.name,
+                            ),
+                            const SizedBox(height: 20),
+                            _buildReadOnlyField(
+                              label: 'Extension',
+                              value: extensionDetails.extension.toString(),
+                            ),
+                            const SizedBox(height: 20),
+                            _buildReadOnlyField(
+                              label: 'Domain',
+                              value: extensionDetails.domain,
+                            ),
+                            const SizedBox(height: 20),
+                            _buildTransportSelector(),
+                            const SizedBox(height: 40),
+                            _buildReregisterButton(),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+      ),
+    );
+  }
+
+  Widget _buildReadOnlyField({
+    required String label,
+    required String value,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Colors.grey.shade300,
+              width: 1,
+            ),
+          ),
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey.shade700,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTransportSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Transport',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.primary,
+              width: 2,
+            ),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _selectedTransport,
+              onChanged: _onTransportChanged,
+              items: ['UDP', 'TCP'].map((String transport) {
+                return DropdownMenuItem<String>(
+                  value: transport,
+                  child: Text(
+                    transport,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black87,
+                    ),
+                  ),
+                );
+              }).toList(),
+              icon: Icon(
+                Icons.keyboard_arrow_down,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              dropdownColor: Colors.white,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildReregisterButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: _isReregistering ? null : _onReregisterPressed,
+        icon: _isReregistering
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : const Icon(Icons.refresh, color: Colors.white),
+        label: Text(
+          _isReregistering ? 'Re-registering...' : 'Re-register',
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 2,
+        ),
+      ),
+    );
+  }
+
+  void _onTransportChanged(String? newTransport) async {
+    if (newTransport != null && newTransport != _selectedTransport) {
+      final oldTransport = _selectedTransport;
+      
+      setState(() {
+        _selectedTransport = newTransport;
+      });
+
+      try {
+        // Update the account transport in SIP service
+        final success = await SipService.instance.updateTransport(newTransport);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(success 
+                  ? 'Transport changed to $newTransport and re-registered successfully'
+                  : 'Failed to update transport. Please ensure you are registered and try again.'),
+              backgroundColor: success ? Colors.green : Colors.red,
+              duration: Duration(seconds: success ? 3 : 5),
+            ),
+          );
+          
+          // If update failed, revert the UI selection
+          if (!success) {
+            setState(() {
+              _selectedTransport = oldTransport;
+            });
+          }
+        }
+      } catch (e) {
+        debugPrint('Transport change error: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to update transport: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          
+          // Revert the UI selection
+          setState(() {
+            _selectedTransport = oldTransport;
+          });
+        }
+      }
+    }
+  }
+
+  Future<void> _onReregisterPressed() async {
+    setState(() {
+      _isReregistering = true;
+    });
+
+    try {
+      // Trigger re-registration through SIP service
+      final success = await SipService.instance.reregister();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(success 
+                ? 'Re-registration successful' 
+                : 'Re-registration failed'),
+            backgroundColor: success ? Colors.green : Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Re-registration error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Re-registration failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isReregistering = false;
+        });
+      }
+    }
+  }
 }
 
-class NotificationSettingsScreen extends StatelessWidget {
-  const NotificationSettingsScreen({super.key});
-  @override
-  Widget build(BuildContext context) =>
-      const Scaffold(body: Center(child: Text('Notification Settings')));
-}
-
-class AudioNetworkSettingsScreen extends StatelessWidget {
-  const AudioNetworkSettingsScreen({super.key});
-  @override
-  Widget build(BuildContext context) =>
-      const Scaffold(body: Center(child: Text('Audio Network Settings')));
-}
-
-class PrivacySecuritySettingsScreen extends StatelessWidget {
-  const PrivacySecuritySettingsScreen({super.key});
-  @override
-  Widget build(BuildContext context) =>
-      const Scaffold(body: Center(child: Text('Privacy Security Settings')));
-}
-
-class AppearanceSettingsScreen extends StatelessWidget {
-  const AppearanceSettingsScreen({super.key});
-  @override
-  Widget build(BuildContext context) =>
-      const Scaffold(body: Center(child: Text('Appearance Settings')));
-}

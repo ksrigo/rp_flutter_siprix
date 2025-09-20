@@ -2441,14 +2441,8 @@ Style consistent with the app’s white background and purple theme.
 
 ---
 
-Claude Code Prompt:
-
-Ensure that the Recents page title and the Contacts page title are consistent:
-
+Ensure that the Recents page title, the Contacts page title the settings page titlte are consistent:
 Same font size
-
 Same font style
-
 Same horizontal alignment/position in the AppBar
-
 Update both pages so the titles visually match.

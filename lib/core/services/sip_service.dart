@@ -13,6 +13,7 @@ import '../constants/app_constants.dart';
 import '../../shared/services/storage_service.dart';
 import 'navigation_service.dart';
 import 'call_history_service.dart';
+import 'auth_service.dart';
 import 'contact_service.dart';
 import 'notification_service.dart';
 
@@ -1240,8 +1241,10 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       account.rewriteContactIp = true; // Enable IP rewrite for NAT handling
       account.keepAliveTime = 30; // Keep alive packets every 30 seconds
 
-      // Transport configuration
-      account.transport = SipTransport.udp; // Use UDP as configured on server
+      // Transport configuration - load from saved setting
+      final savedTransport = await _loadTransportSetting();
+      account.transport = savedTransport == 'TCP' ? SipTransport.tcp : SipTransport.udp;
+      debugPrint('Register: Using saved transport setting: $savedTransport (${account.transport})');
 
       // Disable all WebRTC-specific features for traditional SIP compatibility
       account.iceEnabled =
@@ -1400,10 +1403,27 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       _lastCredentials = null;
       _connectionCheckTimer?.cancel();
 
-      // Clear accounts - Note: API might be different
-      if (_accountsModel != null) {
-        // Implementation depends on actual API
-        debugPrint('SIP Service: Clearing accounts');
+      // Properly clear accounts from SIP SDK
+      if (_accountsModel != null && _accountsModel!.length > 0) {
+        debugPrint('SIP Service: Clearing ${_accountsModel!.length} accounts from SIP SDK');
+        
+        // Unregister and delete all accounts
+        for (int i = _accountsModel!.length - 1; i >= 0; i--) {
+          try {
+            debugPrint('SIP Service: Unregistering account at index $i');
+            await _accountsModel!.unregisterAccount(i);
+            
+            debugPrint('SIP Service: Deleting account at index $i');
+            await _accountsModel!.deleteAccount(i);
+            debugPrint('SIP Service: Account $i deleted successfully');
+          } catch (e) {
+            debugPrint('SIP Service: Failed to delete account $i: $e');
+          }
+        }
+        
+        debugPrint('SIP Service: All accounts cleared from SIP SDK');
+      } else {
+        debugPrint('SIP Service: No accounts to clear');
       }
 
       await StorageService.instance.clearCredentials();
@@ -1411,6 +1431,197 @@ class SipService extends ChangeNotifier with WidgetsBindingObserver {
       _updateCurrentCall(null);
     } catch (e) {
       debugPrint('Unregistration failed: $e');
+    }
+  }
+
+  /// Update transport protocol and re-register if needed
+  Future<bool> updateTransport(String transport) async {
+    try {
+      debugPrint('SIP Service: Updating transport to $transport');
+      
+      // Enhanced debugging
+      debugPrint('SIP Service: Accounts model null: ${_accountsModel == null}');
+      debugPrint('SIP Service: Registration state: $_registrationState');
+      if (_accountsModel != null) {
+        debugPrint('SIP Service: Accounts model length: ${_accountsModel!.length}');
+      }
+      
+      if (_accountsModel == null) {
+        debugPrint('Cannot update transport: Accounts model not initialized');
+        return false;
+      }
+      
+      if (_accountsModel!.length == 0) {
+        debugPrint('Cannot update transport: No accounts available');
+        return false;
+      }
+      
+      // Check if we're in a state where we can modify accounts
+      if (_registrationState == SipRegistrationState.registering) {
+        debugPrint('Cannot update transport: Currently registering, please wait');
+        return false;
+      }
+      
+      // Get the current account (use index 0 for first account)
+      AccountModel account;
+      try {
+        account = _accountsModel![0];
+        debugPrint('SIP Service: Got account - Extension: ${account.sipExtension}, Current transport: ${account.transport}');
+      } catch (e) {
+        debugPrint('Failed to get current account: $e');
+        debugPrint('SIP Service: Accounts model length at error: ${_accountsModel!.length}');
+        return false;
+      }
+      
+      // Save transport setting to persistent storage first
+      await _saveTransportSetting(transport.toUpperCase());
+      debugPrint('Transport setting saved to storage: ${transport.toUpperCase()}');
+      
+      // For transport changes, we need to recreate the account entirely
+      // because the existing account object maintains its original transport
+      return await _recreateAccountWithNewTransport();
+    } catch (e) {
+      debugPrint('Failed to update transport: $e');
+      return false;
+    }
+  }
+
+  /// Get current transport protocol
+  String getCurrentTransport() {
+    try {
+      if (_accountsModel != null && _accountsModel!.length > 0) {
+        AccountModel account = _accountsModel![0];
+        return account.transport == SipTransport.tcp ? 'TCP' : 'UDP';
+      }
+    } catch (e) {
+      debugPrint('Failed to get current transport from account: $e');
+    }
+    
+    // Fallback to reading from storage synchronously if account not available
+    // Note: This is a synchronous fallback, ideally should use async version
+    return 'UDP'; // Default fallback - will be updated when account loads
+  }
+
+  /// Get current transport protocol (async version that reads from storage)
+  Future<String> getCurrentTransportAsync() async {
+    try {
+      if (_accountsModel != null && _accountsModel!.length > 0) {
+        AccountModel account = _accountsModel![0];
+        return account.transport == SipTransport.tcp ? 'TCP' : 'UDP';
+      }
+    } catch (e) {
+      debugPrint('Failed to get current transport from account: $e');
+    }
+    
+    // Fallback to reading from storage
+    return await _loadTransportSetting();
+  }
+
+  /// Save transport setting to persistent storage
+  Future<void> _saveTransportSetting(String transport) async {
+    try {
+      await StorageService.instance.setString('sip_transport', transport);
+      debugPrint('SIP Service: Saved transport setting: $transport');
+    } catch (e) {
+      debugPrint('SIP Service: Failed to save transport setting: $e');
+    }
+  }
+
+  /// Load transport setting from persistent storage
+  Future<String> _loadTransportSetting() async {
+    try {
+      final savedTransport = await StorageService.instance.getString('sip_transport');
+      debugPrint('SIP Service: Loaded transport setting: $savedTransport');
+      return savedTransport ?? 'UDP'; // Default to UDP if not set
+    } catch (e) {
+      debugPrint('SIP Service: Failed to load transport setting: $e');
+      return 'UDP'; // Default fallback
+    }
+  }
+
+  /// Recreate account with new transport settings
+  Future<bool> _recreateAccountWithNewTransport() async {
+    try {
+      debugPrint('SIP Service: Recreating account with new transport...');
+      
+      // Get extension details for recreating the account
+      final authService = AuthService.instance;
+      final extensionDetails = authService.extensionDetails;
+      
+      if (extensionDetails == null) {
+        debugPrint('Cannot recreate account: No extension details available');
+        return false;
+      }
+
+      // Perform complete unregister first (clears all accounts and resets state)
+      debugPrint('SIP Service: Performing complete unregister before recreating account...');
+      await unregister();
+      
+      // Wait for unregistration to complete fully
+      await Future.delayed(const Duration(milliseconds: 2000));
+      
+      // Now register with the new transport setting (will read from saved storage)
+      debugPrint('SIP Service: Starting fresh registration with new transport setting...');
+      final success = await register(
+        name: extensionDetails.name,
+        extension: extensionDetails.extension.toString(),
+        password: extensionDetails.password,
+        domain: extensionDetails.domain,
+        proxy: extensionDetails.proxy,
+        port: extensionDetails.port,
+      );
+      
+      if (success) {
+        debugPrint('SIP Service: Account recreated with new transport successfully');
+      } else {
+        debugPrint('SIP Service: Failed to recreate account with new transport');
+      }
+      
+      return success;
+    } catch (e) {
+      debugPrint('SIP Service: Error recreating account with new transport: $e');
+      _updateRegistrationState(SipRegistrationState.registrationFailed);
+      return false;
+    }
+  }
+
+  /// Re-register the existing account
+  Future<bool> reregister() async {
+    try {
+      debugPrint('SIP Service: Starting re-registration...');
+      
+      if (_accountsModel == null || _accountsModel!.length == 0) {
+        debugPrint('Cannot re-register: No accounts available');
+        return false;
+      }
+
+      _updateRegistrationState(SipRegistrationState.registering);
+      
+      // Use index 0 for the first (and typically only) account
+      const accountIndex = 0;
+      
+      // Get account info for logging
+      final account = _accountsModel![accountIndex];
+      debugPrint('SIP Service: Re-registering account - Extension: ${account.sipExtension}, Current state: ${account.regState}');
+      
+      // First unregister the current account
+      await _accountsModel!.unregisterAccount(accountIndex);
+      debugPrint('SIP Service: Unregistered account at index $accountIndex');
+      
+      // Wait a moment for unregistration to complete
+      await Future.delayed(const Duration(milliseconds: 1000));
+      
+      // Re-register the account
+      await _accountsModel!.registerAccount(accountIndex);
+      debugPrint('SIP Service: Re-registered account at index $accountIndex');
+      
+      _updateRegistrationState(SipRegistrationState.registered);
+      debugPrint('SIP Service: Re-registration completed successfully');
+      return true;
+    } catch (e) {
+      debugPrint('SIP Service: Re-registration failed: $e');
+      _updateRegistrationState(SipRegistrationState.registrationFailed);
+      return false;
     }
   }
 
