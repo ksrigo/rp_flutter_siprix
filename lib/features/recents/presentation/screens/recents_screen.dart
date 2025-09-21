@@ -192,7 +192,7 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
               fontSize: 14,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
               color: isSelected
-                  ? Theme.of(context).colorScheme.primary
+                  ? Theme.of(context).colorScheme.onSurface
                   : Theme.of(context).colorScheme.onSurfaceVariant,
               letterSpacing: -0.1,
             ),

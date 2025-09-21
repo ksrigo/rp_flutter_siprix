@@ -10,7 +10,32 @@ import '../../../../core/theme/app_theme.dart';
 import '../../data/models/contact_model.dart';
 
 const _alphabet = [
-  'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'
+  'A',
+  'B',
+  'C',
+  'D',
+  'E',
+  'F',
+  'G',
+  'H',
+  'I',
+  'J',
+  'K',
+  'L',
+  'M',
+  'N',
+  'O',
+  'P',
+  'Q',
+  'R',
+  'S',
+  'T',
+  'U',
+  'V',
+  'W',
+  'X',
+  'Y',
+  'Z'
 ];
 
 class ContactsPage extends StatefulWidget {
@@ -25,7 +50,7 @@ class _ContactsPageState extends State<ContactsPage> {
   final ScrollController _scrollController = ScrollController();
   final Map<String, GlobalKey> _sectionKeys = {};
   final GlobalKey _tabsKey = GlobalKey();
-  
+
   int _selectedTabIndex = 0;
   bool _isLoading = false;
   bool _isRefreshing = false;
@@ -36,8 +61,7 @@ class _ContactsPageState extends State<ContactsPage> {
   @override
   void initState() {
     super.initState();
-    _searchController = TextEditingController()
-      ..addListener(_onSearchChanged);
+    _searchController = TextEditingController()..addListener(_onSearchChanged);
     _initializeContacts();
   }
 
@@ -59,24 +83,22 @@ class _ContactsPageState extends State<ContactsPage> {
       if (!ContactsService.instance.isInitialized) {
         await _initializeServiceWithoutApiCall();
       }
-      
+
       // Subscribe to contacts stream first (loads from cache)
       _subscribeToContacts();
-      
+
       // Check if we need to make the initial API call
-      if (!_hasInitialApiCallBeenMade && 
-          AuthService.instance.isAuthenticated && 
+      if (!_hasInitialApiCallBeenMade &&
+          AuthService.instance.isAuthenticated &&
           AuthService.instance.extensionDetails != null) {
-        
         debugPrint('ContactsPage: Making initial API call');
         _hasInitialApiCallBeenMade = true;
-        
+
         // Make API call in background to not block UI
         _makeInitialApiCall();
       } else {
         debugPrint('ContactsPage: Loading contacts from cache only');
       }
-      
     } catch (e) {
       debugPrint('ContactsPage: Error initializing contacts: $e');
       if (mounted) {
@@ -93,7 +115,7 @@ class _ContactsPageState extends State<ContactsPage> {
 
   void _subscribeToContacts() {
     _contactsSubscription?.cancel();
-    
+
     Stream<List<ContactModel>> stream;
     if (_selectedTabIndex == 1) {
       // Favorites tab
@@ -131,7 +153,8 @@ class _ContactsPageState extends State<ContactsPage> {
     });
 
     try {
-      debugPrint('ContactsPage: Manual refresh - calling API and updating cache');
+      debugPrint(
+          'ContactsPage: Manual refresh - calling API and updating cache');
       await ContactsService.instance.refreshContacts();
     } catch (e) {
       debugPrint('ContactsPage: Error refreshing contacts: $e');
@@ -172,7 +195,6 @@ class _ContactsPageState extends State<ContactsPage> {
       // Don't show error for background call
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -253,7 +275,8 @@ class _ContactsPageState extends State<ContactsPage> {
       child: TextField(
         controller: _searchController,
         decoration: InputDecoration(
-          prefixIcon: Icon(Icons.search, color: Theme.of(context).colorScheme.onSurfaceVariant),
+          prefixIcon: Icon(Icons.search,
+              color: Theme.of(context).colorScheme.onSurfaceVariant),
           hintText: 'Search contacts',
           filled: true,
           fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -309,12 +332,17 @@ class _ContactsPageState extends State<ContactsPage> {
     );
   }
 
-  Widget _buildTabButton({required String text, required bool isSelected, required VoidCallback onTap}) {
+  Widget _buildTabButton(
+      {required String text,
+      required bool isSelected,
+      required VoidCallback onTap}) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       margin: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: isSelected ? Theme.of(context).colorScheme.surface : Colors.transparent,
+        color: isSelected
+            ? Theme.of(context).colorScheme.surface
+            : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
         boxShadow: isSelected
             ? [
@@ -336,7 +364,9 @@ class _ContactsPageState extends State<ContactsPage> {
             style: TextStyle(
               fontSize: 14,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-              color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
+              color: isSelected
+                  ? Theme.of(context).colorScheme.onSurface
+                  : Theme.of(context).colorScheme.onSurfaceVariant,
               letterSpacing: -0.1,
             ),
             child: Text(text),
@@ -349,7 +379,8 @@ class _ContactsPageState extends State<ContactsPage> {
   Widget _buildLoadingState() {
     return Center(
       child: CircularProgressIndicator(
-        valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
+        valueColor: AlwaysStoppedAnimation<Color>(
+            Theme.of(context).colorScheme.primary),
       ),
     );
   }
@@ -381,7 +412,8 @@ class _ContactsPageState extends State<ContactsPage> {
                 height: 16,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                      Theme.of(context).colorScheme.primary),
                 ),
               ),
               const SizedBox(width: 8),
@@ -401,12 +433,13 @@ class _ContactsPageState extends State<ContactsPage> {
 
   Widget _buildContactList(Map<String, List<ContactModel>> grouped) {
     final children = <Widget>[];
-    
+
     if (grouped.isEmpty) {
       // Add empty state as a child of ListView to enable pull-to-refresh
       children.add(
         SizedBox(
-          height: MediaQuery.of(context).size.height * 0.6, // Ensure enough height for pull gesture
+          height: MediaQuery.of(context).size.height *
+              0.6, // Ensure enough height for pull gesture
           child: _buildEmptyState(),
         ),
       );
@@ -438,7 +471,8 @@ class _ContactsPageState extends State<ContactsPage> {
     return ListView(
       controller: _scrollController,
       padding: const EdgeInsets.only(bottom: 24),
-      physics: const AlwaysScrollableScrollPhysics(), // Enable scrolling even with few items
+      physics:
+          const AlwaysScrollableScrollPhysics(), // Enable scrolling even with few items
       children: children,
     );
   }
@@ -451,11 +485,16 @@ class _ContactsPageState extends State<ContactsPage> {
           Icon(
             Icons.contacts,
             size: 48,
-            color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+            color: Theme.of(context)
+                .colorScheme
+                .onSurfaceVariant
+                .withValues(alpha: 0.6),
           ),
           const SizedBox(height: 12),
           Text(
-            _selectedTabIndex == 1 ? 'No favorite contacts yet' : 'No contacts found',
+            _selectedTabIndex == 1
+                ? 'No favorite contacts yet'
+                : 'No contacts found',
             style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w600,
@@ -464,7 +503,7 @@ class _ContactsPageState extends State<ContactsPage> {
           ),
           const SizedBox(height: 6),
           Text(
-            _selectedTabIndex == 1 
+            _selectedTabIndex == 1
                 ? 'Mark contacts as favorites to see them here.'
                 : 'Add contacts or enable device contacts in Settings.',
             style: TextStyle(
@@ -479,7 +518,7 @@ class _ContactsPageState extends State<ContactsPage> {
 
   Widget _buildAlphabetIndex(Iterable<String> visibleLetters) {
     final visibleSet = visibleLetters.toSet();
-    
+
     return Positioned(
       top: 160, // Align with the tabs level
       right: 8,
@@ -498,7 +537,10 @@ class _ContactsPageState extends State<ContactsPage> {
                   fontWeight: FontWeight.w600,
                   color: isActive
                       ? Theme.of(context).colorScheme.primary
-                      : Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                      : Theme.of(context)
+                          .colorScheme
+                          .onSurfaceVariant
+                          .withValues(alpha: 0.4),
                 ),
               ),
             ),
@@ -539,7 +581,8 @@ class _ContactsPageState extends State<ContactsPage> {
     final sortedKeys = map.keys.toList()..sort();
     return {
       for (final letter in sortedKeys)
-        letter: map[letter]!..sort((a, b) => a.formattedName.compareTo(b.formattedName)),
+        letter: map[letter]!
+          ..sort((a, b) => a.formattedName.compareTo(b.formattedName)),
     };
   }
 
@@ -599,7 +642,10 @@ class _ContactRow extends StatelessWidget {
             height: 20,
             thickness: 0.8,
             indent: 64,
-            color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.2),
+            color: Theme.of(context)
+                .colorScheme
+                .onSurfaceVariant
+                .withValues(alpha: 0.2),
           ),
         ],
       ),
@@ -609,7 +655,8 @@ class _ContactRow extends StatelessWidget {
   Widget _buildAvatar(BuildContext context) {
     return CircleAvatar(
       radius: 24,
-      backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+      backgroundColor:
+          Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
       child: Text(
         contact.initials,
         style: TextStyle(
@@ -633,11 +680,13 @@ class _ContactRow extends StatelessWidget {
                 : Theme.of(context).colorScheme.onSurfaceVariant,
           ),
           onPressed: () => _toggleFavorite(context),
-          tooltip: contact.isFavorite ? 'Remove from favorites' : 'Add to favorites',
+          tooltip:
+              contact.isFavorite ? 'Remove from favorites' : 'Add to favorites',
         ),
         IconButton(
           icon: Icon(Icons.call, color: Theme.of(context).colorScheme.primary),
-          onPressed: contact.phones.isNotEmpty ? () => _makeCall(context) : null,
+          onPressed:
+              contact.phones.isNotEmpty ? () => _makeCall(context) : null,
           tooltip: 'Call',
         ),
       ],
@@ -674,10 +723,11 @@ class _ContactRow extends StatelessWidget {
 
     try {
       final callId = await SipService.instance.makeCall(selectedNumber);
-      
+
       if (callId != null) {
-        debugPrint('ContactRow: Initiated call to ${contact.formattedName} ($selectedNumber)');
-        
+        debugPrint(
+            'ContactRow: Initiated call to ${contact.formattedName} ($selectedNumber)');
+
         // Navigate to in-call screen
         NavigationService.goToInCall(
           callId,
@@ -746,10 +796,10 @@ class _ContactRow extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            
+
             // Phone numbers list
             ...contact.phones.map((phone) => _buildPhoneOption(context, phone)),
-            
+
             const SizedBox(height: 16),
           ],
         ),
@@ -820,13 +870,13 @@ class _ContactRow extends StatelessWidget {
     if (phones.isEmpty) {
       return 'No phone';
     }
-    
+
     // Get all unique labels, capitalize them, and join with commas
     final labels = phones
         .map((phone) => _capitalizeLabel(phone.label))
         .toSet() // Remove duplicates
         .toList();
-    
+
     return labels.join(', ');
   }
 
