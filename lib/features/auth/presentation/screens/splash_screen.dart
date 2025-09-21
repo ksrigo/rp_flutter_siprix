@@ -17,6 +17,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
+  bool _imageLoaded = false;
 
   @override
   void initState() {
@@ -26,9 +27,30 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     _initializeApp();
   }
 
+  /// Preload the splash image to prevent flicker
+  Future<void> _preloadImage() async {
+    try {
+      await precacheImage(const AssetImage('assets/images/ringplus_cloud.webp'), context);
+      if (mounted) {
+        setState(() {
+          _imageLoaded = true;
+        });
+      }
+      debugPrint('✅ SplashScreen: Image preloaded successfully');
+    } catch (e) {
+      debugPrint('❌ SplashScreen: Error preloading image: $e');
+      // Set image as loaded anyway to show fallback
+      if (mounted) {
+        setState(() {
+          _imageLoaded = true;
+        });
+      }
+    }
+  }
+
   void _initializeAnimations() {
     _animationController = AnimationController(
-      duration: AppConstants.longAnimation,
+      duration: const Duration(milliseconds: 1200),
       vsync: this,
     );
 
@@ -37,7 +59,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       end: 1.0,
     ).animate(CurvedAnimation(
       parent: _animationController,
-      curve: Curves.easeInOut,
+      curve: const Interval(0.0, 0.8, curve: Curves.easeInOut),
     ));
 
     _scaleAnimation = Tween<double>(
@@ -45,69 +67,96 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       end: 1.0,
     ).animate(CurvedAnimation(
       parent: _animationController,
-      curve: Curves.elasticOut,
+      curve: const Interval(0.2, 1.0, curve: Curves.elasticOut),
     ));
 
+    // Start animation immediately - don't wait for image preloading
     _animationController.forward();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Preload image here where MediaQuery context is available
+    if (!_imageLoaded) {
+      _preloadImage();
+    }
   }
 
   Future<void> _initializeApp() async {
     debugPrint('🔄 SplashScreen: _initializeApp started');
     
     try {
-      debugPrint('🕒 SplashScreen: Starting 2-second delay...');
-      // Add a minimum splash duration for better UX
-      await Future.delayed(const Duration(seconds: 2));
-      debugPrint('✅ SplashScreen: 2-second delay completed');
-
-      debugPrint('🔧 SplashScreen: Initializing AuthService...');
+      // Ensure minimum splash duration - adjusted for smooth transition from Android splash
+      final minimumDurationFuture = Future.delayed(const Duration(milliseconds: 2000));
       
-      // Initialize AuthService first
-      await AuthService.instance.initialize();
-      debugPrint('✅ SplashScreen: AuthService initialization completed');
+      // Start initialization but don't wait for it initially
+      final initializationFuture = _performInitialization();
       
-      debugPrint('🔍 SplashScreen: Checking authentication state...');
+      // Always wait for minimum duration first
+      debugPrint('🕒 SplashScreen: Starting 2-second minimum display...');
+      await minimumDurationFuture;
+      debugPrint('✅ SplashScreen: 2-second minimum display completed');
       
-      // Use AuthService to check if user is authenticated and get valid token
-      // This will trigger token refresh if needed
-      final validToken = await AuthService.instance.getValidAccessToken();
-      debugPrint('🎟️ SplashScreen: getValidAccessToken result: ${validToken != null ? "token present" : "no token"}');
+      // Then ensure initialization is complete
+      debugPrint('🔧 SplashScreen: Ensuring initialization is complete...');
+      final targetRoute = await initializationFuture;
+      debugPrint('✅ SplashScreen: All initialization completed');
       
-      debugPrint('📱 SplashScreen: Checking if widget is mounted: $mounted');
-      if (mounted) {
-        if (validToken != null) {
-          debugPrint('🎯 SplashScreen: User has valid token, navigating to keypad');
-          // User is authenticated, navigate to main app
-          // ignore: use_build_context_synchronously
-          context.go('/keypad');
-          debugPrint('✅ SplashScreen: Navigation to keypad completed');
-        } else {
-          debugPrint('🔐 SplashScreen: No valid token, navigating to login');
-          // User is not authenticated, navigate to login screen
-          // ignore: use_build_context_synchronously
-          context.go('/login');
-          debugPrint('✅ SplashScreen: Navigation to login completed');
-        }
-      } else {
-        debugPrint('❌ SplashScreen: Widget not mounted, skipping navigation');
+      // Navigate to the determined route
+      if (targetRoute != null) {
+        _navigateToRoute(targetRoute);
       }
+      
     } catch (e) {
       debugPrint('❌ SplashScreen: Error during app initialization: $e');
       debugPrint('❌ SplashScreen: Error stack trace: ${e.toString()}');
-      if (mounted) {
-        debugPrint('🔐 SplashScreen: Error occurred, navigating to login as fallback');
-        try {
-          context.go('/login');
-          debugPrint('✅ SplashScreen: Emergency navigation to login completed');
-        } catch (navError) {
-          debugPrint('❌ SplashScreen: Failed to navigate to login: $navError');
-        }
-      } else {
-        debugPrint('❌ SplashScreen: Widget not mounted during error handling');
-      }
+      
+      // Wait minimum duration even on error
+      await Future.delayed(const Duration(milliseconds: 1500));
+      
+      debugPrint('🔐 SplashScreen: Error occurred, navigating to login as fallback');
+      _navigateToRoute('/login');
     }
     
     debugPrint('🏁 SplashScreen: _initializeApp finished');
+  }
+
+  Future<String?> _performInitialization() async {
+    debugPrint('🔧 SplashScreen: Initializing AuthService...');
+    
+    // Initialize AuthService first
+    await AuthService.instance.initialize();
+    debugPrint('✅ SplashScreen: AuthService initialization completed');
+    
+    debugPrint('🔍 SplashScreen: Checking authentication state...');
+    
+    // Use AuthService to check if user is authenticated and get valid token
+    // This will trigger token refresh if needed
+    final validToken = await AuthService.instance.getValidAccessToken();
+    debugPrint('🎟️ SplashScreen: getValidAccessToken result: ${validToken != null ? "token present" : "no token"}');
+    
+    // Return the route to navigate to
+    return validToken != null ? '/keypad' : '/login';
+  }
+  
+  void _navigateToRoute(String route) {
+    debugPrint('📱 SplashScreen: Checking if widget is mounted: $mounted');
+    if (mounted) {
+      if (route == '/keypad') {
+        debugPrint('🎯 SplashScreen: User has valid token, navigating to keypad');
+        // ignore: use_build_context_synchronously
+        context.go('/keypad');
+        debugPrint('✅ SplashScreen: Navigation to keypad completed');
+      } else {
+        debugPrint('🔐 SplashScreen: No valid token, navigating to login');
+        // ignore: use_build_context_synchronously
+        context.go('/login');
+        debugPrint('✅ SplashScreen: Navigation to login completed');
+      }
+    } else {
+      debugPrint('❌ SplashScreen: Widget not mounted, skipping navigation');
+    }
   }
 
   @override
@@ -116,10 +165,25 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     super.dispose();
   }
 
+  /// Get responsive image size based on screen dimensions
+  double _getImageSize(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final isTablet = screenSize.shortestSide >= 600;
+    final baseSize = isTablet ? 200.0 : 140.0;
+    
+    // Scale based on screen width but cap the maximum size
+    final scaleFactor = (screenSize.width / (isTablet ? 800 : 400)).clamp(0.8, 1.5);
+    return baseSize * scaleFactor;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final backgroundColor = theme.colorScheme.surface;
+    final imageSize = _getImageSize(context);
+    
     return Scaffold(
-      backgroundColor: Theme.of(context).primaryColor,
+      backgroundColor: backgroundColor,
       body: AnimatedBuilder(
         animation: _animationController,
         builder: (context, child) {
@@ -131,54 +195,35 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // App Logo
+                    // Ringplus Cloud Logo
                     Container(
-                      width: 120,
-                      height: 120,
+                      width: imageSize,
+                      height: imageSize,
+                      clipBehavior: Clip.antiAlias,
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24),
+                        borderRadius: BorderRadius.circular(imageSize * 0.15),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.2),
+                            color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
                             blurRadius: 20,
                             offset: const Offset(0, 10),
+                            spreadRadius: 2,
                           ),
                         ],
                       ),
-                      child: const Icon(
-                        Icons.phone,
-                        size: 60,
-                        color: Color(0xFF6B46C1),
+                      child: Image.asset(
+                        'assets/images/ringplus_cloud.webp',
+                        width: imageSize,
+                        height: imageSize,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          debugPrint('❌ SplashScreen: Error loading image: $error');
+                          return _buildFallbackIcon(imageSize, theme);
+                        },
                       ),
                     ),
 
-                    const SizedBox(height: 32),
-
-                    // App Name
-                    const Text(
-                      AppConstants.appName,
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    // App Description
-                    Text(
-                      AppConstants.appDescription,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.white.withValues(alpha: 0.9),
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-
-                    const SizedBox(height: 64),
+                    const SizedBox(height: 48),
 
                     // Loading Indicator
                     SizedBox(
@@ -187,8 +232,20 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       child: CircularProgressIndicator(
                         strokeWidth: 3,
                         valueColor: AlwaysStoppedAnimation<Color>(
-                          Colors.white.withValues(alpha: 0.8),
+                          theme.colorScheme.primary,
                         ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Loading text
+                    Text(
+                      'Loading...',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
@@ -197,6 +254,23 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
             ),
           );
         },
+      ),
+    );
+  }
+
+  /// Fallback icon widget when image fails to load
+  Widget _buildFallbackIcon(double size, ThemeData theme) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primaryContainer,
+        borderRadius: BorderRadius.circular(size * 0.15),
+      ),
+      child: Icon(
+        Icons.cloud_queue_rounded,
+        size: size * 0.5,
+        color: theme.colorScheme.onPrimaryContainer,
       ),
     );
   }
@@ -216,12 +290,32 @@ class _GradientSplashScreenState extends ConsumerState<GradientSplashScreen>
   late AnimationController _animationController;
   late Animation<double> _logoAnimation;
   late Animation<double> _textAnimation;
+  bool _imageLoaded = false;
 
   @override
   void initState() {
     super.initState();
     _initializeAnimations();
     _initializeApp();
+  }
+
+  /// Preload the splash image to prevent flicker
+  Future<void> _preloadImage() async {
+    try {
+      await precacheImage(const AssetImage('assets/images/ringplus_cloud.webp'), context);
+      if (mounted) {
+        setState(() {
+          _imageLoaded = true;
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ GradientSplashScreen: Error preloading image: $e');
+      if (mounted) {
+        setState(() {
+          _imageLoaded = true;
+        });
+      }
+    }
   }
 
   void _initializeAnimations() {
@@ -246,7 +340,17 @@ class _GradientSplashScreenState extends ConsumerState<GradientSplashScreen>
       curve: const Interval(0.4, 1.0, curve: Curves.easeInOut),
     ));
 
+    // Start animation immediately
     _animationController.forward();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Preload image here where MediaQuery context is available
+    if (!_imageLoaded) {
+      _preloadImage();
+    }
   }
 
   Future<void> _initializeApp() async {
@@ -284,8 +388,20 @@ class _GradientSplashScreenState extends ConsumerState<GradientSplashScreen>
     super.dispose();
   }
 
+  /// Get responsive image size based on screen dimensions
+  double _getImageSize(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final isTablet = screenSize.shortestSide >= 600;
+    final baseSize = isTablet ? 180.0 : 140.0;
+    
+    final scaleFactor = (screenSize.width / (isTablet ? 800 : 400)).clamp(0.8, 1.4);
+    return baseSize * scaleFactor;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final imageSize = _getImageSize(context);
+    
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -313,11 +429,12 @@ class _GradientSplashScreenState extends ConsumerState<GradientSplashScreen>
                       child: FadeTransition(
                         opacity: _logoAnimation,
                         child: Container(
-                          width: 140,
-                          height: 140,
+                          width: imageSize,
+                          height: imageSize,
+                          clipBehavior: Clip.antiAlias,
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(28),
+                            borderRadius: BorderRadius.circular(imageSize * 0.15),
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black.withValues(alpha: 0.3),
@@ -326,10 +443,19 @@ class _GradientSplashScreenState extends ConsumerState<GradientSplashScreen>
                               ),
                             ],
                           ),
-                          child: const Icon(
-                            Icons.phone_in_talk,
-                            size: 70,
-                            color: Color(0xFF6B46C1),
+                          child: Padding(
+                            padding: EdgeInsets.all(imageSize * 0.1),
+                            child: Image.asset(
+                              'assets/images/ringplus_cloud.webp',
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Icon(
+                                  Icons.cloud_queue_rounded,
+                                  size: imageSize * 0.5,
+                                  color: const Color(0xFF6B46C1),
+                                );
+                              },
+                            ),
                           ),
                         ),
                       ),

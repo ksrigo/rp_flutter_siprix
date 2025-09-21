@@ -22,6 +22,7 @@ void main() async {
     debugPrint('🚀 MAIN: Application starting...');
     print('🚀 MAIN: Application starting (print)...');
     
+    
     // Register Firebase background message handler for Android push notifications
     if (Platform.isAndroid) {
       FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
@@ -37,6 +38,7 @@ void main() async {
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
     ]);
+    
     
     debugPrint('🚀 Main: Starting app with runApp');
     runApp(
