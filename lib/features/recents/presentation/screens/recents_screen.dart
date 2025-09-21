@@ -6,7 +6,9 @@ import 'package:siprix_voip_sdk/cdrs_model.dart';
 import '../../../../core/services/call_history_service.dart';
 import '../../../../core/services/navigation_service.dart';
 import '../../../../core/services/sip_service.dart';
+import '../../../../core/services/contacts_service.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../contacts/data/models/contact_model.dart';
 
 class RecentsScreen extends ConsumerStatefulWidget {
   const RecentsScreen({super.key});
@@ -22,11 +24,16 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
   bool _isLoading = true;
   bool _selectionMode = false;
   final Set<String> _selectedCallKeys = <String>{};
+  
+  // Contact name cache for performance optimization
+  final Map<String, String?> _contactNameCache = {};
+  final Map<String, Future<String?>> _pendingLookups = {};
 
   @override
   void initState() {
     super.initState();
     _initializeCallHistory();
+    _initializeContactCache();
   }
 
   Future<void> _initializeCallHistory() async {
@@ -45,10 +52,169 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
     }
   }
 
+  /// Initialize contact cache and listen for contact changes
+  Future<void> _initializeContactCache() async {
+    try {
+      // Initialize contacts service if not already done
+      if (!ContactsService.instance.isInitialized) {
+        await ContactsService.instance.initializeWithoutApiCall();
+      }
+      
+      // Listen for contact changes to update cache
+      ContactsService.instance.addListener(_onContactsChanged);
+      
+      // Preload contact names for recent calls
+      _preloadContactNames();
+    } catch (e) {
+      debugPrint('RecentsScreen: Error initializing contact cache: $e');
+    }
+  }
+
+  /// Handle contact changes by clearing cache
+  void _onContactsChanged() {
+    _contactNameCache.clear();
+    _pendingLookups.clear();
+    if (mounted) {
+      setState(() {});
+      _preloadContactNames();
+    }
+  }
+
+  /// Preload contact names for recent calls
+  void _preloadContactNames() {
+    final allCalls = CallHistoryService.instance.getAllCalls();
+    
+    // Get unique phone numbers from recent calls
+    final phoneNumbers = allCalls
+        .map((call) => _normalizePhoneNumber(call.remoteExt))
+        .where((number) => number.isNotEmpty)
+        .toSet()
+        .take(50) // Limit to avoid excessive API calls
+        .toList();
+    
+    // Start async lookups for each number
+    for (final phoneNumber in phoneNumbers) {
+      _getContactNameAsync(phoneNumber);
+    }
+  }
+
+  /// Normalize phone number for consistent matching
+  String _normalizePhoneNumber(String phoneNumber) {
+    if (phoneNumber.isEmpty) return '';
+    
+    // Remove all non-digit characters
+    String normalized = phoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
+    
+    // Handle international formats
+    if (normalized.startsWith('00')) {
+      // Convert 0044... to +44...
+      normalized = '+${normalized.substring(2)}';
+    } else if (normalized.startsWith('0') && normalized.length > 1) {
+      // Keep domestic numbers with leading 0
+      // But also create +44 variant for UK numbers
+      if (normalized.length >= 10) {
+        // Also check +44 variant
+        final ukNumber = '+44${normalized.substring(1)}';
+        return ukNumber;
+      }
+    } else if (!normalized.startsWith('+') && normalized.length >= 10) {
+      // For numbers without country code, try common formats
+      return normalized;
+    }
+    
+    return normalized.startsWith('+') ? normalized : '+$normalized';
+  }
+
+  /// Get contact name asynchronously with caching
+  Future<String?> _getContactNameAsync(String phoneNumber) async {
+    final normalizedNumber = _normalizePhoneNumber(phoneNumber);
+    
+    // Check cache first
+    if (_contactNameCache.containsKey(normalizedNumber)) {
+      return _contactNameCache[normalizedNumber];
+    }
+    
+    // Check if lookup is already in progress
+    if (_pendingLookups.containsKey(normalizedNumber)) {
+      return await _pendingLookups[normalizedNumber]!;
+    }
+    
+    // Start new lookup
+    final lookup = _performContactLookup(normalizedNumber);
+    _pendingLookups[normalizedNumber] = lookup;
+    
+    try {
+      final result = await lookup;
+      _contactNameCache[normalizedNumber] = result;
+      _pendingLookups.remove(normalizedNumber);
+      
+      // Update UI if contact found
+      if (result != null && mounted) {
+        setState(() {});
+      }
+      
+      return result;
+    } catch (e) {
+      _pendingLookups.remove(normalizedNumber);
+      debugPrint('RecentsScreen: Error looking up contact for $normalizedNumber: $e');
+      return null;
+    }
+  }
+
+  /// Perform actual contact lookup with multiple phone number variants
+  Future<String?> _performContactLookup(String phoneNumber) async {
+    try {
+      // Try exact match first
+      ContactModel? contact = await ContactsService.instance.getContactByPhone(phoneNumber);
+      if (contact != null) {
+        return contact.formattedName;
+      }
+      
+      // Try alternative formats for better matching
+      final alternatives = _getPhoneNumberAlternatives(phoneNumber);
+      for (final alternative in alternatives) {
+        contact = await ContactsService.instance.getContactByPhone(alternative);
+        if (contact != null) {
+          return contact.formattedName;
+        }
+      }
+      
+      return null;
+    } catch (e) {
+      debugPrint('RecentsScreen: Error in contact lookup: $e');
+      return null;
+    }
+  }
+
+  /// Generate alternative phone number formats for better matching
+  List<String> _getPhoneNumberAlternatives(String phoneNumber) {
+    final alternatives = <String>[];
+    
+    if (phoneNumber.startsWith('+44')) {
+      // UK number: try with leading 0
+      alternatives.add('0${phoneNumber.substring(3)}');
+      // Try without country code
+      alternatives.add(phoneNumber.substring(3));
+    } else if (phoneNumber.startsWith('0') && phoneNumber.length >= 10) {
+      // Domestic UK number: try with +44
+      alternatives.add('+44${phoneNumber.substring(1)}');
+    } else if (phoneNumber.startsWith('+')) {
+      // International: try without +
+      alternatives.add(phoneNumber.substring(1));
+      // Try with 00 prefix
+      alternatives.add('00${phoneNumber.substring(1)}');
+    } else {
+      // Domestic: try with +
+      alternatives.add('+$phoneNumber');
+    }
+    
+    return alternatives;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.background,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -651,6 +817,78 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
     }
   }
 
+  Future<void> _addToContacts(String phoneNumber) async {
+    // Close the modal first
+    Navigator.of(context).pop();
+    
+    if (phoneNumber.isEmpty) {
+      debugPrint('RecentsScreen: Cannot add empty phone number to contacts');
+      return;
+    }
+
+    try {
+      // Check if the number already exists in contacts
+      final existingContact = await ContactsService.instance.getContactByPhone(phoneNumber);
+      
+      if (existingContact != null) {
+        // Show dialog asking if user wants to update existing contact
+        if (!mounted) return;
+        
+        final shouldUpdate = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            title: Text(
+              'Number Already Exists',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+            content: Text(
+              'This number already belongs to ${existingContact.formattedName}. Do you want to edit this contact?',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: Text(
+                  'Edit Contact',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+
+        if (shouldUpdate == true) {
+          NavigationService.goToEditContact(existingContact);
+        }
+      } else {
+        // Navigate to Add Contact with prefilled phone number
+        NavigationService.goToAddContact(prefilledPhone: phoneNumber);
+      }
+      
+      debugPrint('RecentsScreen: Add to contacts initiated for $phoneNumber');
+    } catch (e) {
+      debugPrint('RecentsScreen: Error checking existing contact for $phoneNumber: $e');
+      // Fallback to add contact even if check fails
+      NavigationService.goToAddContact(prefilledPhone: phoneNumber);
+    }
+  }
+
   void _showCallDetails(CdrModel call) {
     showModalBottomSheet(
       context: context,
@@ -766,11 +1004,7 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      debugPrint(
-                          'RecentsScreen: Add to contacts tapped for ${call.remoteExt}');
-                    },
+                    onPressed: () => _addToContacts(call.remoteExt),
                     icon: const Icon(Icons.person_add_alt_1_outlined),
                     label: const Text('Add to contacts'),
                     style: OutlinedButton.styleFrom(
@@ -829,6 +1063,21 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
   }
 
   String _getDisplayName(CdrModel call, CallType callType) {
+    // First check if we have a contact name from cache
+    final normalizedNumber = _normalizePhoneNumber(call.remoteExt);
+    final contactName = _contactNameCache[normalizedNumber];
+    
+    if (contactName != null && contactName.isNotEmpty) {
+      return contactName;
+    }
+    
+    // Trigger async lookup if not in cache and not already pending
+    if (!_contactNameCache.containsKey(normalizedNumber) && 
+        !_pendingLookups.containsKey(normalizedNumber)) {
+      _getContactNameAsync(call.remoteExt);
+    }
+    
+    // Fallback to original logic while contact lookup is in progress
     if (call.displName.isNotEmpty &&
         call.displName != call.remoteExt &&
         call.displName.toLowerCase() != 'unknown') {
@@ -933,6 +1182,12 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
   String _formatFullDateTime(DateTime dateTime) {
     final formatter = DateFormat('EEE, MMM d · h:mm a');
     return formatter.format(dateTime);
+  }
+
+  @override
+  void dispose() {
+    ContactsService.instance.removeListener(_onContactsChanged);
+    super.dispose();
   }
 }
 

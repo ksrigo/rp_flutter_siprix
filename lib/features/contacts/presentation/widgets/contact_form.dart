@@ -9,12 +9,14 @@ class ContactForm extends StatefulWidget {
   final ContactModel? contact; // null for add, populated for edit
   final VoidCallback? onSaved;
   final VoidCallback? onDeleted;
+  final String? prefilledPhone; // prefilled phone number for new contacts
 
   const ContactForm({
     super.key,
     this.contact,
     this.onSaved,
     this.onDeleted,
+    this.prefilledPhone,
   });
 
   @override
@@ -66,7 +68,11 @@ class _ContactFormState extends State<ContactForm> {
       }
     } else {
       // Initialize for add mode
-      _phoneNumbers = [PhoneNumberEntry()];
+      final entry = PhoneNumberEntry();
+      if (widget.prefilledPhone != null && widget.prefilledPhone!.isNotEmpty) {
+        entry.controller.text = widget.prefilledPhone!;
+      }
+      _phoneNumbers = [entry];
     }
   }
 
