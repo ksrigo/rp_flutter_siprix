@@ -186,7 +186,8 @@ class NavigationService {
   static void goToRecents() => router.go('/recents');
   static void goToContacts() => router.go('/contacts');
   static void goToAddContact() => router.go('/contacts/add');
-  static void goToEditContact(ContactModel contact) => router.go('/contacts/edit', extra: contact);
+  static void goToEditContact(ContactModel contact) =>
+      router.go('/contacts/edit', extra: contact);
   static void goToVoicemail() => router.go('/voicemail');
   static void goToSettings() => router.go('/settings');
 
@@ -201,7 +202,8 @@ class NavigationService {
         '/incoming-call?callId=$callId&callerName=$callerName&callerNumber=$callerNumber');
   }
 
-  static void goToInCall(String callId, {String? phoneNumber, String? contactName}) {
+  static void goToInCall(String callId,
+      {String? phoneNumber, String? contactName}) {
     String url = '/in-call?callId=$callId';
     if (phoneNumber != null && phoneNumber.isNotEmpty) {
       url += '&phoneNumber=${Uri.encodeQueryComponent(phoneNumber)}';
@@ -276,10 +278,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       // Unregister SIP
       await SipService.instance.unregister();
-      
+
       // Clear auth service
       await AuthService.instance.logout();
-      
+
       // Navigate to login
       // ignore: use_build_context_synchronously
       context.go('/login');
@@ -291,7 +293,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.background,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -309,7 +311,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             const SizedBox(height: 32),
-            
+
             // Settings Items
             Expanded(
               child: Padding(
@@ -334,9 +336,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       subtitle: 'Manage call settings',
                       onTap: () => context.go('/settings/calls'),
                     ),
-                    
+
                     const SizedBox(height: 32),
-                    
+
                     // App Version
                     if (_appVersion.isNotEmpty)
                       Padding(
@@ -345,17 +347,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           'Version $_appVersion',
                           style: TextStyle(
                             fontSize: 14,
-                            color: Colors.grey.shade600,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
                             fontWeight: FontWeight.w500,
                           ),
                           textAlign: TextAlign.center,
                         ),
                       ),
-                    
+
                     const SizedBox(height: 16),
                     const Divider(),
                     const SizedBox(height: 16),
-                    
+
                     // Logout Button
                     Container(
                       width: double.infinity,
@@ -403,39 +406,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: const Color(0xFF6B46C1).withValues(alpha: 0.1),
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(
             icon,
-            color: const Color(0xFF6B46C1),
+            color: Theme.of(context).colorScheme.primary,
             size: 24,
           ),
         ),
         title: Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w500,
-            color: Colors.black87,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         subtitle: Text(
           subtitle,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
-            color: Colors.grey,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
-        trailing: const Icon(
+        trailing: Icon(
           Icons.chevron_right,
-          color: Colors.grey,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
-        tileColor: const Color(0xFFF8F9FA),
+        tileColor: Theme.of(context).colorScheme.surfaceContainerHighest,
         onTap: onTap,
       ),
     );
@@ -462,11 +465,13 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   void _loadCurrentTransport() async {
     // Get current transport from SIP service (which now reads from storage)
     try {
-      final currentTransport = await SipService.instance.getCurrentTransportAsync();
+      final currentTransport =
+          await SipService.instance.getCurrentTransportAsync();
       setState(() {
         _selectedTransport = currentTransport;
       });
-      debugPrint('Account Settings: Loaded current transport: $currentTransport');
+      debugPrint(
+          'Account Settings: Loaded current transport: $currentTransport');
     } catch (e) {
       debugPrint('Account Settings: Failed to load transport: $e');
       setState(() {
@@ -481,9 +486,9 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     final extensionDetails = authService.extensionDetails;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.background,
         elevation: 0,
         leading: IconButton(
           icon: Icon(
@@ -557,7 +562,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: Theme.of(context).colorScheme.primary,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         const SizedBox(height: 8),
@@ -565,18 +570,14 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           decoration: BoxDecoration(
-            color: Colors.grey.shade100,
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: Colors.grey.shade300,
-              width: 1,
-            ),
           ),
           child: Text(
             value,
             style: TextStyle(
               fontSize: 16,
-              color: Colors.grey.shade700,
+              color: Theme.of(context).colorScheme.onSurface,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -594,7 +595,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: Theme.of(context).colorScheme.primary,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         const SizedBox(height: 8),
@@ -602,12 +603,8 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: Theme.of(context).colorScheme.primary,
-              width: 2,
-            ),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
@@ -618,10 +615,10 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                   value: transport,
                   child: Text(
                     transport,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
-                      color: Colors.black87,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                 );
@@ -630,7 +627,8 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 Icons.keyboard_arrow_down,
                 color: Theme.of(context).colorScheme.primary,
               ),
-              dropdownColor: Colors.white,
+              dropdownColor:
+                  Theme.of(context).colorScheme.surfaceContainerHighest,
             ),
           ),
         ),
@@ -676,7 +674,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   void _onTransportChanged(String? newTransport) async {
     if (newTransport != null && newTransport != _selectedTransport) {
       final oldTransport = _selectedTransport;
-      
+
       setState(() {
         _selectedTransport = newTransport;
       });
@@ -684,18 +682,18 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
       try {
         // Update the account transport in SIP service
         final success = await SipService.instance.updateTransport(newTransport);
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(success 
+              content: Text(success
                   ? 'Transport changed to $newTransport and re-registered successfully'
                   : 'Failed to update transport. Please ensure you are registered and try again.'),
               backgroundColor: success ? Colors.green : Colors.red,
               duration: Duration(seconds: success ? 3 : 5),
             ),
           );
-          
+
           // If update failed, revert the UI selection
           if (!success) {
             setState(() {
@@ -712,7 +710,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
               backgroundColor: Colors.red,
             ),
           );
-          
+
           // Revert the UI selection
           setState(() {
             _selectedTransport = oldTransport;
@@ -730,12 +728,12 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     try {
       // Trigger re-registration through SIP service
       final success = await SipService.instance.reregister();
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(success 
-                ? 'Re-registration successful' 
+            content: Text(success
+                ? 'Re-registration successful'
                 : 'Re-registration failed'),
             backgroundColor: success ? Colors.green : Colors.red,
           ),
@@ -781,12 +779,13 @@ class _CallsSettingsScreenState extends State<CallsSettingsScreen> {
   }
 
   Future<void> _loadExtensionSettings({bool showLoading = true}) async {
-    debugPrint('🔄 CallsSettings: _loadExtensionSettings called with showLoading: $showLoading');
+    debugPrint(
+        '🔄 CallsSettings: _loadExtensionSettings called with showLoading: $showLoading');
     if (!mounted) {
       debugPrint('❌ CallsSettings: Widget not mounted, returning');
       return;
     }
-    
+
     try {
       if (showLoading) {
         debugPrint('🔄 CallsSettings: Setting _isLoading = true');
@@ -797,7 +796,7 @@ class _CallsSettingsScreenState extends State<CallsSettingsScreen> {
 
       final authService = AuthService.instance;
       final extensionDetails = authService.extensionDetails;
-      
+
       if (extensionDetails == null) {
         debugPrint('❌ CallsSettings: No extension details available');
         return;
@@ -811,45 +810,52 @@ class _CallsSettingsScreenState extends State<CallsSettingsScreen> {
       final response = await ApiService.instance.getAuthenticated(
         url,
       );
-      
+
       if (response == null) {
-        debugPrint('❌ CallsSettings: Authentication failed - redirected to login');
+        debugPrint(
+            '❌ CallsSettings: Authentication failed - redirected to login');
         return;
       }
 
-      debugPrint('📥 CallsSettings: GET response - Status: ${response.statusCode}');
+      debugPrint(
+          '📥 CallsSettings: GET response - Status: ${response.statusCode}');
       debugPrint('📥 CallsSettings: GET response - Data: ${response.data}');
 
       if (response.statusCode == 200 && response.data != null) {
         final data = response.data;
         final clirValue = data['clir'] ?? false;
         final recordValue = data['record'] ?? false;
-        
-        debugPrint('📊 CallsSettings: Server data - clir: $clirValue, record: $recordValue');
-        
+
+        debugPrint(
+            '📊 CallsSettings: Server data - clir: $clirValue, record: $recordValue');
+
         if (mounted) {
           final oldShowCallerID = _showCallerID;
           final oldEnableRecording = _enableRecording;
-          
+
           setState(() {
             // CLIR logic: false means show caller ID, true means hide caller ID
             _showCallerID = !clirValue;
             _enableRecording = recordValue;
           });
-          
-          debugPrint('🔄 CallsSettings: State updated - showCallerID: $oldShowCallerID -> $_showCallerID');
-          debugPrint('🔄 CallsSettings: State updated - enableRecording: $oldEnableRecording -> $_enableRecording');
+
+          debugPrint(
+              '🔄 CallsSettings: State updated - showCallerID: $oldShowCallerID -> $_showCallerID');
+          debugPrint(
+              '🔄 CallsSettings: State updated - enableRecording: $oldEnableRecording -> $_enableRecording');
         }
         debugPrint('✅ CallsSettings: Settings loaded successfully');
       } else {
-        debugPrint('❌ CallsSettings: Invalid response - Status: ${response.statusCode}, Data: ${response.data}');
+        debugPrint(
+            '❌ CallsSettings: Invalid response - Status: ${response.statusCode}, Data: ${response.data}');
       }
     } catch (e) {
       debugPrint('CallsSettings: Error loading extension settings: $e');
       if (mounted && e is DioException) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to load call settings: ${e.response?.data ?? e.message}'),
+            content: Text(
+                'Failed to load call settings: ${e.response?.data ?? e.message}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -864,15 +870,17 @@ class _CallsSettingsScreenState extends State<CallsSettingsScreen> {
   }
 
   Future<void> _updateCallerIDSetting(bool value) async {
-    debugPrint('🔄 CallsSettings: _updateCallerIDSetting called with value: $value');
-    
+    debugPrint(
+        '🔄 CallsSettings: _updateCallerIDSetting called with value: $value');
+
     if (!mounted || _isUpdating) {
-      debugPrint('❌ CallsSettings: Cannot update - mounted: $mounted, _isUpdating: $_isUpdating');
+      debugPrint(
+          '❌ CallsSettings: Cannot update - mounted: $mounted, _isUpdating: $_isUpdating');
       return;
     }
-    
+
     bool updateSuccessful = false;
-    
+
     try {
       debugPrint('🔒 CallsSettings: Setting _isUpdating = true');
       setState(() {
@@ -881,14 +889,15 @@ class _CallsSettingsScreenState extends State<CallsSettingsScreen> {
 
       final authService = AuthService.instance;
       final extensionDetails = authService.extensionDetails;
-      
+
       if (extensionDetails == null) {
         throw Exception('Extension details required');
       }
 
       // CLIR logic: UI value true (show caller ID) = API clir: false
       final clirValue = !value;
-      debugPrint('📊 CallsSettings: UI value: $value -> API clir value: $clirValue');
+      debugPrint(
+          '📊 CallsSettings: UI value: $value -> API clir value: $clirValue');
 
       final url = '/extension/${extensionDetails.id}';
       final payload = {'clir': clirValue};
@@ -899,35 +908,41 @@ class _CallsSettingsScreenState extends State<CallsSettingsScreen> {
         url,
         data: payload,
       );
-      
+
       if (response == null) {
-        debugPrint('❌ CallsSettings: Authentication failed - redirected to login');
+        debugPrint(
+            '❌ CallsSettings: Authentication failed - redirected to login');
         return;
       }
 
-      debugPrint('📥 CallsSettings: PATCH response - Status: ${response.statusCode}');
+      debugPrint(
+          '📥 CallsSettings: PATCH response - Status: ${response.statusCode}');
       debugPrint('📥 CallsSettings: PATCH response - Data: ${response.data}');
 
       if (response.statusCode == 200 || response.statusCode == 202) {
         updateSuccessful = true;
-        debugPrint('✅ CallsSettings: Caller ID setting updated successfully (Status: ${response.statusCode})');
+        debugPrint(
+            '✅ CallsSettings: Caller ID setting updated successfully (Status: ${response.statusCode})');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Caller ID setting ${value ? 'enabled' : 'disabled'}'),
+              content:
+                  Text('Caller ID setting ${value ? 'enabled' : 'disabled'}'),
               backgroundColor: Colors.green,
             ),
           );
         }
       } else {
-        debugPrint('❌ CallsSettings: PATCH failed with status: ${response.statusCode}');
+        debugPrint(
+            '❌ CallsSettings: PATCH failed with status: ${response.statusCode}');
       }
     } catch (e) {
       debugPrint('❌ CallsSettings: Error updating caller ID setting: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to update caller ID setting: ${e is DioException ? e.response?.data ?? e.message : e.toString()}'),
+            content: Text(
+                'Failed to update caller ID setting: ${e is DioException ? e.response?.data ?? e.message : e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -938,11 +953,12 @@ class _CallsSettingsScreenState extends State<CallsSettingsScreen> {
         setState(() {
           _isUpdating = false;
         });
-        
+
         debugPrint('🔄 CallsSettings: updateSuccessful: $updateSuccessful');
         // Refresh the data from server after update is complete (success or failure)
         if (updateSuccessful) {
-          debugPrint('🔄 CallsSettings: Calling _loadExtensionSettings for refresh...');
+          debugPrint(
+              '🔄 CallsSettings: Calling _loadExtensionSettings for refresh...');
           await _loadExtensionSettings(showLoading: false);
           debugPrint('✅ CallsSettings: Refresh completed');
         } else {
@@ -953,15 +969,17 @@ class _CallsSettingsScreenState extends State<CallsSettingsScreen> {
   }
 
   Future<void> _updateRecordingSetting(bool value) async {
-    debugPrint('🔄 CallsSettings: _updateRecordingSetting called with value: $value');
-    
+    debugPrint(
+        '🔄 CallsSettings: _updateRecordingSetting called with value: $value');
+
     if (!mounted || _isUpdating) {
-      debugPrint('❌ CallsSettings: Cannot update - mounted: $mounted, _isUpdating: $_isUpdating');
+      debugPrint(
+          '❌ CallsSettings: Cannot update - mounted: $mounted, _isUpdating: $_isUpdating');
       return;
     }
-    
+
     bool updateSuccessful = false;
-    
+
     try {
       debugPrint('🔒 CallsSettings: Setting _isUpdating = true');
       setState(() {
@@ -970,7 +988,7 @@ class _CallsSettingsScreenState extends State<CallsSettingsScreen> {
 
       final authService = AuthService.instance;
       final extensionDetails = authService.extensionDetails;
-      
+
       if (extensionDetails == null) {
         throw Exception('Extension details required');
       }
@@ -984,18 +1002,21 @@ class _CallsSettingsScreenState extends State<CallsSettingsScreen> {
         url,
         data: payload,
       );
-      
+
       if (response == null) {
-        debugPrint('❌ CallsSettings: Authentication failed - redirected to login');
+        debugPrint(
+            '❌ CallsSettings: Authentication failed - redirected to login');
         return;
       }
 
-      debugPrint('📥 CallsSettings: PATCH response - Status: ${response.statusCode}');
+      debugPrint(
+          '📥 CallsSettings: PATCH response - Status: ${response.statusCode}');
       debugPrint('📥 CallsSettings: PATCH response - Data: ${response.data}');
 
       if (response.statusCode == 200 || response.statusCode == 202) {
         updateSuccessful = true;
-        debugPrint('✅ CallsSettings: Recording setting updated successfully (Status: ${response.statusCode})');
+        debugPrint(
+            '✅ CallsSettings: Recording setting updated successfully (Status: ${response.statusCode})');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -1005,14 +1026,16 @@ class _CallsSettingsScreenState extends State<CallsSettingsScreen> {
           );
         }
       } else {
-        debugPrint('❌ CallsSettings: PATCH failed with status: ${response.statusCode}');
+        debugPrint(
+            '❌ CallsSettings: PATCH failed with status: ${response.statusCode}');
       }
     } catch (e) {
       debugPrint('❌ CallsSettings: Error updating recording setting: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to update recording setting: ${e is DioException ? e.response?.data ?? e.message : e.toString()}'),
+            content: Text(
+                'Failed to update recording setting: ${e is DioException ? e.response?.data ?? e.message : e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -1023,11 +1046,12 @@ class _CallsSettingsScreenState extends State<CallsSettingsScreen> {
         setState(() {
           _isUpdating = false;
         });
-        
+
         debugPrint('🔄 CallsSettings: updateSuccessful: $updateSuccessful');
         // Refresh the data from server after update is complete (success or failure)
         if (updateSuccessful) {
-          debugPrint('🔄 CallsSettings: Calling _loadExtensionSettings for refresh...');
+          debugPrint(
+              '🔄 CallsSettings: Calling _loadExtensionSettings for refresh...');
           await _loadExtensionSettings(showLoading: false);
           debugPrint('✅ CallsSettings: Refresh completed');
         } else {
@@ -1047,10 +1071,10 @@ class _CallsSettingsScreenState extends State<CallsSettingsScreen> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.grey.shade300,
+          color: Theme.of(context).colorScheme.outline,
           width: 1,
         ),
       ),
@@ -1062,10 +1086,10 @@ class _CallsSettingsScreenState extends State<CallsSettingsScreen> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -1073,7 +1097,7 @@ class _CallsSettingsScreenState extends State<CallsSettingsScreen> {
                   subtitle,
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.grey.shade600,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -1082,9 +1106,12 @@ class _CallsSettingsScreenState extends State<CallsSettingsScreen> {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: const Color(0xFF6B46C1),
-            inactiveThumbColor: Colors.grey,
-            inactiveTrackColor: Colors.grey.withValues(alpha: 0.3),
+            activeColor: Theme.of(context).colorScheme.primary,
+            inactiveThumbColor: Theme.of(context).colorScheme.onSurfaceVariant,
+            inactiveTrackColor: Theme.of(context)
+                .colorScheme
+                .onSurfaceVariant
+                .withValues(alpha: 0.3),
           ),
         ],
       ),
@@ -1094,9 +1121,9 @@ class _CallsSettingsScreenState extends State<CallsSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.background,
         elevation: 0,
         leading: IconButton(
           icon: Icon(
@@ -1116,9 +1143,10 @@ class _CallsSettingsScreenState extends State<CallsSettingsScreen> {
       ),
       body: SafeArea(
         child: _isLoading
-            ? const Center(
+            ? Center(
                 child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6B46C1)),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                      Theme.of(context).colorScheme.primary),
                 ),
               )
             : Padding(
@@ -1133,15 +1161,19 @@ class _CallsSettingsScreenState extends State<CallsSettingsScreen> {
                           children: [
                             _buildToggleItem(
                               title: 'Show Caller ID',
-                              subtitle: 'Display your phone number to recipients when making calls',
+                              subtitle:
+                                  'Display your phone number to recipients when making calls',
                               value: _showCallerID,
-                              onChanged: _isUpdating ? null : _updateCallerIDSetting,
+                              onChanged:
+                                  _isUpdating ? null : _updateCallerIDSetting,
                             ),
                             _buildToggleItem(
                               title: 'Enable Recording',
-                              subtitle: 'Automatically record incoming and outgoing calls',
+                              subtitle:
+                                  'Automatically record incoming and outgoing calls',
                               value: _enableRecording,
-                              onChanged: _isUpdating ? null : _updateRecordingSetting,
+                              onChanged:
+                                  _isUpdating ? null : _updateRecordingSetting,
                             ),
                           ],
                         ),
@@ -1176,14 +1208,15 @@ class _ContactsSettingsScreenState extends State<ContactsSettingsScreen> {
   void _loadCurrentState() {
     setState(() {
       _isLoading = true;
-      _isDeviceContactsEnabled = ContactsService.instance.isDeviceContactsEnabled;
+      _isDeviceContactsEnabled =
+          ContactsService.instance.isDeviceContactsEnabled;
       _isLoading = false;
     });
   }
 
   Future<void> _toggleDeviceContacts(bool value) async {
     if (!mounted || _isUpdating) return;
-    
+
     setState(() {
       _isUpdating = true;
     });
@@ -1194,7 +1227,7 @@ class _ContactsSettingsScreenState extends State<ContactsSettingsScreen> {
       } else {
         await ContactsService.instance.disableDeviceContacts();
       }
-      
+
       if (mounted) {
         setState(() {
           _isDeviceContactsEnabled = value;
@@ -1213,11 +1246,12 @@ class _ContactsSettingsScreenState extends State<ContactsSettingsScreen> {
       }
     } catch (e) {
       debugPrint('ContactsSettings: Error toggling device contacts: $e');
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error ${value ? 'enabling' : 'disabling'} device contacts: $e'),
+            content: Text(
+                'Error ${value ? 'enabling' : 'disabling'} device contacts: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -1241,10 +1275,10 @@ class _ContactsSettingsScreenState extends State<ContactsSettingsScreen> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.grey.shade300,
+          color: Theme.of(context).colorScheme.outline,
           width: 1,
         ),
       ),
@@ -1256,10 +1290,10 @@ class _ContactsSettingsScreenState extends State<ContactsSettingsScreen> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -1267,7 +1301,7 @@ class _ContactsSettingsScreenState extends State<ContactsSettingsScreen> {
                   subtitle,
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.grey.shade600,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -1276,9 +1310,12 @@ class _ContactsSettingsScreenState extends State<ContactsSettingsScreen> {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: const Color(0xFF6B46C1),
-            inactiveThumbColor: Colors.grey,
-            inactiveTrackColor: Colors.grey.withValues(alpha: 0.3),
+            activeColor: Theme.of(context).colorScheme.primary,
+            inactiveThumbColor: Theme.of(context).colorScheme.onSurfaceVariant,
+            inactiveTrackColor: Theme.of(context)
+                .colorScheme
+                .onSurfaceVariant
+                .withValues(alpha: 0.3),
           ),
         ],
       ),
@@ -1288,9 +1325,9 @@ class _ContactsSettingsScreenState extends State<ContactsSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.background,
         elevation: 0,
         leading: IconButton(
           icon: Icon(
@@ -1310,9 +1347,10 @@ class _ContactsSettingsScreenState extends State<ContactsSettingsScreen> {
       ),
       body: SafeArea(
         child: _isLoading
-            ? const Center(
+            ? Center(
                 child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6B46C1)),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                      Theme.of(context).colorScheme.primary),
                 ),
               )
             : Padding(
@@ -1331,7 +1369,8 @@ class _ContactsSettingsScreenState extends State<ContactsSettingsScreen> {
                                   ? 'Merge device contacts with API phonebook'
                                   : 'Only show API phonebook contacts',
                               value: _isDeviceContactsEnabled,
-                              onChanged: _isUpdating ? null : _toggleDeviceContacts,
+                              onChanged:
+                                  _isUpdating ? null : _toggleDeviceContacts,
                             ),
                           ],
                         ),
@@ -1344,4 +1383,3 @@ class _ContactsSettingsScreenState extends State<ContactsSettingsScreen> {
     );
   }
 }
-

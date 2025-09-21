@@ -180,7 +180,7 @@ class _ContactsPageState extends State<ContactsPage> {
     _refreshSectionKeys(grouped.keys);
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: Theme.of(context).colorScheme.background,
       body: SafeArea(
         child: Stack(
           children: [
@@ -314,7 +314,7 @@ class _ContactsPageState extends State<ContactsPage> {
       duration: const Duration(milliseconds: 200),
       margin: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: isSelected ? Colors.white : Colors.transparent,
+        color: isSelected ? Theme.of(context).colorScheme.surface : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
         boxShadow: isSelected
             ? [
@@ -704,7 +704,7 @@ class _ContactRow extends StatelessWidget {
   Future<String?> _showNumberSelectionDialog(BuildContext context) async {
     return showModalBottomSheet<String>(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -720,16 +720,19 @@ class _ContactRow extends StatelessWidget {
                 Expanded(
                   child: Text(
                     'Call ${contact.formattedName}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w600,
-                      color: Colors.black87,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                 ),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close, color: Colors.grey),
+                  icon: Icon(
+                    Icons.close,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -739,7 +742,7 @@ class _ContactRow extends StatelessWidget {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
-                color: Colors.grey[600],
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 16),
@@ -771,18 +774,18 @@ class _ContactRow extends StatelessWidget {
           ),
         ),
         title: Text(
-          phone.label,
-          style: const TextStyle(
+          _capitalizeLabel(phone.label),
+          style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: Colors.black87,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         subtitle: Text(
           phone.number,
           style: TextStyle(
             fontSize: 14,
-            color: Colors.grey[600],
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
         trailing: Icon(
@@ -793,7 +796,7 @@ class _ContactRow extends StatelessWidget {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
-        tileColor: const Color(0xFFF8F9FA),
+        tileColor: Theme.of(context).colorScheme.surfaceContainerHighest,
         onTap: () => Navigator.of(context).pop(phone.number),
       ),
     );

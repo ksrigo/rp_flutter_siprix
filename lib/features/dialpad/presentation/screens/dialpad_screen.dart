@@ -49,7 +49,7 @@ class _DialpadScreenState extends ConsumerState<DialpadScreen> {
     final extensionDetails = authService.extensionDetails;
     
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.background,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -65,10 +65,10 @@ class _DialpadScreenState extends ConsumerState<DialpadScreen> {
                     children: [
                       Text(
                         extensionDetails?.name ?? 'User',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.w600,
-                          color: Colors.black87,
+                          color: Theme.of(context).colorScheme.onPrimaryContainer,
                         ),
                       ),
                       Text(
@@ -140,10 +140,10 @@ class _DialpadScreenState extends ConsumerState<DialpadScreen> {
                 child: Center(
                   child: Text(
                     _dialedNumber.isEmpty ? '' : _dialedNumber,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 48,
                       fontWeight: FontWeight.w400,
-                      color: Colors.black87,
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
                       letterSpacing: 1.0,
                     ),
                     textAlign: TextAlign.center,
@@ -286,7 +286,7 @@ class _DialpadScreenState extends ConsumerState<DialpadScreen> {
       width: 90,
       height: 90,
       decoration: BoxDecoration(
-        color: const Color(0xFFF0F0F0),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         shape: BoxShape.circle,
       ),
       child: Material(
@@ -299,19 +299,19 @@ class _DialpadScreenState extends ConsumerState<DialpadScreen> {
             children: [
               Text(
                 digit,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.w400,
-                  color: Colors.black87,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               if (letters.isNotEmpty)
                 Text(
                   letters,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w400,
-                    color: Color(0xFF888888),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     letterSpacing: 0.5,
                   ),
                 ),

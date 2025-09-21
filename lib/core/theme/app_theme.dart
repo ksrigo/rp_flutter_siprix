@@ -2,25 +2,35 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class AppTheme {
-  // Brand color palette
-  static const Color primary = Color(0xFF6200EA);
-  static const Color secondary = Color(0xFF8B5CF6);
-  static const Color accent = Color(0xFFA855F7);
-  static const Color error = Color(0xFFEF4444);
-  static const Color info = Color(0xFF3B82F6);
-  static const Color success = Color(0xFF10B981);
-  static const Color warning = Color(0xFFF59E0B);
-  static const Color background = Color(0xFFF7F6F6);
-  static const Color surface = Color(0xFFFFFFFF);
-  static const Color surfaceVariant = Color(0xFFF8FAFC);
-  static const Color onSurface = Color(0xFF1F2937);
-  static const Color onSurfaceVariant = Color(0xFF6B7280);
+  // Light Theme Colors
+  static const Color primary = Color(0xFF6200EE); // Deep Purple
+  static const Color primaryVariant = Color(0xFF7C4DFF);
+  static const Color secondary = Color(0xFF9C27B0); // Vivid Purple
+  static const Color accent = Color(0xFFB388FF); // Soft Lavender highlight
+  static const Color background = Color(0xFFF7F6F9); // Near-white gray
+  static const Color surface = Color(0xFFFFFFFF); // Cards, panels
+  static const Color surfaceVariant = Color(0xFFF2F2F7);
+  static const Color onSurface = Color(0xFF1F1F1F); // Text/icons
+  static const Color onSurfaceVariant = Color(0xFF606060); // Secondary text
+  static const Color error = Color(0xFFD32F2F);
+  static const Color info = Color(0xFF2962FF);
+  static const Color success = Color(0xFF2E7D32);
+  static const Color warning = Color(0xFFED6C02);
 
-  // Dark theme variants
-  static const Color backgroundDark = Color(0xFF121212);
-  static const Color surfaceDark = Color(0xFF1E1E1E);
-  static const Color onSurfaceDark = Color(0xFFE5E7EB);
-  static const Color onSurfaceVariantDark = Color(0xFF9CA3AF);
+  // Dark Theme Colors
+  static const Color primaryDark = Color(0xFFBB86FC); // Soft Purple glow
+  static const Color primaryVariantDark = Color(0xFF985EFF);
+  static const Color secondaryDark = Color(0xFF7C4DFF);
+  static const Color accentDark = Color(0xFFC792EA); // Lavender accent
+  static const Color backgroundDark = Color(0xFF0F172A); // Dark Navy-Gray
+  static const Color surfaceDark = Color(0xFF1E1E2E); // Panels, cards
+  static const Color surfaceVariantDark = Color(0xFF2A2A3C);
+  static const Color onSurfaceDark = Color(0xFFFFFFFF); // Text/icons
+  static const Color onSurfaceVariantDark = Color(0xFFA0A0B2); // Secondary text
+  static const Color errorDark = Color(0xFFCF6679);
+  static const Color infoDark = Color(0xFF82B1FF);
+  static const Color successDark = Color(0xFF66BB6A);
+  static const Color warningDark = Color(0xFFFFB74D);
 
   static ThemeData get lightTheme {
     const colorScheme = ColorScheme.light(
@@ -28,8 +38,9 @@ class AppTheme {
       primaryContainer: accent,
       secondary: secondary,
       secondaryContainer: surfaceVariant,
-      surface: background,
+      surface: surface,
       surfaceContainerHighest: surfaceVariant,
+      background: background,
       error: error,
       onPrimary: Colors.white,
       onPrimaryContainer: onSurface,
@@ -121,7 +132,7 @@ class AppTheme {
       // Input Decoration Theme
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: background,
+        fillColor: surface,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
@@ -183,13 +194,14 @@ class AppTheme {
 
   static ThemeData get darkTheme {
     const colorScheme = ColorScheme.dark(
-      primary: secondary,
-      primaryContainer: accent,
-      secondary: accent,
-      secondaryContainer: Color(0xFF4C1D95),
-      surface: backgroundDark,
-      surfaceContainerHighest: Color(0xFF2D2D2D),
-      error: error,
+      primary: primaryDark,
+      primaryContainer: accentDark,
+      secondary: secondaryDark,
+      secondaryContainer: surfaceVariantDark,
+      surface: surfaceDark,
+      surfaceContainerHighest: surfaceVariantDark,
+      background: backgroundDark,
+      error: errorDark,
       onPrimary: Colors.black,
       onPrimaryContainer: onSurfaceDark,
       onSecondary: Colors.white,
@@ -223,7 +235,7 @@ class AppTheme {
       // Bottom Navigation Bar Theme
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: surfaceDark,
-        selectedItemColor: secondary,
+        selectedItemColor: primaryDark,
         unselectedItemColor: onSurfaceVariantDark,
         type: BottomNavigationBarType.fixed,
         elevation: 8,
@@ -245,10 +257,10 @@ class AppTheme {
       // Elevated Button Theme
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: secondary,
+          backgroundColor: primaryDark,
           foregroundColor: Colors.black,
           elevation: 2,
-          shadowColor: secondary.withValues(alpha: 0.3),
+          shadowColor: primaryDark.withValues(alpha: 0.3),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           textStyle: const TextStyle(
@@ -261,7 +273,7 @@ class AppTheme {
       // Text Button Theme
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: secondary,
+          foregroundColor: primaryDark,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         ),
@@ -270,8 +282,8 @@ class AppTheme {
       // Outlined Button Theme
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: secondary,
-          side: const BorderSide(color: secondary),
+          foregroundColor: primaryDark,
+          side: const BorderSide(color: primaryDark),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         ),
@@ -280,7 +292,7 @@ class AppTheme {
       // Input Decoration Theme
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: const Color(0xFF2D2D2D),
+        fillColor: surfaceVariantDark,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: Color(0xFF4B5563)),
@@ -291,11 +303,11 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: secondary, width: 2),
+          borderSide: const BorderSide(color: primaryDark, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: error),
+          borderSide: const BorderSide(color: errorDark),
         ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -303,7 +315,7 @@ class AppTheme {
 
       // Floating Action Button Theme
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: secondary,
+        backgroundColor: primaryDark,
         foregroundColor: Colors.black,
         elevation: 4,
         shape: CircleBorder(),
@@ -313,13 +325,13 @@ class AppTheme {
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return secondary;
+            return primaryDark;
           }
           return onSurfaceVariantDark;
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return secondary.withValues(alpha: 0.5);
+            return primaryDark.withValues(alpha: 0.5);
           }
           return const Color(0xFF374151);
         }),

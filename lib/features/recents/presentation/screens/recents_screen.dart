@@ -48,7 +48,7 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.background,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -87,7 +87,7 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -100,7 +100,8 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
         child: Row(
           children: [
             IconButton(
-              icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface),
+              icon: Icon(Icons.close,
+                  color: Theme.of(context).colorScheme.onSurface),
               tooltip: 'Cancel selection',
               onPressed: _exitSelectionMode,
             ),
@@ -116,7 +117,8 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
               ),
             ),
             IconButton(
-              icon: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.error),
+              icon: Icon(Icons.delete_outline,
+                  color: Theme.of(context).colorScheme.error),
               tooltip: 'Delete selected',
               onPressed: selectedCount == 0 ? null : _confirmBulkDelete,
             ),
@@ -169,7 +171,9 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
         curve: Curves.easeInOut,
         margin: const EdgeInsets.all(2),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
+          color: isSelected
+              ? Theme.of(context).colorScheme.surface
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           boxShadow: isSelected
               ? [
@@ -187,7 +191,9 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
             style: TextStyle(
               fontSize: 14,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-              color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
+              color: isSelected
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.onSurfaceVariant,
               letterSpacing: -0.1,
             ),
             child: Text(text),
@@ -244,13 +250,14 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
   Widget _buildLoadingState() {
     return Center(
       child: CircularProgressIndicator(
-        valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
+        valueColor: AlwaysStoppedAnimation<Color>(
+            Theme.of(context).colorScheme.primary),
       ),
     );
   }
 
-
-  Widget _buildGroupedCallList(Map<String, List<CdrModel>> groupedCalls, {Key? key}) {
+  Widget _buildGroupedCallList(Map<String, List<CdrModel>> groupedCalls,
+      {Key? key}) {
     if (groupedCalls.isEmpty) {
       return Container(
         key: key,
@@ -260,7 +267,7 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
 
     // Get all calls for selection validation
     final allCalls = groupedCalls.values.expand((calls) => calls).toList();
-    
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_selectionMode) return;
       final validKeys = allCalls.map(_callKey).toSet();
@@ -300,7 +307,7 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
         itemBuilder: (context, index) {
           final dateKey = sortedDateKeys[index];
           final calls = groupedCalls[dateKey]!;
-          
+
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -341,7 +348,12 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.history, size: 48, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.6)),
+          Icon(Icons.history,
+              size: 48,
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurfaceVariant
+                  .withValues(alpha: 0.6)),
           const SizedBox(height: 12),
           Text(
             'No recent calls yet',
@@ -368,13 +380,15 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
     final callKey = _callKey(call);
     return Dismissible(
       key: ValueKey(callKey),
-      direction: _selectionMode ? DismissDirection.none : DismissDirection.endToStart,
+      direction:
+          _selectionMode ? DismissDirection.none : DismissDirection.endToStart,
       confirmDismiss: (_) => _confirmSingleDelete(call),
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.symmetric(horizontal: 24),
         color: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
-        child: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.error, size: 28),
+        child: Icon(Icons.delete_outline,
+            color: Theme.of(context).colorScheme.error, size: 28),
       ),
       child: _buildCallTile(call, isSelected),
     );
@@ -467,7 +481,9 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
       width: 48,
       height: 48,
       decoration: BoxDecoration(
-        color: isSelected ? Theme.of(context).colorScheme.primary : style.backgroundColor,
+        color: isSelected
+            ? Theme.of(context).colorScheme.primary
+            : style.backgroundColor,
         shape: BoxShape.circle,
       ),
       child: Icon(
@@ -490,7 +506,8 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
             shape: BoxShape.circle,
           ),
-          child: Icon(Icons.info_outline, color: Theme.of(context).colorScheme.onSurfaceVariant, size: 20),
+          child: Icon(Icons.info_outline,
+              color: Theme.of(context).colorScheme.onSurfaceVariant, size: 20),
         ),
       ),
     );
@@ -554,7 +571,8 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
-              style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+              style: TextButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error),
               child: const Text('Delete'),
             ),
           ],
@@ -584,7 +602,8 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
       builder: (context) {
         return AlertDialog(
           title: const Text('Delete selected calls?'),
-          content: Text('Remove $count selected call${count > 1 ? 's' : ''} from Recents?'),
+          content: Text(
+              'Remove $count selected call${count > 1 ? 's' : ''} from Recents?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
@@ -592,7 +611,8 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
-              style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+              style: TextButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error),
               child: const Text('Delete'),
             ),
           ],
@@ -620,9 +640,11 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
       if (callId != null) {
         // Navigate to call screen with the phone number
         NavigationService.goToInCall(callId, phoneNumber: phoneNumber);
-        debugPrint('RecentsScreen: Initiated call to $phoneNumber with callId: $callId');
+        debugPrint(
+            'RecentsScreen: Initiated call to $phoneNumber with callId: $callId');
       } else {
-        debugPrint('RecentsScreen: Failed to initiate call to $phoneNumber - callId is null');
+        debugPrint(
+            'RecentsScreen: Failed to initiate call to $phoneNumber - callId is null');
       }
     } catch (e) {
       debugPrint('RecentsScreen: Error making call to $phoneNumber: $e');
@@ -642,16 +664,19 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
     final callType = CallHistoryService.getCallType(call);
     final style = _CallVisualStyle.fromCall(call, callType);
     final displayName = _getDisplayName(call, callType);
-    final phoneNumber = call.remoteExt.isNotEmpty ? call.remoteExt : 'Unknown number';
+    final phoneNumber =
+        call.remoteExt.isNotEmpty ? call.remoteExt : 'Unknown number';
     final isAnswered = _isAnswered(call);
-    final status = isAnswered ? (_resolveDuration(call) ?? 'Connected') : _describeStatus(call, callType);
+    final status = isAnswered
+        ? (_resolveDuration(call) ?? 'Connected')
+        : _describeStatus(call, callType);
     final statusLabel = isAnswered ? 'Duration' : 'Status';
     final direction = call.incoming ? 'Incoming call' : 'Outgoing call';
 
     return Container(
       margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
       ),
       child: Padding(
@@ -665,7 +690,10 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
                 width: 44,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurfaceVariant
+                      .withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -740,13 +768,15 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
                   child: OutlinedButton.icon(
                     onPressed: () {
                       Navigator.of(context).pop();
-                      debugPrint('RecentsScreen: Add to contacts tapped for ${call.remoteExt}');
+                      debugPrint(
+                          'RecentsScreen: Add to contacts tapped for ${call.remoteExt}');
                     },
                     icon: const Icon(Icons.person_add_alt_1_outlined),
                     label: const Text('Add to contacts'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Theme.of(context).colorScheme.primary,
-                      side: BorderSide(color: Theme.of(context).colorScheme.primary),
+                      side: BorderSide(
+                          color: Theme.of(context).colorScheme.primary),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -889,7 +919,7 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
       final hours = seconds ~/ 3600;
       final minutes = (seconds % 3600) ~/ 60;
       final remainingSeconds = seconds % 60;
-      
+
       if (hours > 0) {
         return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
       } else {

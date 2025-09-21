@@ -28,7 +28,7 @@ class _ContactFormState extends State<ContactForm> {
   final _emailController = TextEditingController();
   final _companyController = TextEditingController();
   final _notesController = TextEditingController();
-  
+
   List<PhoneNumberEntry> _phoneNumbers = [];
   bool _isSaving = false;
   bool _isDeleting = false;
@@ -46,12 +46,12 @@ class _ContactFormState extends State<ContactForm> {
       // Pre-fill form with existing contact data
       _firstNameController.text = widget.contact!.firstName ?? '';
       _lastNameController.text = widget.contact!.lastName ?? '';
-      _emailController.text = widget.contact!.emails.isNotEmpty 
-          ? widget.contact!.emails.first.address 
+      _emailController.text = widget.contact!.emails.isNotEmpty
+          ? widget.contact!.emails.first.address
           : '';
       _companyController.text = widget.contact!.company ?? '';
       _notesController.text = widget.contact!.notes ?? '';
-      
+
       // Pre-fill phone numbers
       _phoneNumbers = widget.contact!.phones.map((phone) {
         final entry = PhoneNumberEntry();
@@ -59,7 +59,7 @@ class _ContactFormState extends State<ContactForm> {
         entry.type = _capitalizeFirst(phone.label);
         return entry;
       }).toList();
-      
+
       // Ensure at least one phone number entry
       if (_phoneNumbers.isEmpty) {
         _phoneNumbers.add(PhoneNumberEntry());
@@ -112,7 +112,7 @@ class _ContactFormState extends State<ContactForm> {
     final validPhones = _phoneNumbers
         .where((phone) => phone.controller.text.trim().isNotEmpty)
         .toList();
-    
+
     if (validPhones.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -130,8 +130,9 @@ class _ContactFormState extends State<ContactForm> {
     try {
       final authService = AuthService.instance;
       final apiService = ApiService.instance;
-      
-      if (!authService.isAuthenticated || authService.extensionDetails == null) {
+
+      if (!authService.isAuthenticated ||
+          authService.extensionDetails == null) {
         throw Exception('Not authenticated');
       }
 
@@ -142,15 +143,17 @@ class _ContactFormState extends State<ContactForm> {
         "last_name": _lastNameController.text.trim(),
         "company": _companyController.text.trim(),
         "notes": _notesController.text.trim(),
-        "numbers": validPhones.map((phone) => {
-          "type": phone.type.toLowerCase(),
-          "number": phone.controller.text.trim(),
-        }).toList(),
+        "numbers": validPhones
+            .map((phone) => {
+                  "type": phone.type.toLowerCase(),
+                  "number": phone.controller.text.trim(),
+                })
+            .toList(),
         "email": _emailController.text.trim(),
       };
 
       late dynamic response;
-      
+
       if (isEditMode) {
         // Update existing contact
         final contactId = widget.contact!.contactId;
@@ -167,27 +170,33 @@ class _ContactFormState extends State<ContactForm> {
         );
       }
 
-      if (response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 202) {
+      if (response.statusCode == 200 ||
+          response.statusCode == 201 ||
+          response.statusCode == 202) {
         // Success - refresh contacts
         await ContactsService.instance.refreshContacts();
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(isEditMode ? 'Contact updated successfully' : 'Contact saved successfully'),
+              content: Text(isEditMode
+                  ? 'Contact updated successfully'
+                  : 'Contact saved successfully'),
               backgroundColor: Colors.green,
             ),
           );
           widget.onSaved?.call();
         }
       } else {
-        throw Exception('Failed to ${isEditMode ? 'update' : 'save'} contact: ${response.statusCode}');
+        throw Exception(
+            'Failed to ${isEditMode ? 'update' : 'save'} contact: ${response.statusCode}');
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error ${isEditMode ? 'updating' : 'saving'} contact: $e'),
+            content:
+                Text('Error ${isEditMode ? 'updating' : 'saving'} contact: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -209,7 +218,8 @@ class _ContactFormState extends State<ContactForm> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Contact'),
-        content: Text('Are you sure you want to delete ${widget.contact!.formattedName}?'),
+        content: Text(
+            'Are you sure you want to delete ${widget.contact!.formattedName}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -235,13 +245,13 @@ class _ContactFormState extends State<ContactForm> {
     try {
       final apiService = ApiService.instance;
       final contactId = widget.contact!.contactId;
-      
+
       final response = await apiService.delete('/contact/$contactId');
 
       if (response.statusCode == 200 || response.statusCode == 204) {
         // Success - refresh contacts
         await ContactsService.instance.refreshContacts();
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -275,7 +285,7 @@ class _ContactFormState extends State<ContactForm> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -343,8 +353,8 @@ class _ContactFormState extends State<ContactForm> {
   Widget _buildHeader() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      decoration: const BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.background,
       ),
       child: Row(
         children: [
@@ -360,10 +370,10 @@ class _ContactFormState extends State<ContactForm> {
             child: Text(
               isEditMode ? 'Edit Contact' : 'New Contact',
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
-                color: Colors.black87,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ),
@@ -372,7 +382,9 @@ class _ContactFormState extends State<ContactForm> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: _isSaving ? Colors.grey : Theme.of(context).colorScheme.primary,
+                color: _isSaving
+                    ? Colors.grey
+                    : Theme.of(context).colorScheme.primary,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: _isSaving
@@ -407,7 +419,8 @@ class _ContactFormState extends State<ContactForm> {
             width: 120,
             height: 120,
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+              color:
+                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -454,7 +467,7 @@ class _ContactFormState extends State<ContactForm> {
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: Theme.of(context).colorScheme.primary,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         const SizedBox(height: 8),
@@ -466,20 +479,20 @@ class _ContactFormState extends State<ContactForm> {
           decoration: InputDecoration(
             hintText: hintText,
             hintStyle: TextStyle(
-              color: Colors.grey.shade500,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
             filled: true,
-            fillColor: Colors.grey.shade100,
+            fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide.none,
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide.none,
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(
                 color: Theme.of(context).colorScheme.primary,
                 width: 2,
@@ -511,7 +524,7 @@ class _ContactFormState extends State<ContactForm> {
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: Theme.of(context).colorScheme.primary,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         const SizedBox(height: 8),
@@ -564,7 +577,7 @@ class _ContactFormState extends State<ContactForm> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: Colors.grey.shade100,
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(12),
           ),
           child: DropdownButtonHideUnderline(
@@ -580,13 +593,14 @@ class _ContactFormState extends State<ContactForm> {
                   value: type,
                   child: Text(
                     type,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
-                      color: Colors.black87,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                 );
               }).toList(),
+              dropdownColor: Theme.of(context).colorScheme.surfaceContainerHighest,
             ),
           ),
         ),
@@ -599,20 +613,20 @@ class _ContactFormState extends State<ContactForm> {
             decoration: InputDecoration(
               hintText: '(123) 456-7890',
               hintStyle: TextStyle(
-                color: Colors.grey.shade500,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               filled: true,
-              fillColor: Colors.grey.shade100,
+              fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide.none,
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide.none,
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide(
                   color: Theme.of(context).colorScheme.primary,
                   width: 2,
@@ -654,7 +668,7 @@ class _ContactFormState extends State<ContactForm> {
       width: double.infinity,
       child: ElevatedButton.icon(
         onPressed: _isDeleting ? null : _deleteContact,
-        icon: _isDeleting 
+        icon: _isDeleting
             ? const SizedBox(
                 width: 16,
                 height: 16,
