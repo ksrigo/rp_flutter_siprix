@@ -2446,3 +2446,215 @@ Same font size
 Same font style
 Same horizontal alignment/position in the AppBar
 Update both pages so the titles visually match.
+
+---
+
+We need to implement the Settings page in our Flutter app.
+Task:
+Update the existing Settings page.
+Keep only the following items:
+Account Settings
+Device Contacts
+Logout button
+Remove all other items currently on the page.
+Make sure the UI remains consistent with the app’s white background and purple theme.
+
+---
+
+We need to implement the Account Settings page in our Flutter app.
+Requirements:
+When the user clicks Account Settings in the Settings page, open a new page.
+Page must include:
+Read-only text fields for:
+Name
+Extension
+Domain
+Transport selector: option to switch between UDP and TCP.
+On change, update the AccountModel by setting account.transport to the selected transport.
+Re-register button: a button to manually trigger re-registration of the extension.
+Notes:
+Keep consistent styling with the app (white background, purple theme).
+Ensure the transport change and re-register action are functional, not just UI.
+
+---
+
+We need to continue implementing the Settings page in our Flutter app.
+Task: Add a new Calls Menu section with two toggles
+Show Caller ID (CLIR toggle):
+UI: A switch to enable/disable showing caller ID.
+Behavior:
+When ON → clir = false (show caller ID).
+When OFF → clir = true (hide caller ID).
+API call:
+PATCH /extension/<extension_id>
+Payload: { "clir": true | false }
+Enable Recording:
+UI: A switch to enable/disable call recording.
+Behavior:
+When ON → record = true.
+When OFF → record = false.
+API call:
+PATCH /extension/<extension_id>
+Payload: { "record": true | false }
+Initial Load
+When opening the Calls Menu, fetch the current extension settings:
+GET /extension/<extension_id>
+Sample response:
+{
+"id": 103,
+"pbx_id": 56,
+"number": "1002",
+"name": "Ravi",
+"ringing_timeout": 213,
+"clir": false,
+"record": true,
+"permission_id": 46,
+"permission_name": "outgoing",
+"pstn_cli_id": null,
+"pstn_number": "442080500099",
+"cf_unavailable": "vm",
+"cf_noanswer": "vm",
+"cf_busy": "vm",
+"cf_unconditional": "disabled",
+"vm_mail_to": "",
+"pickup_grp": "",
+"ringback": null,
+"moh": "0c2ec0452bec4106a6e320dfadc83326.wav"
+}
+Use the values of "clir" and "record" from this response to set the toggle states.
+Deliverables
+Update the Settings page to include a Calls Menu section.
+Implement toggle UI and API integration.
+Ensure toggles update instantly and reflect server state.
+Follow the app’s white background and purple theme.
+
+---
+
+UI is not exactly what I expected. I need something similar to what we do for Accounting settings. When We click on the menu called Call Options. Open a sub page with the details explained above (Show caller ID and Renable Recording)
+
+---
+
+We need to improve the authentication flow in our Flutter app.
+Requirements:
+Token validation before API calls
+If there is no valid access token (or it is expired) and no valid refresh token, then:
+Do not call any API endpoints.
+Redirect the user directly to the Login page.
+Refresh token logic
+If a refresh token exists, use it to obtain a new valid token before calling any other API endpoints.
+Only proceed with API calls once a valid token is confirmed.
+Deliverables
+Update the authentication middleware / API client so that all API requests respect these rules.
+Ensure navigation redirects unauthenticated users to the Login page automatically.
+Keep the implementation clean, modular, and null-safe.
+
+---
+
+We need to update the Contacts page logic in our Flutter app.
+Requirements:
+Initial API call:
+Only call the Contacts API when:
+The app starts, and
+The user first navigates to the Contacts tab.
+Subsequent navigation:
+If the user switches between tabs and returns to Contacts, do not call the API again.
+Instead, load contacts from the local SQLite cache.
+Manual refresh:
+Enable pull-to-refresh on the Contacts page.
+On refresh:
+Call the API.
+Update the SQLite database with new results.
+Refresh the UI with updated contacts.
+Ensure implementation is null-safe, modular, and reactive so the UI updates automatically when the SQLite cache changes.
+
+---
+
+Update the Recent Calls page functionality:
+When a user clicks on Info for a call log entry, add an option to “Add to Contacts.”
+On selecting it, navigate to the Add New Contact page.
+The caller’s phone number from the Recent entry should be prefilled into the first phone number field of the Add New Contact form.
+If the user cancels, simply go back to Recents without saving.
+If the user saves, the contact should be stored and available in the Contacts list.
+Implementation notes:
+Ensure the number format is preserved as displayed in Recents.
+Avoid duplicates: if the number already exists in Contacts, prompt the user (e.g., “This number already exists, do you want to update the existing contact?”).
+Keep UI consistent across Light and Dark themes.
+
+---
+
+Improve the Recents page display logic:
+For each call entry in Recents:
+If the caller number (incoming) or the called number (outgoing) matches a saved entry in Contacts, display the Contact Name instead of just the phone number.
+If no match is found, keep showing the number.
+Performance & Reactivity Requirements
+Matching must not block UI rendering or slow down scrolling.
+Use efficient lookups (e.g., cache contacts in memory with a map/dictionary keyed by phone number).
+Perform contact matching in a non-blocking / async way, ensuring smooth app reactivity.
+Update UI progressively as matches are resolved.
+Handle edge cases: multiple numbers per contact, formatted numbers (+44, 0044, etc.). Normalize before comparison.
+Implementation Notes
+Keep UI consistent across Dark and Light themes.
+Avoid redundant queries to the database — only fetch contacts once and keep them synced in memory.
+Ensure updates propagate correctly if user adds a new contact (e.g., number in Recents should update automatically to show the name).
+
+---
+
+Update splash screen:
+Use the image located at:
+assets/images/ringplus_cloud.webp
+Center the image on the screen.
+Background should follow the current app theme (Light = background color, Dark = background color from theme).
+Make sure the image scales responsively across different screen sizes (mobile, tablet).
+Show the splash screen for a few seconds (e.g., 2–3s) or until initialization completes (e.g., token check). Currently sometimes, we have a white screen few seconds before splash screen show. If possible show splash screen straight away.
+Implementation notes:
+Preload the image so there’s no flicker.
+Ensure compatibility with both Android and iOS splash behavior.
+Keep it lightweight so it doesn’t delay app startup.
+
+---
+
+We need to implement Call Transfer (Blind + Attended) in our Flutter softphone app using Siprix SDK.
+Requirements:
+UI Flow:
+On the Active Call screen, Transfer button.
+When pressed, open a modal/dialog with:
+Text field to enter a number manually or search to find in the contact list
+Two buttons: Blind Transfer and Attended Transfer.
+Blind Transfer:
+If user taps Blind Transfer, call:
+activeCall.transferBlind(targetNumber);
+Show a temporary state “Transferring…” until the transfer is confirmed.
+Listen for activeCall.onTransferred and CallsModel.onTransferred to confirm completion and update UI.
+Attended Transfer:
+If user taps Attended Transfer:
+First, start a new outgoing call to targetNumber:
+final consultCall = await SiprixVoipSdk.instance.makeCall(targetNumber);
+Show a Consult Call UI where the user can talk with the third party.
+Add a Complete Transfer button → when tapped:
+activeCall.transferAttended(consultCall);
+If consult call fails (busy, rejected, no answer), cancel transfer and return to the main call screen.
+Contacts Integration
+If a user selects from Contacts page, automatically fill the number field with the selected contact’s number.
+State Handling
+onTransferred → update UI and drop the softphone user from the call once transfer is completed.
+Add error handling:
+If transfer fails, notify the user and return them to the active call.
+Ensure CdrsModel is updated correctly so Recents show transfers as normal calls.
+Deliverables
+Transfer logic wired to Siprix SDK methods: transferBlind, transferAttended, and onTransferred.
+Clean, null-safe Flutter code, modular (separate UI + logic).
+
+---
+
+We have a file sip_service.dart with around 3000 lines.
+Task:
+Refactor this file to improve maintainability.
+Steps:
+Identify and remove unused functions or dead code.
+Split the file into multiple smaller files, grouped logically by functionality (e.g., authentication, call handling, messaging, transfer, contacts integration, utilities).
+Keep all public APIs and class structures consistent so the rest of the app does not break.
+Ensure imports and exports are updated correctly (e.g., use a sip_service.dart barrel file to re-export submodules if needed).
+Maintain null-safety and clean, modular code structure.
+Deliverables:
+Cleaned up and modularized codebase.
+sip_service.dart becomes a central entrypoint that imports/exports submodules.
