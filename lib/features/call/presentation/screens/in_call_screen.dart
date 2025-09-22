@@ -6,6 +6,8 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../../../core/services/sip_service.dart';
 import '../../../../core/services/navigation_service.dart';
 import '../../../../core/services/contact_service.dart';
+import '../widgets/call_transfer_dialog.dart';
+import 'consult_call_screen.dart';
 
 class InCallScreen extends ConsumerStatefulWidget {
   final String callId;
@@ -218,31 +220,51 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
           child: SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(24.0),
-              child: Column(
-                children: [
-                  // Quality indicator
-                  _buildQualityIndicator(),
-                  
-                  const SizedBox(height: 48),
-                  
-                  // Contact avatar and name
-                  _buildContactInfo(),
-                  
-                  const SizedBox(height: 16),
-                  
-                  // Call duration
-                  _buildCallDuration(),
-                  
-                  const Spacer(),
-                  
-                  // Call controls
-                  _buildCallControls(),
-                  
-                  const SizedBox(height: 48),
-                  
-                  // End call button
-                  _buildEndCallButton(),
-                ],
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // Check if keyboard is open
+                  final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+                  final isKeyboardOpen = keyboardHeight > 0;
+
+                  return SingleChildScrollView(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight,
+                      ),
+                      child: IntrinsicHeight(
+                        child: Column(
+                          children: [
+                            // Quality indicator
+                            _buildQualityIndicator(),
+
+                            SizedBox(height: isKeyboardOpen ? 24 : 48),
+
+                            // Contact avatar and name
+                            _buildContactInfo(),
+
+                            const SizedBox(height: 16),
+
+                            // Call duration
+                            _buildCallDuration(),
+
+                            // Flexible spacer that adapts to available space
+                            Expanded(
+                              child: SizedBox(height: isKeyboardOpen ? 20 : 40),
+                            ),
+
+                            // Call controls
+                            _buildCallControls(),
+
+                            SizedBox(height: isKeyboardOpen ? 24 : 48),
+
+                            // End call button
+                            _buildEndCallButton(),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           ),
@@ -825,10 +847,93 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
   }
 
   void _transferCall() {
-    // TODO: Implement call transfer functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Call transfer feature coming soon')),
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => CallTransferDialog(
+        callId: widget.callId,
+        onCancel: () {
+          Navigator.of(context).pop();
+        },
+        onTransfer: (number, type) async {
+          Navigator.of(context).pop();
+
+          try {
+            if (type == TransferType.blind) {
+              await _performBlindTransfer(number);
+            } else {
+              await _performAttendedTransfer(number);
+            }
+          } catch (e) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Transfer failed: $e'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          }
+        },
+      ),
     );
+  }
+
+  Future<void> _performBlindTransfer(String targetNumber) async {
+    try {
+      // Show transferring state
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              SizedBox(width: 16),
+              Text('Transferring call...'),
+            ],
+          ),
+          duration: Duration(seconds: 3),
+        ),
+      );
+
+      await SipService.instance.transferBlind(widget.callId, targetNumber);
+
+      // Success feedback
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Call transferred successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+
+    } catch (e) {
+      debugPrint('Blind transfer failed: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> _performAttendedTransfer(String targetNumber) async {
+    try {
+      final consultCallId = await SipService.instance.transferAttendedStart(widget.callId, targetNumber);
+
+      // Navigate to consult call screen using GoRouter
+      if (mounted) {
+        NavigationService.goToConsultCall(
+          consultCallId: consultCallId,
+          targetNumber: targetNumber,
+          originalCallId: widget.callId,
+        );
+      }
+
+    } catch (e) {
+      debugPrint('Attended transfer start failed: $e');
+      rethrow;
+    }
   }
 
   void _endCall() {

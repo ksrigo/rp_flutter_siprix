@@ -6,6 +6,7 @@ import '../../features/auth/presentation/screens/splash_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/call/presentation/screens/incoming_call_screen.dart';
 import '../../features/call/presentation/screens/in_call_screen.dart';
+import '../../features/call/presentation/screens/consult_call_screen.dart';
 import '../../features/contacts/presentation/screens/contacts_page.dart';
 import '../../features/contacts/presentation/screens/add_contact_screen.dart';
 import '../../features/contacts/presentation/screens/edit_contact_screen.dart';
@@ -148,6 +149,20 @@ class NavigationService {
           );
         },
       ),
+      GoRoute(
+        path: '/consult-call',
+        name: 'consult-call',
+        builder: (context, state) {
+          final consultCallId = state.uri.queryParameters['consultCallId'];
+          final targetNumber = state.uri.queryParameters['targetNumber'];
+          final originalCallId = state.uri.queryParameters['originalCallId'];
+          return ConsultCallScreen(
+            consultCallId: consultCallId ?? '',
+            targetNumber: targetNumber ?? '',
+            originalCallId: originalCallId ?? '',
+          );
+        },
+      ),
     ],
 
     // Error handling
@@ -213,6 +228,17 @@ class NavigationService {
     if (contactName != null && contactName.isNotEmpty) {
       url += '&contactName=${Uri.encodeQueryComponent(contactName)}';
     }
+    router.go(url);
+  }
+
+  static void goToConsultCall({
+    required String consultCallId,
+    required String targetNumber,
+    required String originalCallId,
+  }) {
+    String url = '/consult-call?consultCallId=${Uri.encodeQueryComponent(consultCallId)}'
+        '&targetNumber=${Uri.encodeQueryComponent(targetNumber)}'
+        '&originalCallId=${Uri.encodeQueryComponent(originalCallId)}';
     router.go(url);
   }
 

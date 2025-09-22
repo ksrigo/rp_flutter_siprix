@@ -593,6 +593,9 @@ mixin _SipServiceCallHandling on _SipServiceBase {
     debugPrint(
         'SIP Service: Direct call terminated - callId: $callId, statusCode: $statusCode');
 
+    // Notify transfer service of call termination
+    (this as SipService).handleCallEvent(callId, 'terminated');
+
     // Add call to history when terminated - try to find CallModel or use current call info
     _addCallToHistoryOnTermination(callId, statusCode);
 
@@ -711,6 +714,9 @@ mixin _SipServiceCallHandling on _SipServiceBase {
     debugPrint(
         '🔥 SIP Service: Current call incoming: ${_currentCall?.isIncoming}');
     debugPrint('🔥 SIP Service: Is hanging up: $_isHangingUp');
+
+    // Notify transfer service of call connection
+    (this as SipService).handleCallEvent(callId, 'connected', remoteExt: to.isNotEmpty ? to : from);
 
     // Ignore connected events if we're in the middle of hanging up
     if (_isHangingUp) {

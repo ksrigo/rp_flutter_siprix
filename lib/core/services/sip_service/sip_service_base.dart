@@ -210,4 +210,34 @@ class SipService extends _SipServiceBase
   static SipService get instance => _instance;
 
   SipService._internal();
+
+  @override
+  void dispose() {
+    debugPrint('SipService: Disposing...');
+    _isDisposed = true;
+
+    // Dispose transfer resources
+    disposeTransfer();
+
+    // Close stream controllers
+    _registrationStateController.close();
+    _currentCallController.close();
+
+    // Cancel timers
+    _backgroundAcceptanceTimer?.cancel();
+
+    // Remove lifecycle observer
+    if (!kIsWeb) {
+      try {
+        WidgetsBinding.instance.removeObserver(this);
+      } catch (e) {
+        debugPrint('SipService: Could not remove lifecycle observer: $e');
+      }
+    }
+
+    // Cancel subscriptions
+    _connectivitySubscription?.cancel();
+
+    super.dispose();
+  }
 }
