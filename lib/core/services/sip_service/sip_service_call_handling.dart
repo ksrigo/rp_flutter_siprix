@@ -746,7 +746,11 @@ mixin _SipServiceCallHandling on _SipServiceBase {
 
       // Navigate to OnCallScreen when call is connected/answered
       // Built-in Siprix CallKit handles CallKit UI, we handle app navigation
-      if (_currentCall!.isIncoming) {
+      // BUT: Don't navigate if we're in transfer mode (consulting)
+      if (SipService.instance.transferState == TransferState.consulting) {
+        debugPrint(
+            'SIP Service: Call connected during transfer - staying on ConsultCallScreen');
+      } else if (_currentCall!.isIncoming) {
         debugPrint(
             'SIP Service: Incoming call connected, navigating to OnCallScreen');
         NavigationService.goToInCall(
@@ -779,15 +783,21 @@ mixin _SipServiceCallHandling on _SipServiceBase {
 
       _updateCurrentCall(callInfo);
 
-      debugPrint(
-          '🔥 SIP Service: Created call info from connected event and navigating to OnCallScreen');
-      NavigationService.goToInCall(
-        callId.toString(),
-        phoneNumber: callInfo.remoteNumber,
-        contactName: callInfo.remoteName != callInfo.remoteNumber
-            ? callInfo.remoteName
-            : null,
-      );
+      // Don't navigate if we're in transfer mode
+      if (SipService.instance.transferState == TransferState.consulting) {
+        debugPrint(
+            '🔥 SIP Service: Created call info from connected event but staying on ConsultCallScreen (transfer mode)');
+      } else {
+        debugPrint(
+            '🔥 SIP Service: Created call info from connected event and navigating to OnCallScreen');
+        NavigationService.goToInCall(
+          callId.toString(),
+          phoneNumber: callInfo.remoteNumber,
+          contactName: callInfo.remoteName != callInfo.remoteNumber
+              ? callInfo.remoteName
+              : null,
+        );
+      }
     }
   }
 

@@ -99,7 +99,7 @@ Bypass Login page when incoming call through push notification
 on Keypad screen: need to implement: Add Call, Transfer, Keypad for DTMF
 Finish Voicemail
 Android splash screen using flutter_native_splash
-remove unused codes from sip_service.dart or split into multiple files
+Call Options windows take time to load bcz it has to call an API. Add a cache and update in async in background from API
 
 Unit test
 Need to clean the code using codex + coderabbit.ai, Reduce APP size
@@ -110,4 +110,7 @@ D/permissions_handler(21168): No permissions found in manifest for: []2
 D/permissions_handler(21168): No permissions found in manifest for: []2
 I/flutter (21168): ContactsRepository: Contacts permission denied
 
-## I/Choreographer(31367): Skipped 39 frames! The application may be doing too much work on its main thread.
+I/Choreographer(31367): Skipped 39 frames! The application may be doing too much work on its main thread.
+
+\*\*
+Finish Attended transfer

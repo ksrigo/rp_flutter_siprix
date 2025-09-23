@@ -2613,7 +2613,7 @@ Keep it lightweight so it doesn’t delay app startup.
 
 ---
 
-We need to implement Call Transfer (Blind + Attended) in our Flutter softphone app using Siprix SDK.
+We need to implement Call Transfer (Blind + Attended) in our Flutter softphone app using Siprix SDK. We have a file called sip_service_transfer.dart for implementing Transfers related codes.
 Requirements:
 UI Flow:
 On the Active Call screen, Transfer button.
@@ -2658,3 +2658,31 @@ Maintain null-safety and clean, modular code structure.
 Deliverables:
 Cleaned up and modularized codebase.
 sip_service.dart becomes a central entrypoint that imports/exports submodules.
+
+---
+
+We need to implement Attended Transfer in our Flutter softphone app using Siprix SDK.
+Requirements:
+User Flow:
+While on a call, user presses Transfer → enters number.
+If user selects Attended Transfer:
+The current call is placed on hold.
+A new outgoing call is initiated to the target number.
+Once the second call is established:
+Show UI to allow user to confirm transfer (Complete Transfer button).
+If confirmed → transfer call.
+After transfer, user is disconnected and the first party + consult party are bridged.
+Failure or Cancel Flow:
+If the transfer fails, is rejected, or the consult party refuses →
+User must be able to resume the first call from hold.
+Provide a Cancel Transfer option to abandon the consult call and return to the original active call.
+UI Changes:
+Add ability to switch between active calls (show tabs or cards for “Call A (on hold)” and “Call B (active)”).
+Clearly indicate which call is on hold vs. active.
+Provide buttons for Complete Transfer and Cancel Transfer in the consult call screen.
+Deliverables:
+Updated Active Call screen with Transfer button flow.
+Modal/dialog for number entry.
+Attended transfer logic with Siprix (transferAttended).
+UI that supports managing two active calls (switch/resume).
+Error handling for failed transfers → restore first call.
