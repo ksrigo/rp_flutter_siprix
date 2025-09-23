@@ -392,22 +392,29 @@ class _ConsultCallScreenState extends ConsumerState<ConsultCallScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.2),
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
           width: 1,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         children: [
           // Header
-          const Text(
+          Text(
             'Active Calls',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 16),
@@ -423,13 +430,13 @@ class _ConsultCallScreenState extends ConsumerState<ConsultCallScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                     decoration: BoxDecoration(
                       color: !_isConsultCallActive
-                          ? const Color(0xFF6B46C1)
-                          : Colors.white.withValues(alpha: 0.1),
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: !_isConsultCallActive
-                            ? const Color(0xFF6B46C1)
-                            : Colors.white.withValues(alpha: 0.3),
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
                         width: 1,
                       ),
                     ),
@@ -437,7 +444,9 @@ class _ConsultCallScreenState extends ConsumerState<ConsultCallScreen> {
                       children: [
                         Icon(
                           !_isConsultCallActive ? Icons.phone : Icons.pause,
-                          color: Colors.white,
+                          color: !_isConsultCallActive
+                              ? Theme.of(context).colorScheme.onPrimary
+                              : Theme.of(context).colorScheme.onSurface,
                           size: 20,
                         ),
                         const SizedBox(height: 4),
@@ -446,7 +455,9 @@ class _ConsultCallScreenState extends ConsumerState<ConsultCallScreen> {
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
-                            color: Colors.white.withValues(alpha: 0.9),
+                            color: !_isConsultCallActive
+                                ? Theme.of(context).colorScheme.onPrimary
+                                : Theme.of(context).colorScheme.onSurface,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -454,7 +465,9 @@ class _ConsultCallScreenState extends ConsumerState<ConsultCallScreen> {
                           !_isConsultCallActive ? 'Active' : 'On Hold',
                           style: TextStyle(
                             fontSize: 10,
-                            color: Colors.white.withValues(alpha: 0.7),
+                            color: !_isConsultCallActive
+                                ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.8)
+                                : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -474,13 +487,13 @@ class _ConsultCallScreenState extends ConsumerState<ConsultCallScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                     decoration: BoxDecoration(
                       color: _isConsultCallActive
-                          ? const Color(0xFF6B46C1)
-                          : Colors.white.withValues(alpha: 0.1),
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: _isConsultCallActive
-                            ? const Color(0xFF6B46C1)
-                            : Colors.white.withValues(alpha: 0.3),
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
                         width: 1,
                       ),
                     ),
@@ -488,7 +501,9 @@ class _ConsultCallScreenState extends ConsumerState<ConsultCallScreen> {
                       children: [
                         Icon(
                           _isConsultCallActive ? Icons.phone : Icons.pause,
-                          color: Colors.white,
+                          color: _isConsultCallActive
+                              ? Theme.of(context).colorScheme.onPrimary
+                              : Theme.of(context).colorScheme.onSurface,
                           size: 20,
                         ),
                         const SizedBox(height: 4),
@@ -497,7 +512,9 @@ class _ConsultCallScreenState extends ConsumerState<ConsultCallScreen> {
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
-                            color: Colors.white.withValues(alpha: 0.9),
+                            color: _isConsultCallActive
+                                ? Theme.of(context).colorScheme.onPrimary
+                                : Theme.of(context).colorScheme.onSurface,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -505,7 +522,9 @@ class _ConsultCallScreenState extends ConsumerState<ConsultCallScreen> {
                           _isConsultCallActive ? 'Active' : 'On Hold',
                           style: TextStyle(
                             fontSize: 10,
-                            color: Colors.white.withValues(alpha: 0.7),
+                            color: _isConsultCallActive
+                                ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.8)
+                                : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -524,42 +543,29 @@ class _ConsultCallScreenState extends ConsumerState<ConsultCallScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF0A0A0A),
-              Color(0xFF1A0B2E),
-              Color(0xFF2D1B69),
-              Color(0xFF4A1458),
-            ],
-            stops: [0.0, 0.3, 0.7, 1.0],
-          ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
               children: [
                 // Header
                 Row(
                   children: [
                     IconButton(
                       onPressed: _cancelTransfer,
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.arrow_back,
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
-                    const Expanded(
+                    Expanded(
                       child: Text(
                         'Consult Call',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -588,16 +594,16 @@ class _ConsultCallScreenState extends ConsumerState<ConsultCallScreen> {
 
                 // Transfer state indicator
                 if (_transferState == TransferState.completing)
-                  const Column(
+                  Column(
                     children: [
                       CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6B46C1)),
+                        valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       Text(
                         'Completing Transfer...',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 16,
                         ),
                       ),
@@ -612,7 +618,6 @@ class _ConsultCallScreenState extends ConsumerState<ConsultCallScreen> {
             ),
           ),
         ),
-      ),
     );
   }
 
@@ -627,24 +632,24 @@ class _ConsultCallScreenState extends ConsumerState<ConsultCallScreen> {
           height: 120,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: const Color(0xFFE6E6FA),
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
             border: Border.all(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
               width: 2.0,
             ),
           ),
           child: CircleAvatar(
             radius: 58,
-            backgroundColor: const Color(0xFFE6E6FA),
+            backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
             backgroundImage: _contactInfo?.hasPhoto == true && _contactInfo?.photo != null
                 ? MemoryImage(_contactInfo!.photo!)
                 : null,
             child: _contactInfo?.hasPhoto == true && _contactInfo?.photo != null
                 ? null
-                : const Icon(
+                : Icon(
                     Icons.person,
                     size: 50,
-                    color: Color(0xFF6B46C1),
+                    color: Theme.of(context).colorScheme.primary,
                   ),
           ),
         ),
@@ -654,10 +659,10 @@ class _ConsultCallScreenState extends ConsumerState<ConsultCallScreen> {
         // Contact name or phone number
         Text(
           displayName,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.w600,
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
           textAlign: TextAlign.center,
           maxLines: 2,
@@ -672,7 +677,7 @@ class _ConsultCallScreenState extends ConsumerState<ConsultCallScreen> {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w400,
-              color: Colors.white.withValues(alpha: 0.8),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
             ),
             textAlign: TextAlign.center,
           ),
@@ -683,7 +688,7 @@ class _ConsultCallScreenState extends ConsumerState<ConsultCallScreen> {
 
   Widget _buildCallStatus() {
     String displayText;
-    Color textColor = Colors.white.withValues(alpha: 0.9);
+    Color textColor = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8);
 
     switch (_consultCallInfo?.state ?? AppCallState.connecting) {
       case AppCallState.connecting:
@@ -697,11 +702,11 @@ class _ConsultCallScreenState extends ConsumerState<ConsultCallScreen> {
         break;
       case AppCallState.failed:
         displayText = 'Call Failed';
-        textColor = Colors.red[600]!;
+        textColor = Theme.of(context).colorScheme.error;
         break;
       case AppCallState.ended:
         displayText = 'Call Ended';
-        textColor = Colors.white.withValues(alpha: 0.7);
+        textColor = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
         break;
       default:
         displayText = 'Connecting...';
