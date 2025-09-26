@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/services/sip_service.dart';
 import '../../../../core/services/navigation_service.dart';
 import '../../../../core/services/contact_service.dart';
+import 'multi_call_screen.dart';
 
 enum CallActionType { addCall, transfer }
 
@@ -82,7 +83,61 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
 
   void _addDigit(String digit) => setState(() => _enteredNumber += digit);
   void _deleteDigit() => setState(() => _enteredNumber = _enteredNumber.substring(0, _enteredNumber.length - 1));
-  void _makeCall() => _performAction(() => SipService.instance.makeCall(_enteredNumber));
+  void _makeCall() async {
+    if (!_hasEnteredNumber) return;
+
+    try {
+      // If we have an active call, put it on hold first
+      if (widget.activeCall != null) {
+        debugPrint('CallActionScreen: Putting current call on hold before making new call');
+        await SipService.instance.holdCall(widget.activeCall!.id);
+
+        // Update the active call state to reflect it's on hold
+        final heldCall = widget.activeCall!.copyWith(isOnHold: true, state: AppCallState.held);
+
+        // Make the new call
+        final newCallId = await SipService.instance.makeCall(_enteredNumber);
+        if (newCallId != null) {
+          // Create call info for the new call
+          final newCall = CallInfo(
+            id: newCallId,
+            remoteNumber: _enteredNumber,
+            remoteName: _enteredNumber,
+            state: AppCallState.connecting,
+            startTime: DateTime.now(),
+            isIncoming: false,
+          );
+
+          // Navigate to multi-call screen with both calls
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => MultiCallScreen(
+                  firstCall: heldCall,
+                  secondCall: newCall,
+                ),
+              ),
+            );
+          }
+        }
+      } else {
+        // No active call, just make a regular call
+        final callId = await SipService.instance.makeCall(_enteredNumber);
+        if (callId != null && mounted) {
+          NavigationService.goToKeypad();
+        }
+      }
+    } catch (e) {
+      debugPrint('CallActionScreen: Error making call: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to make call: $e')),
+        );
+      }
+    }
+  }
+
   void _transferCall() => _performAction(() => SipService.instance.transferCall(widget.activeCall!.id, _enteredNumber));
   void _goBack() => Navigator.of(context).pop();
 

@@ -6,6 +6,7 @@ import '../../features/auth/presentation/screens/splash_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/call/presentation/screens/incoming_call_screen.dart';
 import '../../features/call/presentation/screens/in_call_screen.dart';
+import '../../features/call/presentation/screens/multi_call_screen.dart';
 import '../../features/contacts/presentation/screens/contacts_page.dart';
 import '../../features/contacts/presentation/screens/add_contact_screen.dart';
 import '../../features/contacts/presentation/screens/edit_contact_screen.dart';
@@ -145,6 +146,23 @@ class NavigationService {
             callId: callId ?? '',
             phoneNumber: phoneNumber,
             contactName: contactName,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/multi-call',
+        name: 'multi-call',
+        builder: (context, state) {
+          // Note: Multi-call screen parameters are passed via Navigator.push
+          // This route is mainly for deep linking support
+          return Container(
+            color: Colors.black,
+            child: const Center(
+              child: Text(
+                'Multi-call screen requires call parameters',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
           );
         },
       ),
