@@ -33,6 +33,7 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
     avatar: Color(0xFFE6E6FA),
     avatarIcon: Color(0xFF6B46C1),
     active: Color(0xFF10B981),
+    onHold: Color(0xFFF59E0B),
   );
 
   static const _keypadData = [
@@ -72,6 +73,9 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
     final duration = DateTime.now().difference(widget.activeCall!.startTime);
     return '${duration.inMinutes.toString().padLeft(2, '0')}:${(duration.inSeconds % 60).toString().padLeft(2, '0')}';
   }
+
+  String get _callStatus => widget.activeCall?.isOnHold == true ? 'On Hold' : 'Active';
+  Color get _statusColor => widget.activeCall?.isOnHold == true ? _cardColors.onHold : _cardColors.active;
 
   bool get _hasEnteredNumber => _enteredNumber.isNotEmpty;
   bool get _hasPhoto => _contactInfo?.hasPhoto == true && _contactInfo?.photo != null;
@@ -127,7 +131,8 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
             avatar: _buildAvatar(hasPhoto: _hasPhoto, photo: _contactInfo?.photo),
             title: _displayName,
             subtitle: widget.activeCall?.remoteNumber ?? '',
-            status: 'Active',
+            status: _callStatus,
+            statusColor: _statusColor,
             duration: _callDuration,
             isActive: true,
           ),
@@ -147,6 +152,7 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
     required String title,
     required String subtitle,
     String? status,
+    Color? statusColor,
     String? duration,
     Widget? trailing,
     required bool isActive,
@@ -203,7 +209,7 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(status, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _cardColors.active)),
+                Text(status, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: statusColor ?? _cardColors.active)),
                 const SizedBox(height: 1),
                 Text(duration, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: Colors.white.withValues(alpha: 0.8))),
               ],

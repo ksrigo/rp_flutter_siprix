@@ -818,28 +818,76 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
   }
 
 
-  void _addCall() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CallActionScreen(
-          actionType: CallActionType.addCall,
-          activeCall: _currentCallInfo,
-        ),
-      ),
-    );
+  void _addCall() async {
+    try {
+      // Put current call on hold before navigating to add call screen
+      if (_currentCallInfo != null && !_isOnHold) {
+        debugPrint('InCallScreen: Putting call on hold for add call');
+        await SipService.instance.holdCall(widget.callId);
+      }
+
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CallActionScreen(
+              actionType: CallActionType.addCall,
+              activeCall: _currentCallInfo,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('InCallScreen: Error putting call on hold for add call: $e');
+      // Still navigate even if hold fails
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CallActionScreen(
+              actionType: CallActionType.addCall,
+              activeCall: _currentCallInfo,
+            ),
+          ),
+        );
+      }
+    }
   }
 
-  void _transferCall() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CallActionScreen(
-          actionType: CallActionType.transfer,
-          activeCall: _currentCallInfo,
-        ),
-      ),
-    );
+  void _transferCall() async {
+    try {
+      // Put current call on hold before navigating to transfer screen
+      if (_currentCallInfo != null && !_isOnHold) {
+        debugPrint('InCallScreen: Putting call on hold for transfer');
+        await SipService.instance.holdCall(widget.callId);
+      }
+
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CallActionScreen(
+              actionType: CallActionType.transfer,
+              activeCall: _currentCallInfo,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('InCallScreen: Error putting call on hold for transfer: $e');
+      // Still navigate even if hold fails
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CallActionScreen(
+              actionType: CallActionType.transfer,
+              activeCall: _currentCallInfo,
+            ),
+          ),
+        );
+      }
+    }
   }
 
   void _endCall() {
