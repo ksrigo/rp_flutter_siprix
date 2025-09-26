@@ -1,0 +1,33 @@
+name: siprix_voip_sdk_windows
+description: Windows implementation of the Siprix VoIP SDK plugin for embedding voice-over-IP (VoIP) audio/video calls based on SIP/RTP protocols into Flutter applications.
+homepage: https://siprix-voip.com
+repository: https://github.com/siprix/FlutterPluginFederated/tree/main/siprix_voip_sdk_windows
+documentation: https://docs.siprix-voip.com
+version: 1.0.15
+
+environment:
+  sdk: ^3.2.0
+  flutter: '>=3.3.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  siprix_voip_sdk_platform_interface: ^1.0.6
+
+flutter:
+  plugin:
+    implements: siprix_voip_sdk
+    platforms:    
+      windows:
+        pluginClass: SiprixVoipSdkPluginCApi
+        dartPluginClass: SiprixVoipSdkWindows
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+topics:
+  - sip
+  - voip
+  - call

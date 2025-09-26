@@ -6,6 +6,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../../../core/services/sip_service.dart';
 import '../../../../core/services/navigation_service.dart';
 import '../../../../core/services/contact_service.dart';
+import 'call_action_screen.dart';
 
 class InCallScreen extends ConsumerStatefulWidget {
   final String callId;
@@ -818,16 +819,26 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
 
 
   void _addCall() {
-    // TODO: Implement add call functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Add call feature coming soon')),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CallActionScreen(
+          actionType: CallActionType.addCall,
+          activeCall: _currentCallInfo,
+        ),
+      ),
     );
   }
 
   void _transferCall() {
-    // TODO: Implement call transfer functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Call transfer feature coming soon')),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CallActionScreen(
+          actionType: CallActionType.transfer,
+          activeCall: _currentCallInfo,
+        ),
+      ),
     );
   }
 

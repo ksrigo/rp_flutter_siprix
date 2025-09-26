@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="foreground_descr_label">Siprix call notification service</string>
+    <string name="channel_descr_label">Incoming calls notifications channel</string>
+    <string name="reject_btn_label">Reject call</string>
+    <string name="accept_btn_label">Accept call</string>
+    <string name="content_label">Incoming call</string>
+</resources>

@@ -1,0 +1,35 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+  package="com.siprix.voip_sdk">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Comment if app makes audio only calls -->
+    <uses-permission android:name="android.permission.CAMERA" android:required="false"/>
+
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- Comment if using bluetooth audio devices is not required -->
+    <uses-permission android:name="android.permission.BLUETOOTH" /> 
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <!-- Uncomment if required to mute SIP call when GSM call received
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" /> -->
+
+    <!-- Foreground mode permission -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- Display floating notifications when incoming call received -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
+
+    <application>
+        <service
+            android:name=".CallNotifService"
+            android:exported="false"
+            android:stopWithTask="false"
+            android:foregroundServiceType="phoneCall|microphone" />
+    </application>
+</manifest>
