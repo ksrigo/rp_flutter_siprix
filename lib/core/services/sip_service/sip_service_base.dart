@@ -146,6 +146,55 @@ abstract class _SipServiceBase extends ChangeNotifier
   // Flag to prevent actions during hangup process
   bool _isHangingUp = false;
 
+  // Timer for call duration updates
+  Timer? _callDurationTimer;
+
+  // Cache for parsed caller information to avoid duplicate parsing
+  Map<String, Map<String, String>> _callerInfoCache = {};
+
+  /// Helper method to get parsed caller info with caching to avoid duplicate parsing
+  Map<String, String> _getCachedCallerInfo(String fromHeader) {
+    String callerName = '';
+    String callerNumber = '';
+
+    debugPrint('SIP Service: From HDR: $fromHeader');
+
+    // Parse the input to extract the number first
+    if (fromHeader.contains('<sip:') || fromHeader.contains('sip:')) {
+      // Full SIP URI format - use builtin SDK functions
+      callerName = CallsModel.parseDisplayName(fromHeader);
+      callerNumber = CallsModel.parseExt(fromHeader);
+      debugPrint(
+          'SIP Service: Parsed SIP URI - name: "$callerName", number: "$callerNumber"');
+    } else {
+      // Simple extension format (like "1003") - treat as number
+      callerNumber = fromHeader.trim();
+      callerName = callerNumber; // Use number as name
+      //debugPrint('SIP Service: Simple extension format - using "$callerNumber" as both name and number');
+    }
+
+    // Fallback to ensure we always have valid values
+    if (callerName.isEmpty)
+      callerName = callerNumber.isNotEmpty ? callerNumber : 'Unknown';
+    if (callerNumber.isEmpty) callerNumber = 'Unknown';
+
+    // Use the number as cache key to avoid duplicate parsing for same caller
+    final cacheKey = callerNumber;
+
+    // Check if we already have cached info for this number
+    if (_callerInfoCache.containsKey(cacheKey)) {
+      debugPrint('SIP Service: Using cached caller info for number: $cacheKey');
+      return _callerInfoCache[cacheKey]!;
+    }
+
+    final callerInfo = {'name': callerName, 'number': callerNumber};
+    _callerInfoCache[cacheKey] = callerInfo;
+
+    debugPrint(
+        'SIP Service: Cached caller info for number: $cacheKey - name: "$callerName", number: "$callerNumber"');
+    return callerInfo;
+  }
+
   // Flag to prevent state updates after disposal
   bool _isDisposed = false;
 
@@ -189,7 +238,6 @@ abstract class _SipServiceBase extends ChangeNotifier
   Future<void> _initializeNetworkMonitoring();
   String _resolveContactNameForCallKit(String extension);
   void debugIOSPushConfiguration();
-  Map<String, String> _parseCallerInfo(String fromHeader);
   void _onModelsChanged();
   void _onNetworkChanged();
 }

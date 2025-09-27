@@ -141,7 +141,6 @@ mixin _SipServiceCallHandling on _SipServiceBase {
 
     // Set up Siprix call event listeners
     _callsModel?.onSwitchedCall = _onCallSwitched;
-    _callsModel?.onNewIncomingCall = _onNewIncomingCall;
 
     debugPrint('SIP Service: Event listeners configured');
   }
@@ -158,15 +157,8 @@ mixin _SipServiceCallHandling on _SipServiceBase {
 
   void _addCallToHistoryOnTermination(int callId, int statusCode) {
     try {
-      if (_currentCall == null) {
-        debugPrint(
-            'SIP Service: Cannot add call to history - no current call data');
-        return;
-      }
-
-      final currentCallState = _currentCall?.state;
       debugPrint(
-          'SIP Service: Adding call to history on termination - callId: $callId, statusCode: $statusCode, currentCallState: $currentCallState');
+          'SIP Service: Adding call to history on termination - callId: $callId, statusCode: $statusCode');
 
       // Check if this call is already in CDR history
       final existingCall = CallHistoryService.instance.getCallById(callId);
@@ -181,15 +173,15 @@ mixin _SipServiceCallHandling on _SipServiceBase {
         final callIdsMatch = modelCallId == callId;
 
         debugPrint(
-            'SIP Service: Duration update check - hasConnectedModel: $hasConnectedModel, modelCallId: $modelCallId, targetCallId: $callId, callIdsMatch: $callIdsMatch, currentState: ${_currentCall!.state}');
+            'SIP Service: Duration update check - hasConnectedModel: $hasConnectedModel, modelCallId: $modelCallId, targetCallId: $callId, callIdsMatch: $callIdsMatch');
 
         // If we have a connected model for this call, it means it was answered at some point
         if (hasConnectedModel && callIdsMatch) {
           debugPrint(
               'SIP Service: Updating existing answered call with final duration');
 
-          // Try to calculate duration ourselves since CallModel.calcDuration() might not be working properly
-          final callStartTime = _currentCall?.startTime ?? DateTime.now();
+          // Use the connected model's start time for duration calculation
+          final callStartTime = _connectedCallModel!.startTime;
           final callEndTime = DateTime.now();
           final actualDurationMs =
               callEndTime.difference(callStartTime).inMilliseconds;
@@ -242,61 +234,14 @@ mixin _SipServiceCallHandling on _SipServiceBase {
         }
       }
 
-      // No CallModel found - determine if this was answered or missed
-      final wasAnswered = _currentCall!.state == AppCallState.answered;
-      debugPrint(
-          'SIP Service: No CallModel in CallsModel - Call was ${wasAnswered ? "ANSWERED" : "MISSED/REJECTED"}');
+      // No existing call history found and no CallModel in CallsModel
+      // This means the call was likely missed/rejected and not properly tracked
+      debugPrint('SIP Service: Call $callId not found in history or CallsModel - likely missed/rejected');
 
-      if (wasAnswered) {
-        debugPrint(
-            'SIP Service: Answered call should have been handled above - this should not happen');
-        return; // Answered calls are handled above when call already exists
-      }
-
-      debugPrint('SIP Service: Creating CallModel for missed/rejected call');
-
-      if (_accountsModel != null) {
-        try {
-          // Get account URI for the call
-          String accUri = '';
-          if (_accountsModel!.length > 0) {
-            accUri = _accountsModel![0].uri; // Use first account's URI
-          }
-
-          // Create a new CallModel with our call data
-          final callModel = CallModel(
-            callId, // myCallId
-            accUri, // accUri
-            _currentCall!.remoteNumber, // remoteExt
-            _currentCall!.isIncoming, // isIncoming
-            false, // hasSecureMedia
-            false, // hasVideo
-          );
-
-          // Set display name if available
-          if (_currentCall!.remoteName.isNotEmpty &&
-              _currentCall!.remoteName != _currentCall!.remoteNumber) {
-            callModel.displName = _currentCall!.remoteName;
-          }
-
-          // Check if this was an answered call
-          final wasConnected = _currentCall!.state == AppCallState.answered;
-          debugPrint(
-              'SIP Service: Created CallModel - callId: $callId, remote: ${_currentCall!.remoteNumber}, incoming: ${_currentCall!.isIncoming}, wasConnected: $wasConnected');
-
-          // Add to CDR using our created CallModel
-          CallHistoryService.instance.addCallRecord(callModel);
-          debugPrint(
-              'SIP Service: Successfully added created CallModel to CDR history');
-        } catch (e) {
-          debugPrint('SIP Service: Error creating CallModel: $e');
-          debugPrint(
-              'SIP Service: Cannot track this call in history without proper CallModel creation');
-        }
-      } else {
-        debugPrint(
-            'SIP Service: AccountsModel is null - cannot create CallModel');
-      }
+      // For missed/rejected calls, we may not have complete data
+      // The CDR system should rely on the terminated event's status code
+      // to determine if this was a missed call vs rejected call
+      debugPrint('SIP Service: Termination status code: $statusCode - letting CDR handle based on status');
     } catch (e) {
       debugPrint(
           'SIP Service: Error adding call to history on termination: $e');
@@ -305,9 +250,7 @@ mixin _SipServiceCallHandling on _SipServiceBase {
 
   void _addConnectedCallToHistory(int callId) {
     try {
-      final isIncoming = _currentCall?.isIncoming ?? false;
-      debugPrint(
-          'SIP Service: Adding connected call to history - callId: $callId, isIncoming: $isIncoming');
+      debugPrint('SIP Service: Adding connected call to history - callId: $callId');
 
       // Check if already exists to prevent duplicates
       final existingCall = CallHistoryService.instance.getCallById(callId);
@@ -343,51 +286,11 @@ mixin _SipServiceCallHandling on _SipServiceBase {
       }
 
       debugPrint(
-          'SIP Service: Connected call $callId not found in CallsModel - creating connected CallModel');
+          'SIP Service: Connected call $callId not found in CallsModel - may be added later');
 
-      // Create CallModel for connected call and store it
-      if (_accountsModel != null && _currentCall != null) {
-        try {
-          // Get account URI for the call
-          String accUri = '';
-          if (_accountsModel!.length > 0) {
-            accUri = _accountsModel![0].uri;
-          }
-
-          // Create CallModel for connected call
-          _connectedCallModel = CallModel(
-            callId, // myCallId
-            accUri, // accUri
-            _currentCall!.remoteNumber, // remoteExt
-            _currentCall!.isIncoming, // isIncoming
-            false, // hasSecureMedia
-            false, // hasVideo
-          );
-
-          // Set display name if available
-          if (_currentCall!.remoteName.isNotEmpty &&
-              _currentCall!.remoteName != _currentCall!.remoteNumber) {
-            _connectedCallModel!.displName = _currentCall!.remoteName;
-          }
-
-          // Mark the synthesized CallModel as connected so CDR history categorizes it correctly
-          // This will set the startTime internally and mark it as connected
-          _connectedCallModel!.onConnected('', '', false);
-
-          debugPrint(
-              'SIP Service: Called onConnected() - CallModel startTime: ${_connectedCallModel!.startTime}');
-
-          debugPrint(
-              'SIP Service: Created and stored connected CallModel for callId: $callId');
-
-          // Add to CDR immediately
-          CallHistoryService.instance.addCallRecord(_connectedCallModel!);
-          debugPrint(
-              'SIP Service: Successfully added connected CallModel to CDR history');
-        } catch (e) {
-          debugPrint('SIP Service: Error creating connected CallModel: $e');
-        }
-      }
+      // If we can't find the call in CallsModel, we can't create a proper CallModel
+      // This case should be rare since Siprix SDK should have the call in CallsModel after connection
+      debugPrint('SIP Service: Unable to create CallModel without data from CallsModel - skipping CDR entry');
     } catch (e) {
       debugPrint('SIP Service: Error adding connected call to history: $e');
     }
@@ -423,23 +326,15 @@ mixin _SipServiceCallHandling on _SipServiceBase {
     debugPrint('SIP Service: Call switched - callId: $callId');
     if (callId == 0) {
       // No active calls - this means call was terminated
-      if (_currentCall != null) {
-        _updateCurrentCall(_currentCall?.copyWith(state: AppCallState.ended));
-
-        // Clear the call after a brief delay to allow UI to update
-        Timer(const Duration(milliseconds: 500), () {
-          _updateCurrentCall(null);
-        });
-      }
+      _updateCurrentCall(null);
+      debugPrint('SIP Service: All calls ended - cleared current call');
     } else {
       debugPrint('SIP Service: Call switched to active call: $callId');
+      // Sync with the active call from CallsModel
+      _syncCurrentCallFromModel();
     }
   }
 
-  void _onNewIncomingCall() {
-    debugPrint('SIP Service: New incoming call received');
-    // TODO: Handle incoming calls
-  }
 
 
   void _onNetworkChanged() {
@@ -450,7 +345,7 @@ mixin _SipServiceCallHandling on _SipServiceBase {
       debugPrint('SIP Service: Network lost: $isNetworkLost');
 
       // If we have an active call and network issues, track the network state
-      if (_currentCall != null && isNetworkLost) {
+      if (hasActiveCall && isNetworkLost) {
         debugPrint(
             'SIP Service: Network lost during active call - call may need recovery');
       }
@@ -483,27 +378,20 @@ mixin _SipServiceCallHandling on _SipServiceBase {
     // Clear the stored Siprix call ID and connected CallModel
     _connectedCallModel = null;
 
+    // Clear caller info cache for ended calls to prevent memory leaks
+    _callerInfoCache.clear();
+
+    // Stop call duration timer when call ends
+    _stopCallDurationTimer();
+
     // Siprix built-in CallKit will handle call termination automatically
 
-    // Update our call state to ended
-    if (_currentCall != null) {
-      _updateCurrentCall(_currentCall?.copyWith(state: AppCallState.ended));
-
-      // Clear the call after a brief delay to allow UI to update and navigate back
-      Timer(const Duration(milliseconds: 800), () {
-        _updateCurrentCall(null);
-        // Clear hangup flag after call is terminated
-        _isHangingUp = false;
-
-        // Add extra delay to ensure audio session is fully cleaned up
-        // This helps prevent WebRTC conflicts on subsequent calls
-        debugPrint(
-            'SIP Service: Call cleanup completed - audio session should be free');
-      });
-    } else {
-      // Clear hangup flag immediately if there's no current call
+    // Clear the call state and hangup flag
+    _updateCurrentCall(null);
+    Timer(const Duration(milliseconds: 100), () {
       _isHangingUp = false;
-    }
+      debugPrint('SIP Service: Call cleanup completed - audio session should be free');
+    });
   }
 
   void _onCallSwitchedDirect(int callId) {
@@ -541,9 +429,10 @@ mixin _SipServiceCallHandling on _SipServiceBase {
 
     // This event means the user accepted the call from the notification
     // We need to actually answer the SIP call (let the answer flow handle state and navigation)
-    if (_currentCall != null && _currentCall!.id == callId.toString()) {
+    final call = _findCallByCallId(callId);
+    if (call != null) {
       debugPrint(
-          '🔥 SIP Service: Call matches current call, answering SIP call now');
+          '🔥 SIP Service: Found call $callId in CallsModel, answering SIP call now');
 
       // Actually answer the SIP call without pre-setting state
       Future.delayed(const Duration(milliseconds: 50)).then((_) async {
@@ -568,9 +457,7 @@ mixin _SipServiceCallHandling on _SipServiceBase {
     debugPrint('🔥 SIP Service: ========== CALL CONNECTED EVENT ==========');
     debugPrint(
         '🔥 SIP Service: Call connected - callId: $callId, from: $from, to: $to, withVideo: $withVideo');
-    debugPrint('🔥 SIP Service: Current call ID: ${_currentCall?.id}');
-    debugPrint(
-        '🔥 SIP Service: Current call incoming: ${_currentCall?.isIncoming}');
+    debugPrint('🔥 SIP Service: Processing call event for callId: $callId');
     debugPrint('🔥 SIP Service: Is hanging up: $_isHangingUp');
 
     // Ignore connected events if we're in the middle of hanging up
@@ -585,9 +472,38 @@ mixin _SipServiceCallHandling on _SipServiceBase {
       _addConnectedCallToHistory(callId);
     });
 
-    // Find the call in CallsModel and let it handle navigation
+    // Find the call in CallsModel and sync our current call state
     final call = _findCallByCallId(callId);
     if (call != null) {
+      debugPrint('SIP Service: Found call in CallsModel - state: ${call.state}, isConnected: ${call.isConnected}');
+
+      // Parse caller information
+      final callerInfo = _getCachedCallerInfo(from);
+      final callerName = callerInfo['name']!;
+      final callerNumber = callerInfo['number']!;
+
+      // Immediately update to answered state for UI responsiveness
+      final connectedCallInfo = CallInfo(
+        id: callId.toString(),
+        remoteNumber: callerNumber,
+        remoteName: callerName,
+        state: AppCallState.answered,
+        startTime: DateTime.now(),
+        isIncoming: call.isIncoming,
+        isConnectedWithAudio: call.isConnected,
+      );
+      _updateCurrentCall(connectedCallInfo);
+      debugPrint('SIP Service: Immediately updated call $callId to answered state for UI');
+
+      // Give CallsModel a moment to process the connected event, then sync with accurate data
+      Future.delayed(const Duration(milliseconds: 100), () {
+        _syncCurrentCallFromModel();
+        debugPrint('SIP Service: Synced current call state with connected CallModel (delayed)');
+
+        // Start periodic sync for timer updates if not already running
+        _startCallDurationTimer();
+      });
+
       // Navigate to OnCallScreen when call is connected/answered
       // Built-in Siprix CallKit handles CallKit UI, we handle app navigation
       if (call.isIncoming) {
@@ -650,13 +566,10 @@ mixin _SipServiceCallHandling on _SipServiceBase {
       return;
     }
 
-    // Parse caller information from the 'from' field
-    final callerInfo = _parseCallerInfo(from);
-    final callerName = callerInfo['name'] ?? 'Unknown';
-    final callerNumber = callerInfo['number'] ?? 'Unknown';
-
-    debugPrint(
-        'SIP Service: Parsed caller - name: $callerName, number: $callerNumber');
+    // Get cached caller information (parsed using builtin SDK functions)
+    final callerInfo = _getCachedCallerInfo(from);
+    final callerName = callerInfo['name']!;
+    final callerNumber = callerInfo['number']!;
 
     // Store the Siprix call ID for later operations
 
@@ -761,106 +674,9 @@ mixin _SipServiceCallHandling on _SipServiceBase {
     }
   }
 
-  /// Ensure account uses only PCMU+DTMF codecs to prevent REINVITE audio delay
 
-  /// Ensure account uses only PCMU+DTMF codecs to prevent REINVITE audio delay
-  Future<void> _ensureSingleCodecConfiguration() async {
-    try {
-      debugPrint(
-          'SIP Service: Ensuring single codec configuration (PCMU+DTMF only)');
 
-      if (_accountsModel != null && _accountsModel!.length > 0) {
-        // Get the selected account by index
-        final selectedIndex = _accountsModel!.selAccountId != null
-            ? 0
-            : null; // Usually first account
-        if (selectedIndex != null && selectedIndex < _accountsModel!.length) {
-          final currentAccount = _accountsModel![selectedIndex];
 
-          // Set only PCMU + DTMF codecs as recommended by Siprix developers
-          currentAccount.aCodecs = [
-            SiprixVoipSdk.kAudioCodecPCMU,
-            SiprixVoipSdk.kAudioCodecDTMF
-          ];
-
-          // Update the account in the model
-          await _accountsModel!.updateAccount(currentAccount);
-          debugPrint(
-              'SIP Service: ✅ Account updated with PCMU+DTMF codecs only');
-          debugPrint(
-              'SIP Service: This prevents REINVITE and eliminates 6s audio delay');
-        } else {
-          debugPrint(
-              'SIP Service: ⚠️ Cannot update codecs - no current account found');
-        }
-      } else {
-        debugPrint(
-            'SIP Service: ⚠️ Cannot update codecs - accounts model not available or empty');
-      }
-    } catch (e) {
-      debugPrint(
-          'SIP Service: ❌ Error ensuring single codec configuration: $e');
-    }
-  }
-
-  Map<String, String> _parseCallerInfo(String fromHeader) {
-    // Parse SIP from header like: "Srigo" <sip:1001@408708399.ringplus.co.uk>
-    // or just: sip:1001@408708399.ringplus.co.uk
-
-    String name = 'Unknown';
-    String number = 'Unknown';
-
-    debugPrint('SIP Service: Raw from header: $fromHeader');
-
-    try {
-      if (fromHeader.contains('<')) {
-        // Format: "Name" <sip:number@domain>
-        // First extract the number from the SIP URI
-        final sipMatch = RegExp(r'sip:([^@]+)@').firstMatch(fromHeader);
-        if (sipMatch != null) {
-          number = sipMatch.group(1)?.trim() ?? 'Unknown';
-        }
-
-        // Extract the display name, removing all quotes and extra whitespace
-        final nameMatch = RegExp(r'^([^<]*)<').firstMatch(fromHeader);
-        if (nameMatch != null) {
-          String rawName = nameMatch.group(1)?.trim() ?? '';
-          debugPrint('SIP Service: Raw name before quote removal: "$rawName"');
-
-          // Simple quote removal - just remove all quote characters
-          String previousName;
-          do {
-            previousName = rawName;
-            rawName = rawName.replaceAll('"', '').replaceAll("'", '');
-          } while (previousName != rawName);
-          rawName = rawName.trim();
-
-          debugPrint('SIP Service: Raw name after quote removal: "$rawName"');
-          if (rawName.isNotEmpty && rawName != number) {
-            name = rawName;
-          } else {
-            name =
-                number; // Fallback to number if name is empty or same as number
-          }
-        }
-      } else {
-        // Format: sip:number@domain
-        final sipMatch = RegExp(r'sip:([^@]+)@').firstMatch(fromHeader);
-        if (sipMatch != null) {
-          number = sipMatch.group(1)?.trim() ?? 'Unknown';
-          name = number; // Use number as name if no display name
-        }
-      }
-    } catch (e) {
-      debugPrint('SIP Service: Error parsing caller info: $e');
-    }
-
-    debugPrint('SIP Service: Parsed name: "$name", number: "$number"');
-    return {'name': name, 'number': number};
-  }
-
-  // TODO: Implement push notification handler when PushKit infrastructure is ready
-  // void _onIncomingPush(String callKitId, Map<String, dynamic> pushPayload) { ... }
 
   /// Set auto-answer flag for notification acceptance
   void setAutoAnswerCall(
@@ -1254,15 +1070,11 @@ mixin _SipServiceCallHandling on _SipServiceBase {
             'Android: Setting audio output device to index $deviceIndex');
         await _siprixSdk!.setPlayoutDevice(deviceIndex);
 
-        // Update the current call state if it's a speaker device
+        // Audio device set successfully
         final devices = _devicesModel!.playout;
         if (deviceIndex < devices.length) {
           final device = devices[deviceIndex];
-          final isSpeaker = device.name.toLowerCase().contains('speaker') ||
-              device.name.toLowerCase().contains('loud');
-          _updateCurrentCall(_currentCall?.copyWith(isSpeakerOn: isSpeaker));
-          debugPrint(
-              'Android: Audio device set to ${device.name}, speaker: $isSpeaker');
+          debugPrint('Android: Audio device set to ${device.name}');
         }
       }
     } catch (e) {
@@ -1301,15 +1113,6 @@ mixin _SipServiceCallHandling on _SipServiceBase {
 
   // Audio device management removed - CallKit handles everything
   // Custom audio device manipulation causes interruptions and conflicts with CallKit
-  void _setDefaultEarpieceAudio() {
-    debugPrint(
-        'Audio device initialization disabled - CallKit manages all audio devices');
-    // CallKit automatically handles:
-    // - Audio session activation/deactivation
-    // - Audio routing (earpiece/speaker/bluetooth)
-    // - Audio interruption recovery
-    // - Proper audio device selection based on user preferences
-  }
 
   // Legacy method for backward compatibility
 
@@ -1322,14 +1125,6 @@ mixin _SipServiceCallHandling on _SipServiceBase {
     return _devicesModel?.playoutIndex ?? -1;
   }
 
-  Future<void> sendDTMF(String callId, String digit) async {
-    try {
-      debugPrint('Send DTMF: $callId, digit: $digit');
-      // TODO: Implement with correct Siprix API
-    } catch (e) {
-      debugPrint('Send DTMF failed: $e');
-    }
-  }
 
   /// Helper method to find a call in CallsModel by its callId
   CallModel? _findCallByCallId(int callId) {
@@ -1344,7 +1139,8 @@ mixin _SipServiceCallHandling on _SipServiceBase {
     return null;
   }
 
-  /// Helper method to sync _currentCall with the active call from CallsModel
+
+  /// Helper method to sync the current call UI state with the active call from CallsModel
   void _syncCurrentCallFromModel() {
     if (_callsModel == null) {
       _updateCurrentCall(null);
@@ -1353,11 +1149,15 @@ mixin _SipServiceCallHandling on _SipServiceBase {
 
     final activeCall = _callsModel!.switchedCall();
     if (activeCall != null) {
+      final appCallState = _mapCallStateToAppCallState(activeCall.state);
+      debugPrint('SIP Service: Syncing call - CallModel state: ${activeCall.state}, mapped to: $appCallState');
+      debugPrint('SIP Service: CallModel startTime: ${activeCall.startTime}, isConnected: ${activeCall.isConnected}');
+
       final callInfo = CallInfo(
         id: activeCall.myCallId.toString(),
         remoteNumber: activeCall.remoteExt,
         remoteName: activeCall.displName.isNotEmpty ? activeCall.displName : activeCall.remoteExt,
-        state: _mapCallStateToAppCallState(activeCall.state),
+        state: appCallState,
         startTime: activeCall.startTime,
         isIncoming: activeCall.isIncoming,
         isMuted: activeCall.isMicMuted,
@@ -1368,6 +1168,31 @@ mixin _SipServiceCallHandling on _SipServiceBase {
     } else {
       _updateCurrentCall(null);
     }
+  }
+
+  /// Start periodic timer to update call duration
+  void _startCallDurationTimer() {
+    // Cancel existing timer if running
+    _callDurationTimer?.cancel();
+
+    // Start new timer that syncs every second during active calls
+    _callDurationTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (hasActiveCall && _callsModel?.switchedCall() != null) {
+        _syncCurrentCallFromModel();
+      } else {
+        // Stop timer when call ends or changes state
+        _stopCallDurationTimer();
+      }
+    });
+
+    debugPrint('SIP Service: Started call duration timer');
+  }
+
+  /// Stop the call duration timer
+  void _stopCallDurationTimer() {
+    _callDurationTimer?.cancel();
+    _callDurationTimer = null;
+    debugPrint('SIP Service: Stopped call duration timer');
   }
 
   /// Helper method to map CallState to AppCallState
@@ -1418,19 +1243,6 @@ mixin _SipServiceCallHandling on _SipServiceBase {
     }
   }
 
-  Future<void> _addToCallHistory(CallInfo callInfo) async {
-    final historyEntry = {
-      'id': callInfo.id,
-      'number': callInfo.remoteNumber,
-      'name': callInfo.remoteName,
-      'timestamp': callInfo.startTime.millisecondsSinceEpoch,
-      'isIncoming': callInfo.isIncoming,
-      'duration': 0,
-      'type': callInfo.isIncoming ? 'incoming' : 'outgoing',
-    };
-
-    await StorageService.instance.addCallToHistory(historyEntry);
-  }
 
   // App lifecycle management
   @override
@@ -1445,19 +1257,13 @@ mixin _SipServiceCallHandling on _SipServiceBase {
         debugPrint('SIP Service: App resumed');
 
         // Check if we have an active call and ensure audio session is working
-        if (_currentCall != null &&
-            _currentCall!.state == AppCallState.answered) {
+        if (hasActiveCall) {
           debugPrint(
               'SIP Service: App resumed with active call - ensuring audio session');
           _ensureAudioSessionOnResume();
         }
 
-        // Disable stale call detection for now as it's too aggressive
-        // and interferes with active calls when app comes from background
-        // TODO: Implement more sophisticated stale call detection
-        // Future.delayed(const Duration(seconds: 2), () {
-        //   _checkForStaleCallStates();
-        // });
+        // Stale call detection removed to prevent interference with active calls
         break;
       case AppLifecycleState.inactive:
         debugPrint('SIP Service: App inactive');
@@ -1484,8 +1290,7 @@ mixin _SipServiceCallHandling on _SipServiceBase {
         Future.delayed(const Duration(milliseconds: 300), () async {
           try {
             // Try to reactivate audio session for the active call
-            if (_currentCall != null &&
-                _currentCall!.state == AppCallState.answered) {
+            if (hasActiveCall) {
               debugPrint(
                   'SIP Service: Attempting to reactivate audio session for resumed call');
 
@@ -1505,53 +1310,4 @@ mixin _SipServiceCallHandling on _SipServiceBase {
     }
   }
 
-  /// Check for stale call states when app resumes (fixes CallKit termination issues)
-
-  /// Check for stale call states when app resumes (fixes CallKit termination issues)
-  void _checkForStaleCallStates() {
-    try {
-      debugPrint(
-          'SIP Service: Checking for stale call states after app resume');
-
-      // Check if we have a current call but no active CallKit calls
-      if (_currentCall != null) {
-        // Get the current active calls from Siprix
-        final activeCallsCount = _callsModel?.length ?? 0;
-        final switchedCallId = _callsModel?.switchedCallId ?? 0;
-
-        debugPrint(
-            'SIP Service: Current call state: ${_currentCall!.state}, Active Siprix calls: $activeCallsCount, Switched call ID: $switchedCallId');
-
-        // If we have a current call in our state but no active calls in Siprix,
-        // this indicates a stale state (likely from CallKit termination while app was backgrounded)
-        // Be more conservative - only trigger if there are truly no active calls
-        if (activeCallsCount == 0) {
-          debugPrint('SIP Service: Detected stale call state - cleaning up');
-
-          // Force end the current call
-          _updateCurrentCall(_currentCall?.copyWith(state: AppCallState.ended));
-
-          // Reset hangup flag
-          _isHangingUp = false;
-
-          // Clear the call after a brief delay to allow UI to update
-          Timer(const Duration(milliseconds: 500), () {
-            _updateCurrentCall(null);
-            debugPrint('SIP Service: Stale call state cleaned up');
-          });
-
-          // Navigate to keypad if we're currently on OnCallScreen
-          Future.delayed(const Duration(milliseconds: 100), () {
-            NavigationService.goToKeypad();
-          });
-        } else {
-          debugPrint('SIP Service: Call state appears valid');
-        }
-      } else {
-        debugPrint('SIP Service: No current call to check');
-      }
-    } catch (e) {
-      debugPrint('SIP Service: Error checking stale call states: $e');
-    }
-  }
 }

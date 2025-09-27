@@ -6,10 +6,10 @@ mixin _SipServiceContacts on _SipServiceBase {
       debugPrint(
           '🔥 SIP Service: CALLBACK TRIGGERED - Resolving contact name for CallKit display: "$extension"');
 
-      // Use our existing parsing logic to handle full SIP headers
-      final callerInfo = _parseCallerInfo(extension);
-      final callerName = callerInfo['name'] ?? 'Unknown';
-      final callerNumber = callerInfo['number'] ?? 'Unknown';
+      // Get cached caller information (parsed using builtin SDK functions)
+      final callerInfo = _getCachedCallerInfo(extension);
+      final callerName = callerInfo['name']!;
+      final callerNumber = callerInfo['number']!;
 
       debugPrint(
           '🔥 SIP Service: Parsed for CallKit - name: "$callerName", number: "$callerNumber"');
