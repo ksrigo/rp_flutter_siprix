@@ -138,7 +138,6 @@ abstract class _SipServiceBase extends ChangeNotifier
 
   SipRegistrationState _registrationState = SipRegistrationState.unregistered;
   CallInfo? _currentCall;
-  int? _currentSiprixCallId; // Store the actual Siprix call ID for operations
 
   // Store CallModel for connected calls
   CallModel? _connectedCallModel;
