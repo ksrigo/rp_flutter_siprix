@@ -56,7 +56,8 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
 
     try {
       if (!ContactService.instance.hasPermission) return;
-      final contactInfo = await ContactService.instance.findContactByPhoneNumber(phoneNumber!);
+      final contactInfo =
+          await ContactService.instance.findContactByPhoneNumber(phoneNumber!);
       if (mounted) setState(() => _contactInfo = contactInfo);
     } catch (e) {
       debugPrint('CallActionScreen: Error loading contact info: $e');
@@ -75,25 +76,32 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
     return '${duration.inMinutes.toString().padLeft(2, '0')}:${(duration.inSeconds % 60).toString().padLeft(2, '0')}';
   }
 
-  String get _callStatus => widget.activeCall?.isOnHold == true ? 'On Hold' : 'Active';
-  Color get _statusColor => widget.activeCall?.isOnHold == true ? _cardColors.onHold : _cardColors.active;
+  String get _callStatus =>
+      widget.activeCall?.isOnHold == true ? 'On Hold' : 'Active';
+  Color get _statusColor => widget.activeCall?.isOnHold == true
+      ? _cardColors.onHold
+      : _cardColors.active;
 
   bool get _hasEnteredNumber => _enteredNumber.isNotEmpty;
-  bool get _hasPhoto => _contactInfo?.hasPhoto == true && _contactInfo?.photo != null;
+  bool get _hasPhoto =>
+      _contactInfo?.hasPhoto == true && _contactInfo?.photo != null;
 
   void _addDigit(String digit) => setState(() => _enteredNumber += digit);
-  void _deleteDigit() => setState(() => _enteredNumber = _enteredNumber.substring(0, _enteredNumber.length - 1));
+  void _deleteDigit() => setState(() =>
+      _enteredNumber = _enteredNumber.substring(0, _enteredNumber.length - 1));
   void _makeCall() async {
     if (!_hasEnteredNumber) return;
 
     try {
       // If we have an active call, put it on hold first
       if (widget.activeCall != null) {
-        debugPrint('CallActionScreen: Putting current call on hold before making new call');
+        debugPrint(
+            'CallActionScreen: Putting current call on hold before making new call ${widget.activeCall!.id}');
         await SipService.instance.holdCall(widget.activeCall!.id);
 
         // Update the active call state to reflect it's on hold
-        final heldCall = widget.activeCall!.copyWith(isOnHold: true, state: AppCallState.held);
+        final heldCall = widget.activeCall!
+            .copyWith(isOnHold: true, state: AppCallState.held);
 
         // Make the new call
         final newCallId = await SipService.instance.makeCall(_enteredNumber);
@@ -138,7 +146,8 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
     }
   }
 
-  void _transferCall() => _performAction(() => SipService.instance.transferCall(widget.activeCall!.id, _enteredNumber));
+  void _transferCall() => _performAction(() =>
+      SipService.instance.transferCall(widget.activeCall!.id, _enteredNumber));
   void _goBack() => Navigator.of(context).pop();
 
   void _performAction(VoidCallback action) {
@@ -156,7 +165,12 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF0A0A0A), Color(0xFF1A0B2E), Color(0xFF2D1B69), Color(0xFF4A1458)],
+            colors: [
+              Color(0xFF0A0A0A),
+              Color(0xFF1A0B2E),
+              Color(0xFF2D1B69),
+              Color(0xFF4A1458)
+            ],
             stops: [0.0, 0.3, 0.7, 1.0],
           ),
         ),
@@ -183,7 +197,8 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
   Widget _buildActiveCallsSection() => Column(
         children: [
           _buildCallCard(
-            avatar: _buildAvatar(hasPhoto: _hasPhoto, photo: _contactInfo?.photo),
+            avatar:
+                _buildAvatar(hasPhoto: _hasPhoto, photo: _contactInfo?.photo),
             title: _displayName,
             subtitle: widget.activeCall?.remoteNumber ?? '',
             status: _callStatus,
@@ -196,7 +211,8 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
             avatar: _buildAvatar(icon: Icons.add),
             title: 'Add another call',
             subtitle: 'Tap to make a second call',
-            trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.white54),
+            trailing: const Icon(Icons.arrow_forward_ios,
+                size: 14, color: Colors.white54),
             isActive: false,
           ),
         ],
@@ -214,7 +230,10 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
   }) {
     final colors = isActive
         ? (_cardColors.primary.withValues(alpha: 0.4), _cardColors.border)
-        : (Colors.white.withValues(alpha: 0.1), Colors.white.withValues(alpha: 0.3));
+        : (
+            Colors.white.withValues(alpha: 0.1),
+            Colors.white.withValues(alpha: 0.3)
+          );
 
     return Container(
       width: double.infinity,
@@ -225,8 +244,14 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
         border: Border.all(color: colors.$2, width: isActive ? 2 : 1),
         boxShadow: isActive
             ? [
-                BoxShadow(color: _cardColors.border.withValues(alpha: 0.6), blurRadius: 16, offset: const Offset(0, 4)),
-                BoxShadow(color: _cardColors.border.withValues(alpha: 0.4), blurRadius: 24, offset: const Offset(0, 8)),
+                BoxShadow(
+                    color: _cardColors.border.withValues(alpha: 0.6),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4)),
+                BoxShadow(
+                    color: _cardColors.border.withValues(alpha: 0.4),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8)),
               ]
             : null,
       ),
@@ -243,7 +268,9 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-                    color: isActive ? Colors.white : Colors.white.withValues(alpha: 0.7),
+                    color: isActive
+                        ? Colors.white
+                        : Colors.white.withValues(alpha: 0.7),
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -254,7 +281,9 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w400,
-                    color: isActive ? Colors.white.withValues(alpha: 0.8) : Colors.white.withValues(alpha: 0.5),
+                    color: isActive
+                        ? Colors.white.withValues(alpha: 0.8)
+                        : Colors.white.withValues(alpha: 0.5),
                   ),
                 ),
               ],
@@ -264,9 +293,17 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(status, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: statusColor ?? _cardColors.active)),
+                Text(status,
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: statusColor ?? _cardColors.active)),
                 const SizedBox(height: 1),
-                Text(duration, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: Colors.white.withValues(alpha: 0.8))),
+                Text(duration,
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                        color: Colors.white.withValues(alpha: 0.8))),
               ],
             ),
           if (trailing != null) trailing,
@@ -275,13 +312,18 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
     );
   }
 
-  Widget _buildAvatar({bool hasPhoto = false, Uint8List? photo, IconData? icon}) => Container(
+  Widget _buildAvatar(
+          {bool hasPhoto = false, Uint8List? photo, IconData? icon}) =>
+      Container(
         width: 36,
         height: 36,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: icon != null ? Colors.white.withValues(alpha: 0.2) : _cardColors.avatar,
-          border: icon == null ? Border.all(color: Colors.white, width: 1.5) : null,
+          color: icon != null
+              ? Colors.white.withValues(alpha: 0.2)
+              : _cardColors.avatar,
+          border:
+              icon == null ? Border.all(color: Colors.white, width: 1.5) : null,
         ),
         child: icon != null
             ? Icon(icon, size: 16, color: Colors.white)
@@ -289,7 +331,10 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
                 radius: 16,
                 backgroundColor: _cardColors.avatar,
                 backgroundImage: hasPhoto ? MemoryImage(photo!) : null,
-                child: hasPhoto ? null : Icon(Icons.person, size: 16, color: _cardColors.avatarIcon),
+                child: hasPhoto
+                    ? null
+                    : Icon(Icons.person,
+                        size: 16, color: _cardColors.avatarIcon),
               ),
       );
 
@@ -305,7 +350,9 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w400,
-                    color: _hasEnteredNumber ? Colors.white : Colors.white.withValues(alpha: 0.5),
+                    color: _hasEnteredNumber
+                        ? Colors.white
+                        : Colors.white.withValues(alpha: 0.5),
                   ),
                 ),
               ),
@@ -323,7 +370,8 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
           child: InkWell(
             borderRadius: BorderRadius.circular(8),
             onTap: _deleteDigit,
-            child: const Icon(Icons.backspace_outlined, color: Color(0xFF666666), size: 24),
+            child: const Icon(Icons.backspace_outlined,
+                color: Color(0xFF666666), size: 24),
           ),
         ),
       );
@@ -335,7 +383,8 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
 
   Widget _buildKeypadRow(List<(String, String)> row) => Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: row.map((data) => _buildKeypadButton(data.$1, data.$2)).toList(),
+        children:
+            row.map((data) => _buildKeypadButton(data.$1, data.$2)).toList(),
       );
 
   Widget _buildKeypadButton(String digit, String letters) => Container(
@@ -353,7 +402,11 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(digit, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w400, color: Colors.white)),
+                Text(digit,
+                    style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w400,
+                        color: Colors.white)),
                 if (letters.isNotEmpty)
                   Text(
                     letters,
@@ -375,18 +428,26 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
         children: [
           // Left position - Transfer button or empty space
           widget.actionType == CallActionType.transfer
-              ? _buildActionButton(Icons.call_merge, 'Transfer Now', const Color(0xFF2196F3), _hasEnteredNumber ? _transferCall : null)
+              ? _buildActionButton(
+                  Icons.call_merge,
+                  'Transfer Now',
+                  const Color(0xFF2196F3),
+                  _hasEnteredNumber ? _transferCall : null)
               : const SizedBox(width: 80), // Empty space to maintain layout
 
           // Center position - Call button (always below 0)
-          _buildActionButton(Icons.call, 'Call', const Color(0xFF4CAF50), _hasEnteredNumber ? _makeCall : null),
+          _buildActionButton(Icons.call, 'Call', const Color(0xFF4CAF50),
+              _hasEnteredNumber ? _makeCall : null),
 
           // Right position - Back button (always below #)
-          _buildActionButton(Icons.arrow_back, 'Back', Colors.white, _goBack, textColor: const Color(0xFF6B46C1)),
+          _buildActionButton(Icons.arrow_back, 'Back', Colors.white, _goBack,
+              textColor: const Color(0xFF6B46C1)),
         ],
       );
 
-  Widget _buildActionButton(IconData icon, String label, Color color, VoidCallback? onPressed, {Color? textColor}) {
+  Widget _buildActionButton(
+      IconData icon, String label, Color color, VoidCallback? onPressed,
+      {Color? textColor}) {
     final isEnabled = onPressed != null;
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -410,7 +471,10 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
         const SizedBox(height: 8),
         Text(
           label,
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: Colors.white.withValues(alpha: 0.8)),
+          style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w400,
+              color: Colors.white.withValues(alpha: 0.8)),
         ),
       ],
     );

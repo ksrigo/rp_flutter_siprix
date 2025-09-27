@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:siprix_voip_sdk/accounts_model.dart';
 import 'package:siprix_voip_sdk/calls_model.dart';
+import 'package:siprix_voip_sdk/cdrs_model.dart';
 import 'package:siprix_voip_sdk/devices_model.dart';
 import 'package:siprix_voip_sdk/network_model.dart';
 import 'package:siprix_voip_sdk/siprix_voip_sdk.dart';
@@ -15,7 +16,6 @@ import 'package:siprix_voip_sdk/siprix_voip_sdk.dart';
 import '../../constants/app_constants.dart';
 import '../../../shared/services/storage_service.dart';
 import '../auth_service.dart';
-import '../call_history_service.dart';
 import '../contact_service.dart';
 import '../navigation_service.dart';
 import '../notification_service.dart';
@@ -129,6 +129,7 @@ abstract class _SipServiceBase extends ChangeNotifier
   SiprixVoipSdk? _siprixSdk;
   AccountsModel? _accountsModel;
   CallsModel? _callsModel;
+  CdrsModel? _cdrsModel;
   NetworkModel? _networkModel;
   DevicesModel? _devicesModel;
   int? _currentAccountId;
@@ -139,8 +140,6 @@ abstract class _SipServiceBase extends ChangeNotifier
   SipRegistrationState _registrationState = SipRegistrationState.unregistered;
   CallInfo? _currentCall;
 
-  // Store CallModel for connected calls
-  CallModel? _connectedCallModel;
   Timer? _connectionCheckTimer;
 
   // Flag to prevent actions during hangup process
@@ -224,6 +223,9 @@ abstract class _SipServiceBase extends ChangeNotifier
       _registrationState == SipRegistrationState.registered;
   bool get hasActiveCall =>
       _currentCall != null && _currentCall!.state != AppCallState.ended;
+
+  // Access to Siprix CDRs (Call Detail Records)
+  CdrsModel? get cdrs => _cdrsModel;
 
   // Streams
   Stream<SipRegistrationState> get registrationStateStream =>

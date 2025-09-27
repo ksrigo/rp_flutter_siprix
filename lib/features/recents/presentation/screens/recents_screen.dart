@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:siprix_voip_sdk/cdrs_model.dart';
 
-import '../../../../core/services/call_history_service.dart';
 import '../../../../core/services/navigation_service.dart';
 import '../../../../core/services/sip_service.dart';
 import '../../../../core/services/contacts_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../contacts/data/models/contact_model.dart';
+
+// Enum for call types
+enum CallType { incoming, outgoing, missed }
 
 class RecentsScreen extends ConsumerStatefulWidget {
   const RecentsScreen({super.key});
@@ -38,11 +40,12 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
 
   Future<void> _initializeCallHistory() async {
     try {
-      if (!CallHistoryService.instance.isInitialized) {
-        await CallHistoryService.instance.initialize();
+      // Wait for SIP service to be initialized
+      if (!SipService.instance.isRegistered) {
+        await Future.delayed(const Duration(milliseconds: 500));
       }
     } catch (e) {
-      debugPrint('RecentsScreen: Error initializing call history: $e');
+      debugPrint('RecentsScreen: Error waiting for SIP service: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -82,8 +85,11 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
 
   /// Preload contact names for recent calls
   void _preloadContactNames() {
-    final allCalls = CallHistoryService.instance.getAllCalls();
-    
+    final cdrs = SipService.instance.cdrs;
+    if (cdrs == null) return;
+
+    final allCalls = List<CdrModel>.generate(cdrs.length, (i) => cdrs[i]);
+
     // Get unique phone numbers from recent calls
     final phoneNumbers = allCalls
         .map((call) => _normalizePhoneNumber(call.remoteExt))
@@ -378,9 +384,96 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
     }
   }
 
+  /// Get all calls grouped by date using Siprix CDRs
+  Map<String, List<CdrModel>> _getCallsGroupedByDate() {
+    final cdrs = SipService.instance.cdrs;
+    if (cdrs == null) return {};
+
+    final allCalls = List<CdrModel>.generate(cdrs.length, (i) => cdrs[i]);
+    final Map<String, List<CdrModel>> grouped = {};
+
+    for (final call in allCalls) {
+      final dateKey = _getDateKey(call.madeAt);
+      grouped.putIfAbsent(dateKey, () => []).add(call);
+    }
+
+    return Map.fromEntries(
+      grouped.entries.toList()
+        ..sort((a, b) => b.key.compareTo(a.key)),
+    );
+  }
+
+  /// Get missed calls grouped by date using Siprix CDRs
+  Map<String, List<CdrModel>> _getMissedCallsGroupedByDate() {
+    final cdrs = SipService.instance.cdrs;
+    if (cdrs == null) return {};
+
+    final allCalls = List<CdrModel>.generate(cdrs.length, (i) => cdrs[i]);
+    final missedCalls = allCalls.where((call) =>
+      call.incoming && !call.connected
+    ).toList();
+
+    final Map<String, List<CdrModel>> grouped = {};
+
+    for (final call in missedCalls) {
+      final dateKey = _getDateKey(call.madeAt);
+      grouped.putIfAbsent(dateKey, () => []).add(call);
+    }
+
+    return Map.fromEntries(
+      grouped.entries.toList()
+        ..sort((a, b) => b.key.compareTo(a.key)),
+    );
+  }
+
+  /// Get date key for grouping (YYYY-MM-DD format)
+  String _getDateKey(DateTime dateTime) {
+    return "${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')}";
+  }
+
+  /// Get display date from date key
+  String _getDisplayDate(String dateKey) {
+    final parts = dateKey.split('-');
+    if (parts.length != 3) return dateKey;
+
+    final date = DateTime(
+      int.parse(parts[0]),
+      int.parse(parts[1]),
+      int.parse(parts[2]),
+    );
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final callDate = DateTime(date.year, date.month, date.day);
+
+    if (callDate == today) {
+      return 'Today';
+    } else if (callDate == yesterday) {
+      return 'Yesterday';
+    } else {
+      return DateFormat('MMMM dd, yyyy').format(date);
+    }
+  }
+
+  /// Get call type from CDR
+  CallType _getCallType(CdrModel call) {
+    if (call.incoming) {
+      return call.connected ? CallType.incoming : CallType.missed;
+    } else {
+      return CallType.outgoing;
+    }
+  }
+
+
   Widget _buildTabBarView() {
+    final cdrs = SipService.instance.cdrs;
+    if (cdrs == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return AnimatedBuilder(
-      animation: CallHistoryService.instance,
+      animation: cdrs,
       builder: (context, child) {
         return AnimatedSwitcher(
           duration: const Duration(milliseconds: 250),
@@ -401,11 +494,11 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
           },
           child: _selectedTabIndex == 0
               ? _buildGroupedCallList(
-                  CallHistoryService.instance.getCallsGroupedByDate(),
+                  _getCallsGroupedByDate(),
                   key: const ValueKey('all'),
                 )
               : _buildGroupedCallList(
-                  CallHistoryService.instance.getMissedCallsGroupedByDate(),
+                  _getMissedCallsGroupedByDate(),
                   key: const ValueKey('missed'),
                 ),
         );
@@ -498,7 +591,7 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
     return Padding(
       padding: const EdgeInsets.only(left: 4),
       child: Text(
-        CallHistoryService.getDisplayDate(dateKey),
+        _getDisplayDate(dateKey),
         style: TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w600,
@@ -561,12 +654,12 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
   }
 
   Widget _buildCallTile(CdrModel call, bool isSelected) {
-    final callType = CallHistoryService.getCallType(call);
+    final callType = _getCallType(call);
     final style = _CallVisualStyle.fromCall(call, callType);
     final displayName = _getDisplayName(call, callType);
 
     final subtitleSegments = <String>[
-      CallHistoryService.formatCallTime(call.madeAt),
+      call.madeAtDate, // Use builtin formatted date/time
     ];
 
     if (_isAnswered(call)) {
@@ -747,13 +840,21 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
     );
 
     if (shouldDelete == true) {
-      CallHistoryService.instance.removeCall(call);
-      setState(() {
-        _selectedCallKeys.remove(_callKey(call));
-        if (_selectedCallKeys.isEmpty) {
-          _selectionMode = false;
-        }
-      });
+      // Note: Siprix CDRs are managed by the SDK and cannot be manually deleted
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Call history is managed by Siprix SDK'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        setState(() {
+          _selectedCallKeys.remove(_callKey(call));
+          if (_selectedCallKeys.isEmpty) {
+            _selectionMode = false;
+          }
+        });
+      }
       return true;
     }
     return false;
@@ -787,15 +888,19 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
     );
 
     if (shouldDelete == true) {
-      final allCalls = CallHistoryService.instance.getAllCalls();
-      final callsToRemove = allCalls
-          .where((call) => _selectedCallKeys.contains(_callKey(call)))
-          .toList();
-      CallHistoryService.instance.removeCalls(callsToRemove);
-      setState(() {
-        _selectedCallKeys.clear();
-        _selectionMode = false;
-      });
+      // Note: Siprix CDRs are managed by the SDK and cannot be manually deleted
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Call history is managed by Siprix SDK'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        setState(() {
+          _selectedCallKeys.clear();
+          _selectionMode = false;
+        });
+      }
     }
   }
 
@@ -899,7 +1004,7 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
   }
 
   Widget _buildCallDetailsSheet(CdrModel call) {
-    final callType = CallHistoryService.getCallType(call);
+    final callType = _getCallType(call);
     final style = _CallVisualStyle.fromCall(call, callType);
     final displayName = _getDisplayName(call, callType);
     final phoneNumber =
@@ -1113,71 +1218,15 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
   }
 
   bool _isAnswered(CdrModel call) {
-    // A call is answered if it's connected OR has positive duration
-    return call.connected || _hasPositiveDuration(call);
-  }
-
-  bool _hasPositiveDuration(CdrModel call) {
-    final duration = call.duration.trim();
-    if (duration.isEmpty) {
-      return false;
-    }
-
-    final numeric = int.tryParse(duration);
-    if (numeric != null) {
-      return numeric > 0;
-    }
-
-    final segments = duration.split(':');
-    if (segments.isEmpty) {
-      return false;
-    }
-
-    int totalSeconds = 0;
-    for (final segment in segments) {
-      final part = int.tryParse(segment);
-      if (part == null) {
-        return false;
-      }
-      totalSeconds = totalSeconds * 60 + part;
-    }
-    return totalSeconds > 0;
+    // Use builtin connected property from CDR
+    return call.connected;
   }
 
   String? _resolveDuration(CdrModel call) {
     final duration = call.duration.trim();
-    if (duration.isEmpty) {
-      return null;
-    }
-
-    final numeric = int.tryParse(duration);
-    if (numeric != null) {
-      if (numeric <= 0) {
-        return null;
-      }
-      return _formatDurationAsHMS(duration);
-    }
-
-    return _hasPositiveDuration(call) ? duration : null;
+    return duration.isNotEmpty ? duration : null;
   }
 
-  String _formatDurationAsHMS(String duration) {
-    try {
-      // Duration comes as seconds, format as HH:MM:SS
-      final seconds = int.tryParse(duration) ?? 0;
-      final hours = seconds ~/ 3600;
-      final minutes = (seconds % 3600) ~/ 60;
-      final remainingSeconds = seconds % 60;
-
-      if (hours > 0) {
-        return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
-      } else {
-        return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
-      }
-    } catch (e) {
-      return '00:00';
-    }
-  }
 
   String _formatFullDateTime(DateTime dateTime) {
     final formatter = DateFormat('EEE, MMM d · h:mm a');
