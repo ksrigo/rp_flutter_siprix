@@ -15,6 +15,7 @@ import 'package:siprix_voip_sdk/siprix_voip_sdk.dart';
 
 import '../../constants/app_constants.dart';
 import '../../../shared/services/storage_service.dart';
+import '../../models/app_calls_model.dart';
 import '../auth_service.dart';
 import '../contact_service.dart';
 import '../navigation_service.dart';
@@ -128,7 +129,7 @@ abstract class _SipServiceBase extends ChangeNotifier
   // Siprix SDK components
   SiprixVoipSdk? _siprixSdk;
   AccountsModel? _accountsModel;
-  CallsModel? _callsModel;
+  AppCallsModel? _callsModel;
   CdrsModel? _cdrsModel;
   NetworkModel? _networkModel;
   DevicesModel? _devicesModel;

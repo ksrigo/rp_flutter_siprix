@@ -39,8 +39,10 @@ mixin _SipServiceCallHandling on _SipServiceBase {
 
       // Create models for account and call management
       _accountsModel = AccountsModel();
-      _cdrsModel = CdrsModel(maxItems: 100); // Create CDRs model with max 100 items
-      _callsModel = CallsModel(_accountsModel!, null, _cdrsModel); // Pass CDRs to CallsModel
+      _cdrsModel =
+          CdrsModel(maxItems: 100); // Create CDRs model with max 100 items
+      _callsModel = AppCallsModel(
+          _accountsModel!, null, _cdrsModel); // Use our extended AppCallsModel
 
       _networkModel = NetworkModel();
       _devicesModel = DevicesModel();
@@ -53,19 +55,35 @@ mixin _SipServiceCallHandling on _SipServiceBase {
       // Load audio devices - CallKit will handle audio configuration
       _devicesModel?.load();
 
-      // Set up direct SDK call listener for call events
-      _siprixSdk!.callListener = CallStateListener(
-        terminated: _onCallTerminatedDirect,
-        switched: _onCallSwitchedDirect,
-        proceeding: _onCallProceeding,
-        connected: _onCallConnected,
-        incoming: _onCallIncomingDirect,
-        incomingPush: _onIncomingPush, // Enable push call handling for CallKit
-        acceptNotif:
-            _onCallAcceptNotif, // Handle Android notification acceptance
-      );
+      // Set up AppCallsModel callbacks instead of direct SDK listeners
+      debugPrint('SIP Service: Setting up AppCallsModel callbacks...');
+      _callsModel!.onIncomingCallCallback = _handleIncomingCall;
+      _callsModel!.onCallConnectedCallback = _handleCallConnected;
+      _callsModel!.onCallTerminatedCallback = _handleCallTerminated;
+      _callsModel!.onCallSwitchedCallback = _handleCallSwitched;
+      debugPrint('SIP Service: AppCallsModel callbacks set successfully');
 
-      // Set up direct SDK event listeners
+      // Set up CallStateListener to route events to AppCallsModel
+      _siprixSdk!.callListener = CallStateListener(
+        incoming: (int callId, int accId, bool withVideo, String from, String to) {
+          debugPrint('>>> CallStateListener.incoming CALLED - routing to AppCallsModel');
+          _callsModel?.onIncomingSip(callId, accId, withVideo, from, to);
+        },
+        connected: (int callId, String from, String to, bool withVideo) {
+          debugPrint('>>> CallStateListener.connected CALLED - routing to AppCallsModel');
+          _callsModel?.onConnected(callId, from, to, withVideo);
+        },
+        terminated: (int callId, int statusCode) {
+          debugPrint('>>> CallStateListener.terminated CALLED - routing to AppCallsModel');
+          _callsModel?.onTerminated(callId, statusCode);
+        },
+        switched: (int callId) {
+          debugPrint('>>> CallStateListener.switched CALLED - routing to AppCallsModel');
+          _callsModel?.onSwitched(callId);
+        },
+        incomingPush: _onIncomingPush, // Enable push call handling for CallKit
+        acceptNotif: _onCallAcceptNotif, // Handle Android notification acceptance
+      );
 
       // Note: Call history is now handled by Siprix CDRs automatically
 
@@ -145,10 +163,115 @@ mixin _SipServiceCallHandling on _SipServiceBase {
     debugPrint('SIP Service: Event listeners configured');
   }
 
-
   void _onModelsChanged() {
     debugPrint('SIP Service: Models changed - syncing call states');
     _checkCallStateChanges();
+  }
+
+  // Handler methods called by AppCallsModel after builtin processing
+
+  void _handleIncomingCall(int callId, String from, String to, bool withVideo) {
+    debugPrint('>>> SIP Service: _handleIncomingCall CALLED - callId: $callId, from: $from, to: $to, withVideo: $withVideo');
+
+    // Ignore incoming calls if we're in the middle of hanging up
+    if (_isHangingUp) {
+      debugPrint('SIP Service: Ignoring incoming call - hangup in progress');
+      return;
+    }
+
+    // Get cached caller information (parsed using builtin SDK functions)
+    final callerInfo = _getCachedCallerInfo(from);
+    final callerName = callerInfo['name']!;
+    final callerNumber = callerInfo['number']!;
+
+    // Create call info for incoming call
+    final callInfo = CallInfo(
+      id: callId.toString(),
+      remoteNumber: callerNumber,
+      remoteName: callerName,
+      state: AppCallState.ringing,
+      startTime: DateTime.now(),
+      isIncoming: true,
+    );
+
+    _updateCurrentCall(callInfo);
+
+    // Check if this call should be auto-answered (notification acceptance)
+    if (_autoAnswerCallId == callId.toString()) {
+      debugPrint('SIP Service: Auto-answering call $callId');
+
+      // Clear the auto-answer flag
+      clearAutoAnswerCall();
+
+      // Answer the call immediately with a small delay
+      Future.delayed(const Duration(milliseconds: 100)).then((_) async {
+        try {
+          await answerCall(callId.toString());
+          debugPrint('SIP Service: Auto-answer successful');
+        } catch (e) {
+          debugPrint('SIP Service: Auto-answer failed: $e');
+        }
+      });
+      return; // Exit early, don't show incoming call screen
+    }
+
+    // Handle incoming calls differently per platform
+    if (Platform.isAndroid) {
+      // Android: Show our custom incoming call screen
+      _showIncomingCallScreen(callId.toString(), callerName, callerNumber);
+      debugPrint(
+          'SIP Service: Android - Custom incoming call screen displayed');
+    } else if (Platform.isIOS) {
+      // iOS: Let Siprix built-in CallKit handle the incoming call display
+      debugPrint(
+          'SIP Service: iOS - Siprix CallKit will handle incoming call display');
+      // CallKit integration is handled automatically by Siprix SDK
+    }
+  }
+
+  void _handleCallConnected(int callId) {
+    debugPrint('SIP Service: Handling call connected - callId: $callId');
+
+    // Ignore connected events if we're in the middle of hanging up
+    if (_isHangingUp) {
+      debugPrint('SIP Service: Ignoring connected event - hangup in progress');
+      return;
+    }
+
+    // Find the current call and update its state
+    if (_currentCall?.id == callId.toString()) {
+      final updatedCall = _currentCall!.copyWith(
+        state: AppCallState.answered,
+        isConnectedWithAudio: true,
+      );
+      _updateCurrentCall(updatedCall);
+    }
+
+    _startCallDurationTimer();
+  }
+
+  void _handleCallTerminated(int callId) {
+    debugPrint('SIP Service: Handling call terminated - callId: $callId');
+
+    // Clear current call and cleanup
+    _callerInfoCache.clear();
+    _stopCallDurationTimer();
+    _updateCurrentCall(null);
+
+    // Reset hangup flag after brief delay
+    Timer(const Duration(milliseconds: 100), () => _isHangingUp = false);
+  }
+
+  void _handleCallSwitched(int callId) {
+    debugPrint('SIP Service: Handling call switched - callId: $callId');
+
+    if (callId == 0) {
+      // No active calls
+      _updateCurrentCall(null);
+    } else {
+      // Sync with the active call
+      _syncCurrentCallFromModel();
+    }
   }
 
   /// Sync current call when CallsModel structure changes (add/remove calls)
@@ -194,39 +317,7 @@ mixin _SipServiceCallHandling on _SipServiceBase {
     }
   }
 
-  // Direct SDK event handlers
-
-  // Direct SDK event handlers
-  void _onCallTerminatedDirect(int callId, int statusCode) {
-    debugPrint(
-        'SIP Service: Call terminated - callId: $callId, statusCode: $statusCode');
-
-    // Forward to CallsModel for cleanup (CDRs are automatically updated)
-    _callsModel?.onTerminated(callId, statusCode);
-
-    // Cleanup
-    _callerInfoCache.clear();
-    _stopCallDurationTimer();
-    _updateCurrentCall(null);
-
-    // Reset hangup flag after brief delay
-    Timer(const Duration(milliseconds: 100), () => _isHangingUp = false);
-  }
-
-  void _onCallSwitchedDirect(int callId) {
-    debugPrint('SIP Service: Call switched - callId: $callId');
-    _callsModel?.onSwitched(callId);
-    _syncCurrentCallFromModel();
-  }
-
-  void _onCallProceeding(int callId, String response) {
-    debugPrint(
-        'SIP Service: Call proceeding - callId: $callId, response: $response');
-
-    if (!_isHangingUp) {
-      _syncCurrentCallFromModel();
-    }
-  }
+  // Push notifications and special SDK event handlers
 
   void _onCallAcceptNotif(int callId, bool withVideo) {
     debugPrint('SIP Service: Call accept notification - callId: $callId');
@@ -245,26 +336,6 @@ mixin _SipServiceCallHandling on _SipServiceBase {
     } else {
       debugPrint('SIP Service: AcceptNotif for unknown call ID: $callId');
     }
-  }
-
-  void _onCallConnected(int callId, String from, String to, bool withVideo) {
-    debugPrint(
-        'SIP Service: Call connected - callId: $callId, from: $from, to: $to');
-
-    // Ignore connected events if we're in the middle of hanging up
-    if (_isHangingUp) {
-      debugPrint('SIP Service: Ignoring connected event - hangup in progress');
-      return;
-    }
-
-    // Ensure CallsModel is updated by manually triggering onConnected
-    if (_callsModel != null) {
-      debugPrint(
-          'SIP Service: Manually triggering CallsModel.onConnected for callId: $callId');
-      _callsModel!.onConnected(callId, from, to, withVideo);
-    }
-
-    _startCallDurationTimer();
   }
 
   // Handle incoming push notifications for CallKit
@@ -300,90 +371,6 @@ mixin _SipServiceCallHandling on _SipServiceBase {
       }
     } catch (e) {
       debugPrint('SIP Service: Error handling incoming push: $e');
-    }
-  }
-
-  void _onCallIncomingDirect(
-      int callId, int accId, bool withVideo, String from, String to) {
-    debugPrint(
-        'SIP Service: Incoming call - callId: $callId, from: $from, to: $to, withVideo: $withVideo');
-
-    // Ignore incoming calls if we're in the middle of hanging up
-    if (_isHangingUp) {
-      debugPrint('SIP Service: Ignoring incoming call - hangup in progress');
-      return;
-    }
-
-    // Get cached caller information (parsed using builtin SDK functions)
-    final callerInfo = _getCachedCallerInfo(from);
-    final callerName = callerInfo['name']!;
-    final callerNumber = callerInfo['number']!;
-
-    // Store the Siprix call ID for later operations
-
-    // CRITICAL FIX: Call onIncomingSip to add the call to CallsModel
-    // This is essential for the call to appear in CallsModel for hold operations
-    if (_callsModel != null) {
-      debugPrint('SIP Service: Adding incoming call to CallsModel');
-      _callsModel!.onIncomingSip(callId, accId, withVideo, from, to);
-      debugPrint('SIP Service: Successfully added incoming call to CallsModel');
-    } else {
-      debugPrint('SIP Service: CallsModel is null, cannot add incoming call');
-    }
-
-    // Create call info for incoming call
-    final callInfo = CallInfo(
-      id: callId.toString(),
-      remoteNumber: callerNumber,
-      remoteName: callerName,
-      state: AppCallState.ringing,
-      startTime: DateTime.now(),
-      isIncoming: true,
-    );
-
-    _updateCurrentCall(callInfo);
-
-    // Debug: Check if incoming call gets added to CallsModel
-    debugPrint(
-        'SIP Service: After incoming call setup - CallsModel has ${_callsModel?.length ?? 0} calls');
-    if (_callsModel != null) {
-      for (int i = 0; i < _callsModel!.length; i++) {
-        final call = _callsModel![i];
-        debugPrint(
-            'SIP Service: CallsModel[$i] - ID: ${call.myCallId}, Remote: ${call.remoteExt}');
-      }
-    }
-
-    // Check if this call should be auto-answered (notification acceptance)
-    if (_autoAnswerCallId == callId.toString()) {
-      debugPrint('SIP Service: Auto-answering call $callId');
-
-      // Clear the auto-answer flag
-      clearAutoAnswerCall();
-
-      // Answer the call immediately with a small delay
-      Future.delayed(const Duration(milliseconds: 100)).then((_) async {
-        try {
-          await answerCall(callId.toString());
-          debugPrint('SIP Service: Auto-answer successful');
-        } catch (e) {
-          debugPrint('SIP Service: Auto-answer failed: $e');
-        }
-      });
-      return; // Exit early, don't show incoming call screen
-    }
-
-    // Handle incoming calls differently per platform
-    if (Platform.isAndroid) {
-      // Android: Show our custom incoming call screen
-      _showIncomingCallScreen(callId.toString(), callerName, callerNumber);
-      debugPrint(
-          'SIP Service: Android - Custom incoming call screen displayed');
-    } else if (Platform.isIOS) {
-      // iOS: Let Siprix built-in CallKit handle the incoming call display
-      debugPrint(
-          'SIP Service: iOS - Siprix CallKit will handle incoming call display');
-      // CallKit integration is handled automatically by Siprix SDK
     }
   }
 
