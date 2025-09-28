@@ -51,7 +51,10 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
   @override
   void dispose() {
     _timer?.cancel();
-    SipService.instance.removeHoldEventListener(_handleHoldStateChange);
+    final callsModel = SipService.instance.callsModel;
+    if (callsModel != null) {
+      callsModel.removeListener(_onCallsModelChanged);
+    }
     super.dispose();
   }
 
@@ -117,37 +120,109 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
       }
     });
 
-    // Listen to hold state changes
-    SipService.instance.addHoldEventListener(_handleHoldStateChange);
+    // Listen to all call state changes from the CallsModel (includes hold states)
+    _listenToCallsModelUpdates();
   }
 
-  void _handleHoldStateChange(int callId, HoldState holdState) {
-    debugPrint(
-        'MultiCallScreen: Hold state changed - callId: $callId, holdState: $holdState');
+  void _listenToCallsModelUpdates() {
+    final callsModel = SipService.instance.callsModel;
+    if (callsModel != null) {
+      debugPrint('MultiCallScreen: Adding listener to CallsModel with ${callsModel.length} calls');
+      callsModel.addListener(_onCallsModelChanged);
 
-    if (!mounted) return;
+      // Trigger initial state update
+      debugPrint('MultiCallScreen: Triggering initial state update');
+      _onCallsModelChanged();
+    } else {
+      debugPrint('MultiCallScreen: CallsModel is null, cannot add listener');
+    }
+  }
+
+  void _onCallsModelChanged() {
+    debugPrint('MultiCallScreen: CallsModel changed event triggered');
+
+    if (!mounted) {
+      debugPrint('MultiCallScreen: Not mounted, skipping update');
+      return;
+    }
+
+    final callsModel = SipService.instance.callsModel;
+    if (callsModel == null) {
+      debugPrint('MultiCallScreen: CallsModel is null');
+      return;
+    }
+
+    debugPrint('MultiCallScreen: CallsModel has ${callsModel.length} calls');
 
     setState(() {
-      final callIdStr = callId.toString();
+      // Update call states and hold states from CallsModel
+      for (int i = 0; i < callsModel.length; i++) {
+        final call = callsModel[i];
+        final callIdStr = call.myCallId.toString();
 
-      // Update the corresponding CallInfo with new hold state
-      if (_firstCall.id == callIdStr) {
-        _firstCall = _firstCall.copyWith(
-          isOnHold: holdState != HoldState.none,
-          state: holdState != HoldState.none
-              ? AppCallState.held
-              : AppCallState.answered,
-        );
-      } else if (_secondCall.id == callIdStr) {
-        _secondCall = _secondCall.copyWith(
-          isOnHold: holdState != HoldState.none,
-          state: holdState != HoldState.none
-              ? AppCallState.held
-              : AppCallState.answered,
-        );
+        debugPrint('MultiCallScreen: Processing call $callIdStr - SDK state: ${call.state}, hold: ${call.isLocalHold || call.isRemoteHold}');
+
+        // Determine if call is on hold (local or remote hold)
+        final isOnHold = call.isLocalHold || call.isRemoteHold;
+        final newAppState = _mapCallStateToAppState(call.state);
+
+        if (callIdStr == _firstCall.id) {
+          debugPrint('MultiCallScreen: Updating first call $callIdStr - from ${_firstCall.state} to $newAppState, hold: $isOnHold');
+          _firstCall = _firstCall.copyWith(
+            state: newAppState,
+            isOnHold: isOnHold,
+          );
+        } else if (callIdStr == _secondCall.id) {
+          debugPrint('MultiCallScreen: Updating second call $callIdStr - from ${_secondCall.state} to $newAppState, hold: $isOnHold');
+          _secondCall = _secondCall.copyWith(
+            state: newAppState,
+            isOnHold: isOnHold,
+          );
+        } else {
+          debugPrint('MultiCallScreen: Call $callIdStr does not match any tracked calls (first: ${_firstCall.id}, second: ${_secondCall.id})');
+        }
       }
     });
   }
+
+  AppCallState _mapCallStateToAppState(CallState callState) {
+    AppCallState result;
+    switch (callState) {
+      case CallState.dialing:
+        result = AppCallState.connecting;
+        break;
+      case CallState.proceeding:
+        result = AppCallState.ringing; // Show as ringing for outgoing calls getting 180 Ringing
+        break;
+      case CallState.ringing:
+        result = AppCallState.ringing; // For incoming calls
+        break;
+      case CallState.accepting:
+        result = AppCallState.connecting;
+        break;
+      case CallState.rejecting:
+        result = AppCallState.ended;
+        break;
+      case CallState.connected:
+        result = AppCallState.answered;
+        break;
+      case CallState.disconnecting:
+        result = AppCallState.ended;
+        break;
+      case CallState.holding:
+        result = AppCallState.held;
+        break;
+      case CallState.held:
+        result = AppCallState.held;
+        break;
+      default:
+        result = AppCallState.none;
+        break;
+    }
+    debugPrint('MultiCallScreen: Mapped CallState.$callState to AppCallState.$result');
+    return result;
+  }
+
 
   CallInfo get _activeCall {
     // First check the SDK's switched call to determine which is active
@@ -195,11 +270,14 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
   }
 
   String _getCallDuration(CallInfo call) {
+    // Only show timer for connected (answered) calls
+    if (call.state != AppCallState.answered) return '';
+
     // Don't show timer for calls that are on hold
     if (call.isOnHold || call.state == AppCallState.held) return '';
 
-    if (call.startTime == null || call.state != AppCallState.answered)
-      return '00:00';
+    if (call.startTime == null) return '';
+
     final duration = DateTime.now().difference(call.startTime!);
     final minutes = duration.inMinutes.toString().padLeft(2, '0');
     final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
@@ -242,9 +320,9 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
       case AppCallState.held:
         return _cardColors.onHold;
       case AppCallState.muted:
-        return _cardColors.onHold; // Use same color as hold for muted state
+        return _cardColors.onHold;
       case AppCallState.reconnecting:
-        return Colors.blue; // Use same color as connecting for reconnecting
+        return Colors.blue;
       case AppCallState.ended:
       case AppCallState.failed:
         return Colors.red;
@@ -400,8 +478,7 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
                 _buildCallCards(),
                 const Spacer(), // Push control buttons towards bottom
                 _buildControlButtons(),
-                const SizedBox(
-                    height: 20), // Reduced spacing to End Call button
+                const SizedBox(height: 48), // Match in_call_screen spacing
                 _buildEndCallButton(),
               ],
             ),
@@ -532,14 +609,7 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
                       if (!isActive &&
                           (call.isOnHold || call.state == AppCallState.held))
                         const SizedBox(width: 4),
-                      Text(
-                        _getCallStatus(call),
-                        style: TextStyle(
-                          fontSize: 12, // Match call_action_screen
-                          fontWeight: FontWeight.w600,
-                          color: _getStatusColor(call),
-                        ),
-                      ),
+                      _buildStatusChip(call, isActive),
                     ],
                   ),
                   const SizedBox(height: 1), // Match call_action_screen
@@ -556,6 +626,35 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusChip(CallInfo call, bool isActive) {
+    final status = _getCallStatus(call);
+    final statusColor = _getStatusColor(call);
+
+    // Use chip with background for better visibility
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: isActive
+          ? Colors.white.withValues(alpha: 0.9) // White background for active cards
+          : statusColor.withValues(alpha: 0.2), // Colored background for inactive cards
+        borderRadius: BorderRadius.circular(8),
+        border: isActive
+          ? null
+          : Border.all(color: statusColor.withValues(alpha: 0.4), width: 0.5),
+      ),
+      child: Text(
+        status,
+        style: TextStyle(
+          fontSize: 10, // Slightly smaller for chip
+          fontWeight: FontWeight.w600,
+          color: isActive
+            ? statusColor // Colored text on white background
+            : statusColor, // Colored text on colored background
         ),
       ),
     );

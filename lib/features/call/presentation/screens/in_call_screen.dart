@@ -546,27 +546,34 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        GestureDetector(
-          onTap: isEnabled ? onPressed : null,
-          child: Container(
-            width: 88,
-            height: 88,
-            decoration: BoxDecoration(
-              color: !isEnabled
-                  ? Colors.grey.shade300
-                  : isActive
-                      ? const Color(0xFF6B46C1)
-                      : const Color(0xFFE6E6FA),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              icon,
-              size: 32,
-              color: !isEnabled
-                  ? Colors.grey.shade500
-                  : isActive
-                      ? Colors.white
-                      : const Color(0xFF6B46C1),
+        Container(
+          width: 80, // Match multi_call_screen
+          height: 80, // Match multi_call_screen
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: !isEnabled
+                ? Colors.grey.withValues(alpha: 0.3)
+                : isActive
+                    ? Colors.white.withValues(alpha: 0.3)
+                    : Colors.white.withValues(alpha: 0.15),
+            border: !isEnabled
+                ? null
+                : isActive
+                    ? Border.all(color: Colors.white.withValues(alpha: 0.5), width: 2)
+                    : null,
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(40),
+              onTap: isEnabled ? onPressed : null,
+              child: Icon(
+                icon,
+                size: 32,
+                color: !isEnabled
+                    ? Colors.grey.withValues(alpha: 0.7)
+                    : Colors.white,
+              ),
             ),
           ),
         ),
@@ -574,9 +581,11 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
         Text(
           label,
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.8),
-            fontSize: 12,
-            fontWeight: FontWeight.w400,
+            fontSize: 14, // Match multi_call_screen
+            fontWeight: FontWeight.w500, // Match multi_call_screen
+            color: !isEnabled
+                ? Colors.grey.withValues(alpha: 0.7)
+                : Colors.white.withValues(alpha: 0.9),
           ),
         ),
       ],

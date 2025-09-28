@@ -66,6 +66,10 @@ mixin _SipServiceCallHandling on _SipServiceBase {
 
       // Set up CallStateListener to route events to AppCallsModel
       _siprixSdk!.callListener = CallStateListener(
+        proceeding: (int callId, String response) {
+          debugPrint('>>> CallStateListener.proceeding CALLED - routing to AppCallsModel: callId=$callId, response=$response');
+          _callsModel?.onProceeding(callId, response);
+        },
         incoming: (int callId, int accId, bool withVideo, String from, String to) {
           debugPrint('>>> CallStateListener.incoming CALLED - routing to AppCallsModel');
           _callsModel?.onIncomingSip(callId, accId, withVideo, from, to);
