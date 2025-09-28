@@ -395,9 +395,9 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
   }
 
   Widget _buildCallCards() {
-    // Determine which calls are active vs hold, but keep original positions
-    final firstCallIsActive = _activeCall.id == _firstCall.id;
-    final secondCallIsActive = _activeCall.id == _secondCall.id;
+    // Determine active styling based on hold state: if not on hold, show as active
+    final firstCallIsActive = !_firstCall.isOnHold && _firstCall.state != AppCallState.held;
+    final secondCallIsActive = !_secondCall.isOnHold && _secondCall.state != AppCallState.held;
 
     return Column(
       children: [
