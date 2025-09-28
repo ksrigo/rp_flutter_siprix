@@ -689,43 +689,38 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
   }
 
   Widget _buildEndCallButton() {
-    return Container(
-      width: double.infinity,
-      height: 60,
-      decoration: BoxDecoration(
-        color: const Color(0xFFDC2626),
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFDC2626).withValues(alpha: 0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(30),
-          onTap: _onEndCall,
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.call_end,
-                color: Colors.white,
-                size: 28,
-              ),
-              SizedBox(width: 12),
-              Text(
-                'End Call',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
+    return Center(
+      child: Container(
+        width: 280, // Match in_call_screen
+        height: 56, // Match in_call_screen
+        decoration: BoxDecoration(
+          color: Color(0xFFE53E3E), // Match in_call_screen
+          borderRadius: BorderRadius.circular(28), // Match in_call_screen
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(28), // Match in_call_screen
+            onTap: _onEndCall,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.call_end,
                   color: Colors.white,
+                  size: 20, // Match in_call_screen
                 ),
-              ),
-            ],
+                SizedBox(width: 8), // Match in_call_screen
+                Text(
+                  'End Call',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16, // Match in_call_screen
+                    fontWeight: FontWeight.w600, // Match in_call_screen
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
