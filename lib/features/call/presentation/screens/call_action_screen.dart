@@ -29,6 +29,7 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
   String _enteredNumber = '';
   ContactInfo? _contactInfo;
   CallInfo? _currentCallInfo;
+  bool _isAddingSecondCall = false;
 
   // Constants
   static const _cardColors = (
@@ -73,6 +74,20 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
 
     // Only update if this is the same call we're tracking
     if (callId.toString() == widget.activeCall?.id) {
+      // If we're adding a second call and this call gets taken off hold, put it back on hold
+      if (_isAddingSecondCall && holdState == HoldState.none) {
+        debugPrint('CallActionScreen: First call taken off hold during second call - putting back on hold');
+        Future.delayed(const Duration(milliseconds: 100), () async {
+          try {
+            final currentCall = SipService.instance.findCallByCallId(callId.toString());
+            await currentCall?.hold();
+          } catch (e) {
+            debugPrint('CallActionScreen: Error re-holding call: $e');
+          }
+        });
+        return; // Don't update UI state yet
+      }
+
       if (mounted) {
         setState(() {
           // Update the current call info with new hold state
@@ -136,22 +151,30 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
       final callId = int.tryParse(_currentCallInfo?.id ?? '0') ?? 0;
 
       if (callId > 0) {
+        // Set flag to indicate we're adding a second call
+        _isAddingSecondCall = true;
+
         // Put current call on hold using builtin method
         final currentCall = SipService.instance.findCallByCallId(callId.toString());
         await currentCall?.hold();
+
+        // Wait a bit for hold to be processed by SDK
+        await Future.delayed(const Duration(milliseconds: 100));
       }
 
-      // Make new call using builtin method
+      // Make new call using builtin method - let SDK handle call switching naturally
       final newCallId = await SipService.instance.makeCall(_enteredNumber);
       if (newCallId != null && mounted) {
-        if (callId > 0) {
-          // Navigate to multi-call screen - let the SDK handle call management
-          NavigationService.goToKeypad();
-        } else {
-          NavigationService.goToKeypad();
-        }
+        // Reset flag after a delay to allow for call setup
+        Future.delayed(const Duration(seconds: 3), () {
+          _isAddingSecondCall = false;
+        });
+        NavigationService.goToKeypad();
+      } else {
+        _isAddingSecondCall = false;
       }
     } catch (e) {
+      _isAddingSecondCall = false;
       debugPrint('CallActionScreen: Error making call: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

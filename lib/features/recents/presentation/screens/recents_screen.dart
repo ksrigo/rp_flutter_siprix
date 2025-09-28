@@ -40,17 +40,14 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
 
   Future<void> _initializeCallHistory() async {
     try {
-      // Wait for SIP service to be initialized
       if (!SipService.instance.isRegistered) {
         await Future.delayed(const Duration(milliseconds: 500));
       }
     } catch (e) {
-      debugPrint('RecentsScreen: Error waiting for SIP service: $e');
+      debugPrint('Error waiting for SIP service: $e');
     } finally {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -58,18 +55,14 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
   /// Initialize contact cache and listen for contact changes
   Future<void> _initializeContactCache() async {
     try {
-      // Initialize contacts service if not already done
       if (!ContactsService.instance.isInitialized) {
         await ContactsService.instance.initializeWithoutApiCall();
       }
-      
-      // Listen for contact changes to update cache
+
       ContactsService.instance.addListener(_onContactsChanged);
-      
-      // Preload contact names for recent calls
       _preloadContactNames();
     } catch (e) {
-      debugPrint('RecentsScreen: Error initializing contact cache: $e');
+      debugPrint('Error initializing contact cache: $e');
     }
   }
 
@@ -88,17 +81,14 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
     final cdrs = SipService.instance.cdrs;
     if (cdrs == null) return;
 
-    final allCalls = List<CdrModel>.generate(cdrs.length, (i) => cdrs[i]);
+    final phoneNumbers = <String>{};
+    for (int i = 0; i < cdrs.length && phoneNumbers.length < 50; i++) {
+      final normalized = _normalizePhoneNumber(cdrs[i].remoteExt);
+      if (normalized.isNotEmpty) {
+        phoneNumbers.add(normalized);
+      }
+    }
 
-    // Get unique phone numbers from recent calls
-    final phoneNumbers = allCalls
-        .map((call) => _normalizePhoneNumber(call.remoteExt))
-        .where((number) => number.isNotEmpty)
-        .toSet()
-        .take(50) // Limit to avoid excessive API calls
-        .toList();
-    
-    // Start async lookups for each number
     for (final phoneNumber in phoneNumbers) {
       _getContactNameAsync(phoneNumber);
     }
@@ -134,35 +124,31 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
   /// Get contact name asynchronously with caching
   Future<String?> _getContactNameAsync(String phoneNumber) async {
     final normalizedNumber = _normalizePhoneNumber(phoneNumber);
-    
-    // Check cache first
+
     if (_contactNameCache.containsKey(normalizedNumber)) {
       return _contactNameCache[normalizedNumber];
     }
-    
-    // Check if lookup is already in progress
+
     if (_pendingLookups.containsKey(normalizedNumber)) {
       return await _pendingLookups[normalizedNumber]!;
     }
-    
-    // Start new lookup
+
     final lookup = _performContactLookup(normalizedNumber);
     _pendingLookups[normalizedNumber] = lookup;
-    
+
     try {
       final result = await lookup;
       _contactNameCache[normalizedNumber] = result;
       _pendingLookups.remove(normalizedNumber);
-      
-      // Update UI if contact found
+
       if (result != null && mounted) {
         setState(() {});
       }
-      
+
       return result;
     } catch (e) {
       _pendingLookups.remove(normalizedNumber);
-      debugPrint('RecentsScreen: Error looking up contact for $normalizedNumber: $e');
+      debugPrint('Contact lookup error for $normalizedNumber: $e');
       return null;
     }
   }
@@ -170,24 +156,17 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
   /// Perform actual contact lookup with multiple phone number variants
   Future<String?> _performContactLookup(String phoneNumber) async {
     try {
-      // Try exact match first
       ContactModel? contact = await ContactsService.instance.getContactByPhone(phoneNumber);
-      if (contact != null) {
-        return contact.formattedName;
-      }
-      
-      // Try alternative formats for better matching
-      final alternatives = _getPhoneNumberAlternatives(phoneNumber);
-      for (final alternative in alternatives) {
+      if (contact != null) return contact.formattedName;
+
+      for (final alternative in _getPhoneNumberAlternatives(phoneNumber)) {
         contact = await ContactsService.instance.getContactByPhone(alternative);
-        if (contact != null) {
-          return contact.formattedName;
-        }
+        if (contact != null) return contact.formattedName;
       }
-      
+
       return null;
     } catch (e) {
-      debugPrint('RecentsScreen: Error in contact lookup: $e');
+      debugPrint('Contact lookup error: $e');
       return null;
     }
   }
@@ -662,7 +641,7 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
       call.madeAtDate, // Use builtin formatted date/time
     ];
 
-    if (_isAnswered(call)) {
+    if (call.connected) {
       final durationText = _resolveDuration(call);
       if (durationText != null) {
         subtitleSegments.add(durationText);
@@ -775,20 +754,16 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
   void _onCallTap(CdrModel call, bool isSelected) {
     if (_selectionMode) {
       _toggleSelection(call);
-      return;
     }
-
-    // No action when not in selection mode - row tap disabled
   }
 
   void _enterSelectionMode(CdrModel call) {
-    final key = _callKey(call);
     setState(() {
       if (_selectionMode) {
         _toggleSelection(call);
       } else {
         _selectionMode = true;
-        _selectedCallKeys.add(key);
+        _selectedCallKeys.add(_callKey(call));
       }
     });
   }
@@ -819,42 +794,37 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
   Future<bool?> _confirmSingleDelete(CdrModel call) async {
     final shouldDelete = await showDialog<bool>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Delete call?'),
-          content: const Text('This call will be removed from Recents.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: TextButton.styleFrom(
-                  foregroundColor: Theme.of(context).colorScheme.error),
-              child: const Text('Delete'),
-            ),
-          ],
-        );
-      },
+      builder: (context) => AlertDialog(
+        title: const Text('Delete call?'),
+        content: const Text('This call will be removed from Recents.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
     );
 
-    if (shouldDelete == true) {
-      // Note: Siprix CDRs are managed by the SDK and cannot be manually deleted
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Call history is managed by Siprix SDK'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-        setState(() {
-          _selectedCallKeys.remove(_callKey(call));
-          if (_selectedCallKeys.isEmpty) {
-            _selectionMode = false;
-          }
-        });
-      }
+    if (shouldDelete == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Call history is managed by Siprix SDK'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      setState(() {
+        _selectedCallKeys.remove(_callKey(call));
+        if (_selectedCallKeys.isEmpty) {
+          _selectionMode = false;
+        }
+      });
       return true;
     }
     return false;
@@ -866,113 +836,74 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
 
     final shouldDelete = await showDialog<bool>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Delete selected calls?'),
-          content: Text(
-              'Remove $count selected call${count > 1 ? 's' : ''} from Recents?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: TextButton.styleFrom(
-                  foregroundColor: Theme.of(context).colorScheme.error),
-              child: const Text('Delete'),
-            ),
-          ],
-        );
-      },
+      builder: (context) => AlertDialog(
+        title: const Text('Delete selected calls?'),
+        content: Text(
+            'Remove $count selected call${count > 1 ? 's' : ''} from Recents?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
     );
 
-    if (shouldDelete == true) {
-      // Note: Siprix CDRs are managed by the SDK and cannot be manually deleted
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Call history is managed by Siprix SDK'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-        setState(() {
-          _selectedCallKeys.clear();
-          _selectionMode = false;
-        });
-      }
+    if (shouldDelete == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Call history is managed by Siprix SDK'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      setState(() {
+        _selectedCallKeys.clear();
+        _selectionMode = false;
+      });
     }
   }
 
   Future<void> _callNumber(String phoneNumber) async {
     try {
-      Navigator.of(context).pop(); // Close the modal first
+      Navigator.of(context).pop();
       final callId = await SipService.instance.makeCall(phoneNumber);
       if (callId != null) {
-        // Navigate to call screen with the phone number
         NavigationService.goToInCall(callId, phoneNumber: phoneNumber);
-        debugPrint(
-            'RecentsScreen: Initiated call to $phoneNumber with callId: $callId');
-      } else {
-        debugPrint(
-            'RecentsScreen: Failed to initiate call to $phoneNumber - callId is null');
       }
     } catch (e) {
-      debugPrint('RecentsScreen: Error making call to $phoneNumber: $e');
+      debugPrint('Error making call to $phoneNumber: $e');
     }
   }
 
   Future<void> _addToContacts(String phoneNumber) async {
-    // Close the modal first
     Navigator.of(context).pop();
-    
-    if (phoneNumber.isEmpty) {
-      debugPrint('RecentsScreen: Cannot add empty phone number to contacts');
-      return;
-    }
+    if (phoneNumber.isEmpty) return;
 
     try {
-      // Check if the number already exists in contacts
       final existingContact = await ContactsService.instance.getContactByPhone(phoneNumber);
-      
-      if (existingContact != null) {
-        // Show dialog asking if user wants to update existing contact
-        if (!mounted) return;
-        
+
+      if (existingContact != null && mounted) {
         final shouldUpdate = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
-            backgroundColor: Theme.of(context).colorScheme.surface,
-            title: Text(
-              'Number Already Exists',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
+            title: const Text('Number Already Exists'),
             content: Text(
               'This number already belongs to ${existingContact.formattedName}. Do you want to edit this contact?',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
-                child: Text(
-                  'Cancel',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
+                child: const Text('Cancel'),
               ),
               TextButton(
                 onPressed: () => Navigator.of(context).pop(true),
-                child: Text(
-                  'Edit Contact',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                ),
+                child: const Text('Edit Contact'),
               ),
             ],
           ),
@@ -982,14 +913,10 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
           NavigationService.goToEditContact(existingContact);
         }
       } else {
-        // Navigate to Add Contact with prefilled phone number
         NavigationService.goToAddContact(prefilledPhone: phoneNumber);
       }
-      
-      debugPrint('RecentsScreen: Add to contacts initiated for $phoneNumber');
     } catch (e) {
-      debugPrint('RecentsScreen: Error checking existing contact for $phoneNumber: $e');
-      // Fallback to add contact even if check fails
+      debugPrint('Error checking existing contact: $e');
       NavigationService.goToAddContact(prefilledPhone: phoneNumber);
     }
   }
@@ -1009,7 +936,7 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
     final displayName = _getDisplayName(call, callType);
     final phoneNumber =
         call.remoteExt.isNotEmpty ? call.remoteExt : 'Unknown number';
-    final isAnswered = _isAnswered(call);
+    final isAnswered = call.connected;
     final status = isAnswered
         ? (_resolveDuration(call) ?? 'Connected')
         : _describeStatus(call, callType);
@@ -1197,30 +1124,18 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
   }
 
   String? _getStatusLabel(CdrModel call, CallType callType) {
-    final answered = _isAnswered(call);
-    if (call.incoming) {
-      return answered ? null : 'Missed';
-    }
-    if (!answered) {
-      return 'Not answered';
-    }
+    if (call.incoming && !call.connected) return 'Missed';
+    if (!call.incoming && !call.connected) return 'Not answered';
     return null;
   }
 
   String _describeStatus(CdrModel call, CallType callType) {
-    if (_isAnswered(call)) {
+    if (call.connected) {
       return _resolveDuration(call) ?? 'Connected';
     }
-    if (call.incoming) {
-      return 'Missed call';
-    }
-    return 'Not answered';
+    return call.incoming ? 'Missed call' : 'Not answered';
   }
 
-  bool _isAnswered(CdrModel call) {
-    // Use builtin connected property from CDR
-    return call.connected;
-  }
 
   String? _resolveDuration(CdrModel call) {
     // Use the builtin SDK duration that was set when call was terminated
@@ -1241,8 +1156,7 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
 
 
   String _formatFullDateTime(DateTime dateTime) {
-    final formatter = DateFormat('EEE, MMM d · h:mm a');
-    return formatter.format(dateTime);
+    return DateFormat('EEE, MMM d · h:mm a').format(dateTime);
   }
 
   @override
