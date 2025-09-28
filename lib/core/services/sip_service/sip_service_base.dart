@@ -216,6 +216,9 @@ abstract class _SipServiceBase extends ChangeNotifier
   final StreamController<CallInfo?> _currentCallController =
       StreamController<CallInfo?>.broadcast();
 
+  // Hold event listeners
+  final List<void Function(int callId, HoldState holdState)> _holdEventListeners = [];
+
   // Getters
   SipRegistrationState get registrationState => _registrationState;
   CallInfo? get currentCall => _currentCall;
@@ -228,10 +231,32 @@ abstract class _SipServiceBase extends ChangeNotifier
   // Access to Siprix CDRs (Call Detail Records)
   CdrsModel? get cdrs => _cdrsModel;
 
+  // Access to CallsModel
+  AppCallsModel? get callsModel => _callsModel;
+
   // Streams
   Stream<SipRegistrationState> get registrationStateStream =>
       _registrationStateController.stream;
   Stream<CallInfo?> get currentCallStream => _currentCallController.stream;
+
+  // Hold event listener management
+  void addHoldEventListener(void Function(int callId, HoldState holdState) listener) {
+    _holdEventListeners.add(listener);
+  }
+
+  void removeHoldEventListener(void Function(int callId, HoldState holdState) listener) {
+    _holdEventListeners.remove(listener);
+  }
+
+  void _notifyHoldEventListeners(int callId, HoldState holdState) {
+    for (final listener in _holdEventListeners) {
+      try {
+        listener(callId, holdState);
+      } catch (e) {
+        debugPrint('SIP Service: Error in hold event listener: $e');
+      }
+    }
+  }
 
   Future<void> initialize();
   void _updateCurrentCall(CallInfo? call);

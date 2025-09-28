@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:siprix_voip_sdk/calls_model.dart';
 
 import '../../../../core/services/sip_service.dart';
 import '../../../../core/services/navigation_service.dart';
@@ -26,6 +28,7 @@ class CallActionScreen extends ConsumerStatefulWidget {
 class _CallActionScreenState extends ConsumerState<CallActionScreen> {
   String _enteredNumber = '';
   ContactInfo? _contactInfo;
+  CallInfo? _currentCallInfo;
 
   // Constants
   static const _cardColors = (
@@ -47,11 +50,44 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
   @override
   void initState() {
     super.initState();
+    _currentCallInfo = widget.activeCall;
     _loadContactInfo();
+    _setupHoldEventListener();
+  }
+
+  @override
+  void dispose() {
+    if (_currentCallInfo != null) {
+      SipService.instance.removeHoldEventListener(_onHoldStateChanged);
+    }
+    super.dispose();
+  }
+
+  void _setupHoldEventListener() {
+    debugPrint('CallActionScreen: Setting up hold event listener for callId: ${widget.activeCall?.id}');
+    SipService.instance.addHoldEventListener(_onHoldStateChanged);
+  }
+
+  void _onHoldStateChanged(int callId, HoldState holdState) {
+    debugPrint('CallActionScreen: Received hold event - callId: $callId, holdState: $holdState');
+
+    // Only update if this is the same call we're tracking
+    if (callId.toString() == widget.activeCall?.id) {
+      if (mounted) {
+        setState(() {
+          // Update the current call info with new hold state
+          _currentCallInfo = _currentCallInfo?.copyWith(
+            isOnHold: holdState != HoldState.none,
+            state: holdState != HoldState.none ? AppCallState.held : AppCallState.answered,
+          );
+        });
+        debugPrint('CallActionScreen: Updated call hold state - isOnHold: ${holdState != HoldState.none}');
+      }
+    }
   }
 
   Future<void> _loadContactInfo() async {
-    final phoneNumber = widget.activeCall?.remoteNumber;
+    final phoneNumber = _currentCallInfo?.remoteNumber;
     if (phoneNumber?.isEmpty != false || phoneNumber == 'Unknown') return;
 
     try {
@@ -66,19 +102,19 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
 
   String get _displayName => _contactInfo?.displayName?.isNotEmpty == true
       ? _contactInfo!.displayName
-      : widget.activeCall?.remoteName?.isNotEmpty == true
-          ? widget.activeCall!.remoteName
-          : widget.activeCall?.remoteNumber ?? 'Unknown';
+      : _currentCallInfo?.remoteName?.isNotEmpty == true
+          ? _currentCallInfo!.remoteName
+          : _currentCallInfo?.remoteNumber ?? 'Unknown';
 
   String get _callDuration {
-    if (widget.activeCall == null) return '00:00';
-    final duration = DateTime.now().difference(widget.activeCall!.startTime);
+    if (_currentCallInfo == null) return '00:00';
+    final duration = DateTime.now().difference(_currentCallInfo!.startTime);
     return '${duration.inMinutes.toString().padLeft(2, '0')}:${(duration.inSeconds % 60).toString().padLeft(2, '0')}';
   }
 
   String get _callStatus =>
-      widget.activeCall?.isOnHold == true ? 'On Hold' : 'Active';
-  Color get _statusColor => widget.activeCall?.isOnHold == true
+      _currentCallInfo?.isOnHold == true ? 'On Hold' : 'Active';
+  Color get _statusColor => _currentCallInfo?.isOnHold == true
       ? _cardColors.onHold
       : _cardColors.active;
 
@@ -93,46 +129,25 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
     if (!_hasEnteredNumber) return;
 
     try {
-      // If we have an active call, put it on hold first
-      if (widget.activeCall != null) {
-        debugPrint(
-            'CallActionScreen: Putting current call on hold before making new call ${widget.activeCall!.id}');
-        await SipService.instance.holdCall(widget.activeCall!.id);
+      // Use builtin SDK functions directly
+      final callsModel = SipService.instance.callsModel;
+      if (callsModel == null) return;
 
-        // Update the active call state to reflect it's on hold
-        final heldCall = widget.activeCall!
-            .copyWith(isOnHold: true, state: AppCallState.held);
+      final callId = int.tryParse(_currentCallInfo?.id ?? '0') ?? 0;
 
-        // Make the new call
-        final newCallId = await SipService.instance.makeCall(_enteredNumber);
-        if (newCallId != null) {
-          // Create call info for the new call
-          final newCall = CallInfo(
-            id: newCallId,
-            remoteNumber: _enteredNumber,
-            remoteName: _enteredNumber,
-            state: AppCallState.connecting,
-            startTime: DateTime.now(),
-            isIncoming: false,
-          );
+      if (callId > 0) {
+        // Put current call on hold using builtin method
+        final currentCall = SipService.instance.findCallByCallId(callId.toString());
+        await currentCall?.hold();
+      }
 
-          // Navigate to multi-call screen with both calls
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => MultiCallScreen(
-                  firstCall: heldCall,
-                  secondCall: newCall,
-                ),
-              ),
-            );
-          }
-        }
-      } else {
-        // No active call, just make a regular call
-        final callId = await SipService.instance.makeCall(_enteredNumber);
-        if (callId != null && mounted) {
+      // Make new call using builtin method
+      final newCallId = await SipService.instance.makeCall(_enteredNumber);
+      if (newCallId != null && mounted) {
+        if (callId > 0) {
+          // Navigate to multi-call screen - let the SDK handle call management
+          NavigationService.goToKeypad();
+        } else {
           NavigationService.goToKeypad();
         }
       }
@@ -146,16 +161,25 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
     }
   }
 
-  void _transferCall() => _performAction(() =>
-      SipService.instance.transferCall(widget.activeCall!.id, _enteredNumber));
-  void _goBack() => Navigator.of(context).pop();
+  void _transferCall() async {
+    if (!_hasEnteredNumber) return;
 
-  void _performAction(VoidCallback action) {
-    if (_hasEnteredNumber) {
-      action();
-      NavigationService.goToKeypad();
+    try {
+      // Use builtin SDK method directly
+      final callsModel = SipService.instance.callsModel;
+      final callId = int.tryParse(_currentCallInfo?.id ?? '0') ?? 0;
+      final currentCall = SipService.instance.findCallByCallId(callId.toString());
+
+      if (currentCall != null) {
+        await currentCall.transferBlind(_enteredNumber);
+        NavigationService.goToKeypad();
+      }
+    } catch (e) {
+      debugPrint('CallActionScreen: Transfer failed: $e');
     }
   }
+
+  void _goBack() => Navigator.of(context).pop();
 
   @override
   Widget build(BuildContext context) {
@@ -179,7 +203,7 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
             padding: const EdgeInsets.all(24.0),
             child: Column(
               children: [
-                if (widget.activeCall != null) _buildActiveCallsSection(),
+                if (_currentCallInfo != null) _buildActiveCallsSection(),
                 const SizedBox(height: 24),
                 _buildEnteredNumber(),
                 const SizedBox(height: 24),
@@ -200,7 +224,7 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
             avatar:
                 _buildAvatar(hasPhoto: _hasPhoto, photo: _contactInfo?.photo),
             title: _displayName,
-            subtitle: widget.activeCall?.remoteNumber ?? '',
+            subtitle: _currentCallInfo?.remoteNumber ?? '',
             status: _callStatus,
             statusColor: _statusColor,
             duration: _callDuration,

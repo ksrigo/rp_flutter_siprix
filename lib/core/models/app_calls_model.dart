@@ -15,6 +15,7 @@ class AppCallsModel extends CallsModel {
   void Function(int)? onCallConnectedCallback;
   void Function(int)? onCallTerminatedCallback;
   void Function(int)? onCallSwitchedCallback;
+  void Function(int, HoldState)? onCallHeldCallback;
 
   /// Handle incoming SIP call
   @override
@@ -74,6 +75,18 @@ class AppCallsModel extends CallsModel {
 
     // Call the callback if set
     onCallSwitchedCallback?.call(callId);
+  }
+
+  /// Handle call held
+  @override
+  void onHeld(int callId, HoldState holdState) {
+    // IMPORTANT: Call super first to let builtin functionality work
+    super.onHeld(callId, holdState);
+
+    debugPrint('AppCallsModel: Call held - callId: $callId, holdState: $holdState');
+
+    // Call the callback if set
+    onCallHeldCallback?.call(callId, holdState);
   }
 
   /// Handle iOS CallKit integration

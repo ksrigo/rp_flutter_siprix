@@ -61,6 +61,7 @@ mixin _SipServiceCallHandling on _SipServiceBase {
       _callsModel!.onCallConnectedCallback = _handleCallConnected;
       _callsModel!.onCallTerminatedCallback = _handleCallTerminated;
       _callsModel!.onCallSwitchedCallback = _handleCallSwitched;
+      _callsModel!.onCallHeldCallback = _handleCallHeld;
       debugPrint('SIP Service: AppCallsModel callbacks set successfully');
 
       // Set up CallStateListener to route events to AppCallsModel
@@ -80,6 +81,10 @@ mixin _SipServiceCallHandling on _SipServiceBase {
         switched: (int callId) {
           debugPrint('>>> CallStateListener.switched CALLED - routing to AppCallsModel');
           _callsModel?.onSwitched(callId);
+        },
+        held: (int callId, HoldState holdState) {
+          debugPrint('>>> CallStateListener.held CALLED - routing to AppCallsModel: callId=$callId, holdState=$holdState');
+          _callsModel?.onHeld(callId, holdState);
         },
         incomingPush: _onIncomingPush, // Enable push call handling for CallKit
         acceptNotif: _onCallAcceptNotif, // Handle Android notification acceptance
@@ -272,6 +277,19 @@ mixin _SipServiceCallHandling on _SipServiceBase {
       // Sync with the active call
       _syncCurrentCallFromModel();
     }
+  }
+
+  void _handleCallHeld(int callId, HoldState holdState) {
+    debugPrint('SIP Service: Handling call held - callId: $callId, holdState: $holdState');
+
+    // Update the current call with the new hold state
+    _syncCurrentCallFromModel();
+
+    // Notify hold event listeners
+    _notifyHoldEventListeners(callId, holdState);
+
+    // Notify any listeners about the hold state change
+    notifyListeners();
   }
 
   /// Sync current call when CallsModel structure changes (add/remove calls)
@@ -482,12 +500,9 @@ mixin _SipServiceCallHandling on _SipServiceBase {
 
   Future<void> holdCall(String callId) async {
     try {
-      debugPrint('SIP Service: Holding call: $callId');
       final call = _findCallByCallId(int.tryParse(callId) ?? 0);
       if (call == null) throw Exception('Call not found');
-
-      await call.hold(); // Use built-in SDK method
-      debugPrint('SIP Service: Call held successfully');
+      await call.hold();
     } catch (e) {
       debugPrint('Hold call failed: $e');
       rethrow;
@@ -496,12 +511,9 @@ mixin _SipServiceCallHandling on _SipServiceBase {
 
   Future<void> unholdCall(String callId) async {
     try {
-      debugPrint('SIP Service: Unholding call: $callId');
       final call = _findCallByCallId(int.tryParse(callId) ?? 0);
       if (call == null) throw Exception('Call not found');
-
-      await call.hold(); // Use built-in SDK method (toggles hold state)
-      debugPrint('SIP Service: Call unheld successfully');
+      await call.hold(); // Toggles hold state
     } catch (e) {
       debugPrint('Unhold call failed: $e');
       rethrow;
@@ -510,31 +522,13 @@ mixin _SipServiceCallHandling on _SipServiceBase {
 
   Future<void> muteCall(String callId, bool mute) async {
     try {
-      debugPrint('SIP Service: ${mute ? 'Muting' : 'Unmuting'} call: $callId');
-
-      if (_callsModel == null) {
-        debugPrint('Mute failed: CallsModel not initialized');
-        return;
-      }
-
       final intCallId = int.tryParse(callId);
-      if (intCallId == null) {
-        debugPrint('Mute failed: Invalid call ID format');
-        return;
-      }
+      if (intCallId == null) throw Exception('Invalid call ID format');
 
-      // Find the call in CallsModel and use its muteMic method
-      final targetCall =
-          _findCallByCallId(intCallId) ?? _callsModel!.switchedCall();
-      if (targetCall == null) {
-        debugPrint('Mute failed: No call found to mute');
-        throw Exception('No active call available for muting');
-      }
+      final targetCall = _findCallByCallId(intCallId) ?? _callsModel?.switchedCall();
+      if (targetCall == null) throw Exception('No active call available for muting');
 
-      // Use CallModel's built-in muteMic method (much simpler!)
       await targetCall.muteMic(mute);
-      debugPrint(
-          'SIP Service: Call ${mute ? 'muted' : 'unmuted'} successfully');
     } catch (e) {
       debugPrint('Mute call failed: $e');
       rethrow;
@@ -543,14 +537,8 @@ mixin _SipServiceCallHandling on _SipServiceBase {
 
   Future<void> setSpeaker(String callId, bool speaker) async {
     try {
-      debugPrint('Set speaker: $callId, speaker: $speaker');
+      if (Platform.isIOS) return; // CallKit handles audio routing
 
-      if (Platform.isIOS) {
-        debugPrint('iOS CallKit: Audio routing handled by system');
-        return;
-      }
-
-      // On Android, find and set speaker/earpiece device
       if (_siprixSdk != null && _devicesModel != null) {
         final devices = _devicesModel!.playout;
         final targetDevice = devices.firstWhere(
@@ -560,18 +548,13 @@ mixin _SipServiceCallHandling on _SipServiceBase {
                   !device.name.toLowerCase().contains('speaker'),
           orElse: () => devices.first,
         );
-
         await _siprixSdk!.setPlayoutDevice(targetDevice.index);
-        debugPrint('Android: Set audio device to ${targetDevice.name}');
       }
     } catch (e) {
       debugPrint('Set speaker failed: $e');
     }
   }
 
-  // Enhanced audio device management methods
-
-  // Enhanced audio device management methods
   List<AudioDeviceInfo> get categorizedAudioDevices {
     final devices = _devicesModel?.playout ?? [];
     final List<AudioDeviceInfo> categorized = [];
@@ -581,9 +564,7 @@ mixin _SipServiceCallHandling on _SipServiceBase {
       final device = devices[i];
       final category = _getAudioDeviceCategory(device);
 
-      // Merge earpiece and builtin into one "iPhone" entry
-      if (category == AudioDeviceCategory.earpiece ||
-          category == AudioDeviceCategory.builtin) {
+      if (category == AudioDeviceCategory.earpiece || category == AudioDeviceCategory.builtin) {
         if (!hasBuiltinAdded) {
           categorized.add(AudioDeviceInfo(
             device: device,
@@ -597,7 +578,6 @@ mixin _SipServiceCallHandling on _SipServiceBase {
         continue;
       }
 
-      // Only show Speaker - Bluetooth and wired are disabled for now
       if (category == AudioDeviceCategory.speaker) {
         categorized.add(AudioDeviceInfo(
           device: device,
@@ -607,13 +587,6 @@ mixin _SipServiceCallHandling on _SipServiceBase {
           icon: Icons.volume_up,
         ));
       }
-
-      // Bluetooth and wired devices are disabled
-      // } else if (category == AudioDeviceCategory.bluetooth) {
-      //   categorized.add(AudioDeviceInfo(...));
-      // } else if (category == AudioDeviceCategory.wired) {
-      //   categorized.add(AudioDeviceInfo(...));
-      // }
     }
 
     return categorized;
@@ -652,15 +625,10 @@ mixin _SipServiceCallHandling on _SipServiceBase {
 
   Future<void> setAudioOutputDevice(int deviceIndex) async {
     try {
-      if (Platform.isIOS) {
-        debugPrint('iOS CallKit: Audio routing handled by system');
-        return;
-      }
+      if (Platform.isIOS) return; // CallKit handles audio routing
 
-      // On Android, set audio device using builtin SDK method
       if (_siprixSdk != null) {
         await _siprixSdk!.setPlayoutDevice(deviceIndex);
-        debugPrint('Android: Audio device set to index $deviceIndex');
       }
     } catch (e) {
       debugPrint('Set audio output device failed: $e');
@@ -687,27 +655,17 @@ mixin _SipServiceCallHandling on _SipServiceBase {
     }
   }
 
-  // Note: CallKit handles audio session management automatically
-  // No custom audio session configuration needed
-
-  // Audio device management removed - CallKit handles everything
-  // Custom audio device manipulation causes interruptions and conflicts with CallKit
-
-  // Note: CallKit handles audio session management automatically
-  // No custom audio session configuration needed
-
-  // Audio device management removed - CallKit handles everything
-  // Custom audio device manipulation causes interruptions and conflicts with CallKit
-
-  // Legacy method for backward compatibility
-
-  // Legacy method for backward compatibility
   List<MediaDevice> get availableAudioDevices {
     return _devicesModel?.playout ?? [];
   }
 
   int get currentAudioDeviceIndex {
     return _devicesModel?.playoutIndex ?? -1;
+  }
+
+  /// Public method to find a call in CallsModel by its callId
+  CallModel? findCallByCallId(String callId) {
+    return _findCallByCallId(int.tryParse(callId) ?? 0);
   }
 
   /// Helper method to find a call in CallsModel by its callId
@@ -732,23 +690,17 @@ mixin _SipServiceCallHandling on _SipServiceBase {
 
     final activeCall = _callsModel!.switchedCall();
     if (activeCall != null) {
-      final appCallState = _mapCallStateToAppCallState(activeCall.state);
-      debugPrint(
-          'SIP Service: Syncing call - CallModel state: ${activeCall.state}, mapped to: $appCallState');
-      debugPrint(
-          'SIP Service: CallModel startTime: ${activeCall.startTime}, isConnected: ${activeCall.isConnected}');
-
       final callInfo = CallInfo(
         id: activeCall.myCallId.toString(),
         remoteNumber: activeCall.remoteExt,
         remoteName: activeCall.displName.isNotEmpty
             ? activeCall.displName
             : activeCall.remoteExt,
-        state: appCallState,
+        state: _mapCallStateToAppCallState(activeCall.state),
         startTime: activeCall.startTime,
         isIncoming: activeCall.isIncoming,
         isMuted: activeCall.isMicMuted,
-        isSpeakerOn: false, // Track separately if needed
+        isSpeakerOn: false,
         isOnHold: activeCall.isLocalHold,
       );
       _updateCurrentCall(callInfo);
@@ -757,32 +709,22 @@ mixin _SipServiceCallHandling on _SipServiceBase {
     }
   }
 
-  /// Start periodic timer to update call duration
   void _startCallDurationTimer() {
-    // Cancel existing timer if running
     _callDurationTimer?.cancel();
-
-    // Start new timer that updates UI every second during active calls
     _callDurationTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (hasActiveCall && _callsModel?.switchedCall() != null) {
-        // Only notify listeners for UI updates, don't sync entire call state
         if (!_isDisposed && !_currentCallController.isClosed) {
           notifyListeners();
         }
       } else {
-        // Stop timer when call ends or changes state
         _stopCallDurationTimer();
       }
     });
-
-    debugPrint('SIP Service: Started call duration timer');
   }
 
-  /// Stop the call duration timer
   void _stopCallDurationTimer() {
     _callDurationTimer?.cancel();
     _callDurationTimer = null;
-    debugPrint('SIP Service: Stopped call duration timer');
   }
 
   /// Helper method to map CallState to AppCallState
@@ -812,22 +754,14 @@ mixin _SipServiceCallHandling on _SipServiceBase {
   }
 
   void _updateCurrentCall(CallInfo? call) {
-    // Prevent state updates after disposal to avoid framework errors
-    if (_isDisposed) {
-      debugPrint('SipService: Ignoring state update after disposal');
-      return;
-    }
+    if (_isDisposed) return;
 
-    debugPrint(
-        'SipService: _updateCurrentCall called - callId: ${call?.id}, state: ${call?.state}');
     _currentCall = call;
 
-    // Safely add to stream controller
     if (!_currentCallController.isClosed) {
       _currentCallController.add(call);
     }
 
-    // Only notify listeners if not disposed
     if (!_isDisposed) {
       notifyListeners();
     }
@@ -866,15 +800,10 @@ mixin _SipServiceCallHandling on _SipServiceBase {
     }
   }
 
-  /// Ensure audio session is working when app resumes with active call
-
-  /// Ensure audio session is working when app resumes with active call
   void _ensureAudioSessionOnResume() {
     if (Platform.isIOS && hasActiveCall) {
-      debugPrint('SIP Service: Ensuring audio session on app resume');
-      // Brief delay to allow app to fully resume
       Future.delayed(const Duration(milliseconds: 300), () {
-        debugPrint('SIP Service: Audio session reactivation completed');
+        // Audio session reactivation completed
       });
     }
   }
