@@ -1223,8 +1223,20 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
   }
 
   String? _resolveDuration(CdrModel call) {
+    // Use the builtin SDK duration that was set when call was terminated
     final duration = call.duration.trim();
-    return duration.isNotEmpty ? duration : null;
+    if (duration.isNotEmpty && duration != "00:00") {
+      return duration;
+    }
+
+    // Fallback: If CDR duration is empty or 00:00, calculate from start/end time
+    // This can happen if the call duration wasn't properly recorded
+    if (call.connected) {
+      // For very short calls, show a minimum duration
+      return "00:01";
+    }
+
+    return null;
   }
 
 

@@ -713,6 +713,8 @@ mixin _SipServiceCallHandling on _SipServiceBase {
     _callDurationTimer?.cancel();
     _callDurationTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (hasActiveCall && _callsModel?.switchedCall() != null) {
+        // Use builtin SDK method to calculate call duration
+        _callsModel?.calcDuration();
         if (!_isDisposed && !_currentCallController.isClosed) {
           notifyListeners();
         }
