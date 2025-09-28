@@ -266,28 +266,14 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
     );
   }
 
-  Widget _buildActiveCallsSection() => Column(
-        children: [
-          _buildCallCard(
-            avatar:
-                _buildAvatar(hasPhoto: _hasPhoto, photo: _contactInfo?.photo),
-            title: _displayName,
-            subtitle: _currentCallInfo?.remoteNumber ?? '',
-            status: _callStatus,
-            statusColor: _statusColor,
-            duration: _callDuration,
-            isActive: true,
-          ),
-          const SizedBox(height: 12),
-          _buildCallCard(
-            avatar: _buildAvatar(icon: Icons.add),
-            title: 'Add another call',
-            subtitle: 'Tap to make a second call',
-            trailing: const Icon(Icons.arrow_forward_ios,
-                size: 14, color: Colors.white54),
-            isActive: false,
-          ),
-        ],
+  Widget _buildActiveCallsSection() => _buildCallCard(
+        avatar: _buildAvatar(hasPhoto: _hasPhoto, photo: _contactInfo?.photo),
+        title: _displayName,
+        subtitle: _currentCallInfo?.remoteNumber ?? '',
+        status: _callStatus,
+        statusColor: _statusColor,
+        duration: _callDuration,
+        isActive: !(_currentCallInfo?.isOnHold ?? false), // Show as inactive if on hold
       );
 
   Widget _buildCallCard({
