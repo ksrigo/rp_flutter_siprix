@@ -169,7 +169,32 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
         Future.delayed(const Duration(seconds: 3), () {
           _isAddingSecondCall = false;
         });
-        NavigationService.goToKeypad();
+
+        // Navigate to multi-call screen if we have an existing call, otherwise keypad
+        if (callId > 0 && _currentCallInfo != null) {
+          // We have an existing call, need to create CallInfo for the new call
+          final newCallInfo = CallInfo(
+            id: newCallId,
+            remoteNumber: _enteredNumber,
+            remoteName: _enteredNumber, // Will be updated by contact resolution
+            state: AppCallState.connecting,
+            startTime: DateTime.now(),
+            isIncoming: false,
+          );
+
+          // Navigate to multi-call screen with both calls
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => MultiCallScreen(
+                firstCall: _currentCallInfo!,
+                secondCall: newCallInfo,
+              ),
+            ),
+          );
+        } else {
+          // First call, navigate to keypad
+          NavigationService.goToKeypad();
+        }
       } else {
         _isAddingSecondCall = false;
       }

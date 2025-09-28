@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:siprix_voip_sdk/calls_model.dart';
 
 import '../../../../core/services/sip_service.dart';
 import '../../../../core/services/navigation_service.dart';
@@ -27,18 +28,14 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
   Timer? _timer;
   Map<String, ContactInfo?> _contactCache = {};
 
-  // Constants
-  static const _colors = (
+  // Constants - match call_action_screen styling
+  static const _cardColors = (
     primary: Color(0xFF8B5CF6),
     border: Color(0xFFD8B4FE),
-    activeBorder: Color(0xFFE879F9),
-    holdBorder: Color(0xFFF59E0B),
     avatar: Color(0xFFE6E6FA),
     avatarIcon: Color(0xFF6B46C1),
     active: Color(0xFF10B981),
     onHold: Color(0xFFF59E0B),
-    connecting: Color(0xFF3B82F6),
-    ringing: Color(0xFF8B5CF6),
   );
 
   @override
@@ -54,6 +51,7 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    SipService.instance.removeHoldEventListener(_handleHoldStateChange);
     super.dispose();
   }
 
@@ -110,12 +108,68 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
             _secondCall = callInfo;
           }
         });
+
+        // Check if one call has ended and navigate to single call screen
+        _checkForCallEnded();
+      }
+    });
+
+    // Listen to hold state changes
+    SipService.instance.addHoldEventListener(_handleHoldStateChange);
+  }
+
+  void _handleHoldStateChange(int callId, HoldState holdState) {
+    debugPrint('MultiCallScreen: Hold state changed - callId: $callId, holdState: $holdState');
+
+    if (!mounted) return;
+
+    setState(() {
+      final callIdStr = callId.toString();
+
+      // Update the corresponding CallInfo with new hold state
+      if (_firstCall.id == callIdStr) {
+        _firstCall = _firstCall.copyWith(
+          isOnHold: holdState != HoldState.none,
+          state: holdState != HoldState.none ? AppCallState.held : AppCallState.answered,
+        );
+      } else if (_secondCall.id == callIdStr) {
+        _secondCall = _secondCall.copyWith(
+          isOnHold: holdState != HoldState.none,
+          state: holdState != HoldState.none ? AppCallState.held : AppCallState.answered,
+        );
       }
     });
   }
 
-  CallInfo get _activeCall => _secondCall.state != AppCallState.ended ? _secondCall : _firstCall;
-  CallInfo get _holdCall => _firstCall.id != _activeCall.id ? _firstCall : _secondCall;
+  CallInfo get _activeCall {
+    // First check the SDK's switched call to determine which is active
+    final callsModel = SipService.instance.callsModel;
+    final switchedCallId = callsModel?.switchedCallId;
+
+    if (switchedCallId != null && switchedCallId > 0) {
+      final switchedCallIdStr = switchedCallId.toString();
+      if (_firstCall.id == switchedCallIdStr && _firstCall.state != AppCallState.ended) {
+        return _firstCall;
+      } else if (_secondCall.id == switchedCallIdStr && _secondCall.state != AppCallState.ended) {
+        return _secondCall;
+      }
+    }
+
+    // Fallback: Determine which call is currently active (not on hold and not ended)
+    if (_firstCall.state != AppCallState.ended && !_firstCall.isOnHold && _firstCall.state != AppCallState.held) {
+      return _firstCall;
+    } else if (_secondCall.state != AppCallState.ended && !_secondCall.isOnHold && _secondCall.state != AppCallState.held) {
+      return _secondCall;
+    }
+
+    // Final fallback to first non-ended call
+    return _firstCall.state != AppCallState.ended ? _firstCall : _secondCall;
+  }
+
+  CallInfo get _holdCall {
+    // Return the call that is NOT the active call
+    return _activeCall.id == _firstCall.id ? _secondCall : _firstCall;
+  }
 
   String _getDisplayName(CallInfo call) {
     final contact = _contactCache[call.id];
@@ -125,6 +179,9 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
   }
 
   String _getCallDuration(CallInfo call) {
+    // Don't show timer for calls that are on hold
+    if (call.isOnHold || call.state == AppCallState.held) return '';
+
     if (call.startTime == null || call.state != AppCallState.answered) return '00:00';
     final duration = DateTime.now().difference(call.startTime!);
     final minutes = duration.inMinutes.toString().padLeft(2, '0');
@@ -160,17 +217,17 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
       case AppCallState.none:
         return Colors.grey;
       case AppCallState.connecting:
-        return _colors.connecting;
+        return Colors.blue;
       case AppCallState.ringing:
-        return _colors.ringing;
+        return _cardColors.primary;
       case AppCallState.answered:
-        return call.isOnHold ? _colors.onHold : _colors.active;
+        return call.isOnHold ? _cardColors.onHold : _cardColors.active;
       case AppCallState.held:
-        return _colors.onHold;
+        return _cardColors.onHold;
       case AppCallState.muted:
-        return _colors.onHold; // Use same color as hold for muted state
+        return _cardColors.onHold; // Use same color as hold for muted state
       case AppCallState.reconnecting:
-        return _colors.connecting; // Use same color as connecting for reconnecting
+        return Colors.blue; // Use same color as connecting for reconnecting
       case AppCallState.ended:
       case AppCallState.failed:
         return Colors.red;
@@ -246,26 +303,65 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
     );
   }
 
+  void _onCallCardTap(CallInfo tappedCall) async {
+    try {
+      final callsModel = SipService.instance.callsModel;
+
+      // First put current active call on hold
+      await SipService.instance.holdCall(_activeCall.id);
+
+      // Then unhold the tapped call
+      await SipService.instance.unholdCall(tappedCall.id);
+
+      // Finally switch to the tapped call
+      await callsModel?.switchToCall(int.parse(tappedCall.id));
+    } catch (e) {
+      debugPrint('MultiCallScreen: Error switching calls: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to switch calls: $e')),
+        );
+      }
+    }
+  }
+
   void _onEndCall() async {
     try {
       // End the active call
       await SipService.instance.hangupCall(_activeCall.id);
-
-      // Navigate back or to single call screen depending on remaining calls
-      if (_holdCall.state != AppCallState.ended) {
-        // Navigate to single call screen with the remaining call
-        NavigationService.goToInCall(
-          _holdCall.id,
-          phoneNumber: _holdCall.remoteNumber,
-          contactName: _getDisplayName(_holdCall),
-        );
-      } else {
-        // Navigate back to main screen
-        NavigationService.goToKeypad();
-      }
+      // Navigation will be handled by _checkForCallEnded() when call state updates
     } catch (e) {
       debugPrint('MultiCallScreen: Error ending call: $e');
     }
+  }
+
+  void _checkForCallEnded() {
+    final firstEnded = _firstCall.state == AppCallState.ended;
+    final secondEnded = _secondCall.state == AppCallState.ended;
+
+    if (firstEnded && !secondEnded) {
+      // First call ended, navigate to single call screen with second call
+      _navigateToSingleCall(_secondCall);
+    } else if (secondEnded && !firstEnded) {
+      // Second call ended, navigate to single call screen with first call
+      _navigateToSingleCall(_firstCall);
+    } else if (firstEnded && secondEnded) {
+      // Both calls ended, navigate back to keypad
+      NavigationService.goToKeypad();
+    }
+  }
+
+  void _navigateToSingleCall(CallInfo remainingCall) {
+    // Add a small delay to ensure the call state has been properly updated
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted) {
+        NavigationService.goToInCall(
+          remainingCall.id,
+          phoneNumber: remainingCall.remoteNumber,
+          contactName: _getDisplayName(remainingCall),
+        );
+      }
+    });
   }
 
   @override
@@ -299,125 +395,167 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
   }
 
   Widget _buildCallCards() {
+    // Determine which calls are active vs hold, but keep original positions
+    final firstCallIsActive = _activeCall.id == _firstCall.id;
+    final secondCallIsActive = _activeCall.id == _secondCall.id;
+
     return Column(
       children: [
-        _buildCallCard(_holdCall, isActive: false),
-        const SizedBox(height: 16),
-        _buildCallCard(_activeCall, isActive: true),
+        // Always show first call in first position
+        if (_firstCall.state != AppCallState.ended)
+          _buildCallCard(
+            _firstCall,
+            isActive: firstCallIsActive,
+            onTap: firstCallIsActive ? null : () => _onCallCardTap(_firstCall)
+          ),
+        if (_firstCall.state != AppCallState.ended && _secondCall.state != AppCallState.ended)
+          const SizedBox(height: 16),
+
+        // Always show second call in second position
+        if (_secondCall.state != AppCallState.ended)
+          _buildCallCard(
+            _secondCall,
+            isActive: secondCallIsActive,
+            onTap: secondCallIsActive ? null : () => _onCallCardTap(_secondCall)
+          ),
       ],
     );
   }
 
-  Widget _buildCallCard(CallInfo call, {required bool isActive}) {
+  Widget _buildCallCard(CallInfo call, {required bool isActive, VoidCallback? onTap}) {
     final contact = _contactCache[call.id];
     final hasPhoto = contact?.hasPhoto == true && contact?.photo != null;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isActive
-            ? _colors.primary.withValues(alpha: 0.4)
-            : Colors.white.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isActive ? _colors.activeBorder : _colors.border.withValues(alpha: 0.3),
-          width: isActive ? 2 : 1,
-        ),
-        boxShadow: isActive
-            ? [
-                BoxShadow(
-                  color: _colors.activeBorder.withValues(alpha: 0.4),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
-                ),
-                BoxShadow(
-                  color: _colors.activeBorder.withValues(alpha: 0.2),
-                  blurRadius: 24,
-                  offset: const Offset(0, 8),
-                ),
-              ]
-            : null,
-      ),
-      child: Row(
-        children: [
-          _buildAvatar(call, hasPhoto: hasPhoto, photo: contact?.photo),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _getDisplayName(call),
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: isActive ? Colors.white : Colors.white.withValues(alpha: 0.8),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  call.remoteNumber,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                    color: isActive ? Colors.white.withValues(alpha: 0.9) : Colors.white.withValues(alpha: 0.6),
-                  ),
-                ),
-              ],
-            ),
+    // Use same color logic as call_action_screen
+    final colors = isActive
+        ? (_cardColors.primary.withValues(alpha: 0.4), _cardColors.border)
+        : (
+            Colors.white.withValues(alpha: 0.1),
+            Colors.white.withValues(alpha: 0.3)
+          );
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12), // Match call_action_screen
+          decoration: BoxDecoration(
+            color: colors.$1,
+            borderRadius: BorderRadius.circular(12), // Match call_action_screen
+            border: Border.all(color: colors.$2, width: isActive ? 2 : 1),
+            boxShadow: isActive
+                ? [
+                    BoxShadow(
+                      color: _cardColors.border.withValues(alpha: 0.6),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                    BoxShadow(
+                      color: _cardColors.border.withValues(alpha: 0.4),
+                      blurRadius: 24,
+                      offset: const Offset(0, 8),
+                    ),
+                  ]
+                : null, // No shadow for inactive cards like call_action_screen
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          child: Row(
             children: [
-              Text(
-                _getCallStatus(call),
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: _getStatusColor(call),
+              _buildAvatar(call, hasPhoto: hasPhoto, photo: contact?.photo),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _getDisplayName(call),
+                      style: TextStyle(
+                        fontSize: 16, // Match call_action_screen
+                        fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                        color: isActive
+                            ? Colors.white
+                            : Colors.white.withValues(alpha: 0.7),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 1), // Match call_action_screen
+                    Text(
+                      call.remoteNumber,
+                      style: TextStyle(
+                        fontSize: 12, // Match call_action_screen
+                        fontWeight: FontWeight.w400,
+                        color: isActive
+                            ? Colors.white.withValues(alpha: 0.8)
+                            : Colors.white.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 2),
-              Text(
-                _getCallDuration(call),
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w400,
-                  color: isActive ? Colors.white.withValues(alpha: 0.9) : Colors.white.withValues(alpha: 0.6),
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (!isActive && (call.isOnHold || call.state == AppCallState.held))
+                        Icon(
+                          Icons.pause_circle_filled,
+                          size: 12, // Smaller icon to match text size
+                          color: _cardColors.onHold,
+                        ),
+                      if (!isActive && (call.isOnHold || call.state == AppCallState.held))
+                        const SizedBox(width: 4),
+                      Text(
+                        _getCallStatus(call),
+                        style: TextStyle(
+                          fontSize: 12, // Match call_action_screen
+                          fontWeight: FontWeight.w600,
+                          color: _getStatusColor(call),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 1), // Match call_action_screen
+                  Text(
+                    _getCallDuration(call),
+                    style: TextStyle(
+                      fontSize: 12, // Match call_action_screen
+                      fontWeight: FontWeight.w400,
+                      color: Colors.white.withValues(alpha: 0.8), // Match call_action_screen
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
 
   Widget _buildAvatar(CallInfo call, {bool hasPhoto = false, Uint8List? photo}) {
     return Container(
-      width: 48,
-      height: 48,
+      width: 32, // Match call_action_screen
+      height: 32, // Match call_action_screen
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: _colors.avatar,
-        border: Border.all(color: Colors.white, width: 2),
+        color: _cardColors.avatar,
+        border: Border.all(color: Colors.white, width: 1.5), // Match call_action_screen
       ),
       child: CircleAvatar(
-        radius: 22,
-        backgroundColor: _colors.avatar,
+        radius: 16, // Match call_action_screen
+        backgroundColor: _cardColors.avatar,
         backgroundImage: hasPhoto ? MemoryImage(photo!) : null,
         child: hasPhoto
             ? null
-            : Text(
-                _getDisplayName(call).substring(0, 1).toUpperCase(),
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: _colors.avatarIcon,
-                ),
+            : Icon(
+                Icons.person,
+                size: 16, // Match call_action_screen
+                color: _cardColors.avatarIcon,
               ),
       ),
     );
