@@ -26,7 +26,6 @@ class MultiCallScreen extends ConsumerStatefulWidget {
 class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
   late CallInfo _firstCall;
   late CallInfo _secondCall;
-  Timer? _timer;
   Map<String, ContactInfo?> _contactCache = {};
   bool _isNavigating = false;
 
@@ -46,7 +45,6 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
     _firstCall = widget.firstCall;
     _secondCall = widget.secondCall;
     _loadContactInfo();
-    _startTimer();
 
     // Add CallsModel listener for all state updates
     final callsModel = SipService.instance.callsModel;
@@ -68,11 +66,10 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
 
   @override
   void dispose() {
-    _timer?.cancel();
     final callsModel = SipService.instance.callsModel;
     if (callsModel != null) {
       callsModel.removeListener(_onCallsModelChanged);
-      callsModel.onCallSwitchedCallback = null; // Clear the callback
+      callsModel.onCallSwitchedCallback = null;
     }
     super.dispose();
   }
@@ -106,27 +103,6 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
     }
   }
 
-  void _startTimer() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) {
-        setState(() {
-          // Update call durations
-          if (_firstCall.state == AppCallState.answered &&
-              _firstCall.startTime != null) {
-            _firstCall = _firstCall.copyWith(
-              startTime: _firstCall.startTime,
-            );
-          }
-          if (_secondCall.state == AppCallState.answered &&
-              _secondCall.startTime != null) {
-            _secondCall = _secondCall.copyWith(
-              startTime: _secondCall.startTime,
-            );
-          }
-        });
-      }
-    });
-  }
 
   void _onCallsModelChanged() {
     debugPrint('MultiCallScreen: CallsModel changed event triggered');
@@ -201,74 +177,44 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
   }
 
   AppCallState _mapCallStateToAppState(CallState callState) {
-    AppCallState result;
     switch (callState) {
       case CallState.dialing:
-        result = AppCallState.connecting;
-        break;
-      case CallState.proceeding:
-        result = AppCallState
-            .ringing; // Show as ringing for outgoing calls getting 180 Ringing
-        break;
-      case CallState.ringing:
-        result = AppCallState.ringing; // For incoming calls
-        break;
       case CallState.accepting:
-        result = AppCallState.connecting;
-        break;
+        return AppCallState.connecting;
+      case CallState.proceeding:
+      case CallState.ringing:
+        return AppCallState.ringing;
       case CallState.rejecting:
-        result = AppCallState.ended;
-        break;
-      case CallState.connected:
-        result = AppCallState.answered;
-        break;
       case CallState.disconnecting:
-        result = AppCallState.ended;
-        break;
+        return AppCallState.ended;
+      case CallState.connected:
+        return AppCallState.answered;
       case CallState.holding:
-        result = AppCallState.held;
-        break;
       case CallState.held:
-        result = AppCallState.held;
-        break;
+        return AppCallState.held;
       default:
-        result = AppCallState.none;
-        break;
+        return AppCallState.none;
     }
-    debugPrint(
-        'MultiCallScreen: Mapped CallState.$callState to AppCallState.$result');
-    return result;
   }
 
   CallInfo get _activeCall {
-    // First check the SDK's switched call to determine which is active
     final callsModel = SipService.instance.callsModel;
-    final switchedCallId = callsModel?.switchedCallId;
+    final switchedCall = callsModel?.switchedCall();
 
-    if (switchedCallId != null && switchedCallId > 0) {
-      final switchedCallIdStr = switchedCallId.toString();
-      if (_firstCall.id == switchedCallIdStr &&
-          _firstCall.state != AppCallState.ended) {
+    if (switchedCall != null) {
+      final switchedCallIdStr = switchedCall.myCallId.toString();
+      if (_firstCall.id == switchedCallIdStr && _firstCall.state != AppCallState.ended) {
         return _firstCall;
-      } else if (_secondCall.id == switchedCallIdStr &&
-          _secondCall.state != AppCallState.ended) {
+      } else if (_secondCall.id == switchedCallIdStr && _secondCall.state != AppCallState.ended) {
         return _secondCall;
       }
     }
 
-    // Fallback: Determine which call is currently active (not on hold and not ended)
-    if (_firstCall.state != AppCallState.ended &&
-        !_firstCall.isOnHold &&
-        _firstCall.state != AppCallState.held) {
+    // Fallback to first non-ended, non-held call
+    if (_firstCall.state != AppCallState.ended && !_firstCall.isOnHold) {
       return _firstCall;
-    } else if (_secondCall.state != AppCallState.ended &&
-        !_secondCall.isOnHold &&
-        _secondCall.state != AppCallState.held) {
-      return _secondCall;
     }
-
-    // Final fallback to first non-ended call
-    return _firstCall.state != AppCallState.ended ? _firstCall : _secondCall;
+    return _secondCall.state != AppCallState.ended ? _secondCall : _firstCall;
   }
 
   CallInfo get _holdCall {
@@ -286,13 +232,9 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
   }
 
   String _getCallDuration(CallInfo call) {
-    // Only show timer for connected (answered) calls
-    if (call.state != AppCallState.answered) return '';
-
-    // Don't show timer for calls that are on hold
-    if (call.isOnHold || call.state == AppCallState.held) return '';
-
-    if (call.startTime == null) return '';
+    if (call.state != AppCallState.answered || call.isOnHold || call.startTime == null) {
+      return '';
+    }
 
     final duration = DateTime.now().difference(call.startTime!);
     final minutes = duration.inMinutes.toString().padLeft(2, '0');
@@ -411,14 +353,6 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
   void _onCallCardTap(CallInfo tappedCall) async {
     try {
       final callsModel = SipService.instance.callsModel;
-
-      // First put current active call on hold
-      await SipService.instance.holdCall(_activeCall.id);
-
-      // Then unhold the tapped call
-      await SipService.instance.unholdCall(tappedCall.id);
-
-      // Finally switch to the tapped call
       await callsModel?.switchToCall(int.parse(tappedCall.id));
     } catch (e) {
       debugPrint('MultiCallScreen: Error switching calls: $e');
@@ -441,96 +375,38 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
   }
 
   void _checkForCallSwitched() {
-    // Prevent multiple navigation attempts
-    if (_isNavigating) {
-      debugPrint(
-          'MultiCallScreen: Navigation already in progress, skipping switched check');
-      return;
-    }
-
-    final callsModel = SipService.instance.callsModel;
-    if (callsModel == null) return;
-
-    final callCount = callsModel.length;
-    debugPrint(
-        'MultiCallScreen: Checking call switch - CallsModel has $callCount calls');
-
-    // If we have only 1 call remaining, navigate to single call screen
-    if (callCount == 1) {
-      final remainingCall = callsModel[0];
-      final callIdStr = remainingCall.myCallId.toString();
-
-      // Find which of our tracked calls is still active
-      CallInfo? activeCallInfo;
-      if (_firstCall.id == callIdStr &&
-          _firstCall.state != AppCallState.ended) {
-        activeCallInfo = _firstCall;
-      } else if (_secondCall.id == callIdStr &&
-          _secondCall.state != AppCallState.ended) {
-        activeCallInfo = _secondCall;
-      }
-
-      if (activeCallInfo != null) {
-        debugPrint(
-            'MultiCallScreen: Single call remaining (${activeCallInfo.id}), navigating to InCallScreen');
-        _navigateToSingleCall(activeCallInfo);
-      }
-    } else if (callCount == 0) {
-      // No calls remaining, navigate to keypad
-      debugPrint('MultiCallScreen: No calls remaining, navigating to keypad');
-      _isNavigating = true;
-      NavigationService.goToKeypad();
-    }
+    _checkCallCount();
   }
 
   void _checkForCallEnded() {
-    // Only handle the case where both calls ended simultaneously
-    // Single call termination is now handled by _checkForCallSwitched()
-    if (_isNavigating) {
-      debugPrint(
-          'MultiCallScreen: Navigation already in progress, skipping ended check');
-      return;
-    }
+    _checkCallCount();
+  }
 
-    // final firstEnded = _firstCall.state == AppCallState.ended;
-    // final secondEnded = _secondCall.state == AppCallState.ended;
-
-    // if (firstEnded && secondEnded) {
-    //   // Both calls ended, navigate back to keypad
-    //   debugPrint('MultiCallScreen: Both calls ended simultaneously, navigating to keypad');
-    //   _isNavigating = true;
-    //   NavigationService.goToKeypad();
-    // }
+  void _checkCallCount() {
+    if (_isNavigating) return;
 
     final callsModel = SipService.instance.callsModel;
     if (callsModel == null) return;
 
     final callCount = callsModel.length;
-    debugPrint(
-        'MultiCallScreen: Checking call switch - CallsModel has $callCount calls');
+    debugPrint('MultiCallScreen: CallsModel has $callCount calls');
 
-    // If we have only 1 call remaining, navigate to single call screen
     if (callCount == 1) {
       final remainingCall = callsModel[0];
       final callIdStr = remainingCall.myCallId.toString();
 
-      // Find which of our tracked calls is still active
       CallInfo? activeCallInfo;
-      if (_firstCall.id == callIdStr &&
-          _firstCall.state != AppCallState.ended) {
+      if (_firstCall.id == callIdStr && _firstCall.state != AppCallState.ended) {
         activeCallInfo = _firstCall;
-      } else if (_secondCall.id == callIdStr &&
-          _secondCall.state != AppCallState.ended) {
+      } else if (_secondCall.id == callIdStr && _secondCall.state != AppCallState.ended) {
         activeCallInfo = _secondCall;
       }
 
       if (activeCallInfo != null) {
-        debugPrint(
-            'MultiCallScreen: Single call remaining (${activeCallInfo.id}), navigating to InCallScreen');
+        debugPrint('MultiCallScreen: Navigating to single call screen');
         _navigateToSingleCall(activeCallInfo);
       }
     } else if (callCount == 0) {
-      // No calls remaining, navigate to keypad
       debugPrint('MultiCallScreen: No calls remaining, navigating to keypad');
       _isNavigating = true;
       NavigationService.goToKeypad();
