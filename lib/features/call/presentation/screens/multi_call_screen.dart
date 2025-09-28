@@ -66,7 +66,8 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
 
     try {
       if (!ContactService.instance.hasPermission) return;
-      final contactInfo = await ContactService.instance.findContactByPhoneNumber(call.remoteNumber);
+      final contactInfo = await ContactService.instance
+          .findContactByPhoneNumber(call.remoteNumber);
       if (mounted) {
         setState(() => _contactCache[callId] = contactInfo);
       }
@@ -80,12 +81,14 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
       if (mounted) {
         setState(() {
           // Update call durations
-          if (_firstCall.state == AppCallState.answered && _firstCall.startTime != null) {
+          if (_firstCall.state == AppCallState.answered &&
+              _firstCall.startTime != null) {
             _firstCall = _firstCall.copyWith(
               startTime: _firstCall.startTime,
             );
           }
-          if (_secondCall.state == AppCallState.answered && _secondCall.startTime != null) {
+          if (_secondCall.state == AppCallState.answered &&
+              _secondCall.startTime != null) {
             _secondCall = _secondCall.copyWith(
               startTime: _secondCall.startTime,
             );
@@ -119,7 +122,8 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
   }
 
   void _handleHoldStateChange(int callId, HoldState holdState) {
-    debugPrint('MultiCallScreen: Hold state changed - callId: $callId, holdState: $holdState');
+    debugPrint(
+        'MultiCallScreen: Hold state changed - callId: $callId, holdState: $holdState');
 
     if (!mounted) return;
 
@@ -130,12 +134,16 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
       if (_firstCall.id == callIdStr) {
         _firstCall = _firstCall.copyWith(
           isOnHold: holdState != HoldState.none,
-          state: holdState != HoldState.none ? AppCallState.held : AppCallState.answered,
+          state: holdState != HoldState.none
+              ? AppCallState.held
+              : AppCallState.answered,
         );
       } else if (_secondCall.id == callIdStr) {
         _secondCall = _secondCall.copyWith(
           isOnHold: holdState != HoldState.none,
-          state: holdState != HoldState.none ? AppCallState.held : AppCallState.answered,
+          state: holdState != HoldState.none
+              ? AppCallState.held
+              : AppCallState.answered,
         );
       }
     });
@@ -148,17 +156,23 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
 
     if (switchedCallId != null && switchedCallId > 0) {
       final switchedCallIdStr = switchedCallId.toString();
-      if (_firstCall.id == switchedCallIdStr && _firstCall.state != AppCallState.ended) {
+      if (_firstCall.id == switchedCallIdStr &&
+          _firstCall.state != AppCallState.ended) {
         return _firstCall;
-      } else if (_secondCall.id == switchedCallIdStr && _secondCall.state != AppCallState.ended) {
+      } else if (_secondCall.id == switchedCallIdStr &&
+          _secondCall.state != AppCallState.ended) {
         return _secondCall;
       }
     }
 
     // Fallback: Determine which call is currently active (not on hold and not ended)
-    if (_firstCall.state != AppCallState.ended && !_firstCall.isOnHold && _firstCall.state != AppCallState.held) {
+    if (_firstCall.state != AppCallState.ended &&
+        !_firstCall.isOnHold &&
+        _firstCall.state != AppCallState.held) {
       return _firstCall;
-    } else if (_secondCall.state != AppCallState.ended && !_secondCall.isOnHold && _secondCall.state != AppCallState.held) {
+    } else if (_secondCall.state != AppCallState.ended &&
+        !_secondCall.isOnHold &&
+        _secondCall.state != AppCallState.held) {
       return _secondCall;
     }
 
@@ -175,14 +189,17 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
     final contact = _contactCache[call.id];
     return contact?.displayName?.isNotEmpty == true
         ? contact!.displayName
-        : call.remoteName.isNotEmpty ? call.remoteName : call.remoteNumber;
+        : call.remoteName.isNotEmpty
+            ? call.remoteName
+            : call.remoteNumber;
   }
 
   String _getCallDuration(CallInfo call) {
     // Don't show timer for calls that are on hold
     if (call.isOnHold || call.state == AppCallState.held) return '';
 
-    if (call.startTime == null || call.state != AppCallState.answered) return '00:00';
+    if (call.startTime == null || call.state != AppCallState.answered)
+      return '00:00';
     final duration = DateTime.now().difference(call.startTime!);
     final minutes = duration.inMinutes.toString().padLeft(2, '0');
     final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
@@ -246,7 +263,8 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
   void _onSpeaker() async {
     try {
       final currentSpeakerState = _activeCall.isSpeakerOn;
-      await SipService.instance.setSpeaker(_activeCall.id, !currentSpeakerState);
+      await SipService.instance
+          .setSpeaker(_activeCall.id, !currentSpeakerState);
     } catch (e) {
       debugPrint('MultiCallScreen: Error toggling speaker: $e');
     }
@@ -276,20 +294,13 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
     );
   }
 
-  void _onAddCall() {
-    // Navigate back to call action screen for adding a third call
-    // For now, limit to 2 calls
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Maximum 2 calls supported')),
-    );
-  }
-
   void _onMergeCall() async {
     try {
       // Merge both calls into a conference
       // This would require conference functionality from Siprix
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Conference merge functionality coming soon')),
+        const SnackBar(
+            content: Text('Conference merge functionality coming soon')),
       );
     } catch (e) {
       debugPrint('MultiCallScreen: Error merging calls: $e');
@@ -372,7 +383,12 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF0A0A0A), Color(0xFF1A0B2E), Color(0xFF2D1B69), Color(0xFF4A1458)],
+            colors: [
+              Color(0xFF0A0A0A),
+              Color(0xFF1A0B2E),
+              Color(0xFF2D1B69),
+              Color(0xFF4A1458)
+            ],
             stops: [0.0, 0.3, 0.7, 1.0],
           ),
         ),
@@ -382,9 +398,10 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
             child: Column(
               children: [
                 _buildCallCards(),
-                const SizedBox(height: 40),
-                Expanded(child: _buildControlButtons()),
-                const SizedBox(height: 24),
+                const Spacer(), // Push control buttons towards bottom
+                _buildControlButtons(),
+                const SizedBox(
+                    height: 20), // Reduced spacing to End Call button
                 _buildEndCallButton(),
               ],
             ),
@@ -396,33 +413,36 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
 
   Widget _buildCallCards() {
     // Determine active styling based on hold state: if not on hold, show as active
-    final firstCallIsActive = !_firstCall.isOnHold && _firstCall.state != AppCallState.held;
-    final secondCallIsActive = !_secondCall.isOnHold && _secondCall.state != AppCallState.held;
+    final firstCallIsActive =
+        !_firstCall.isOnHold && _firstCall.state != AppCallState.held;
+    final secondCallIsActive =
+        !_secondCall.isOnHold && _secondCall.state != AppCallState.held;
 
     return Column(
       children: [
         // Always show first call in first position
         if (_firstCall.state != AppCallState.ended)
-          _buildCallCard(
-            _firstCall,
-            isActive: firstCallIsActive,
-            onTap: firstCallIsActive ? null : () => _onCallCardTap(_firstCall)
-          ),
-        if (_firstCall.state != AppCallState.ended && _secondCall.state != AppCallState.ended)
+          _buildCallCard(_firstCall,
+              isActive: firstCallIsActive,
+              onTap:
+                  firstCallIsActive ? null : () => _onCallCardTap(_firstCall)),
+        if (_firstCall.state != AppCallState.ended &&
+            _secondCall.state != AppCallState.ended)
           const SizedBox(height: 16),
 
         // Always show second call in second position
         if (_secondCall.state != AppCallState.ended)
-          _buildCallCard(
-            _secondCall,
-            isActive: secondCallIsActive,
-            onTap: secondCallIsActive ? null : () => _onCallCardTap(_secondCall)
-          ),
+          _buildCallCard(_secondCall,
+              isActive: secondCallIsActive,
+              onTap: secondCallIsActive
+                  ? null
+                  : () => _onCallCardTap(_secondCall)),
       ],
     );
   }
 
-  Widget _buildCallCard(CallInfo call, {required bool isActive, VoidCallback? onTap}) {
+  Widget _buildCallCard(CallInfo call,
+      {required bool isActive, VoidCallback? onTap}) {
     final contact = _contactCache[call.id];
     final hasPhoto = contact?.hasPhoto == true && contact?.photo != null;
 
@@ -473,7 +493,8 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
                       _getDisplayName(call),
                       style: TextStyle(
                         fontSize: 16, // Match call_action_screen
-                        fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                        fontWeight:
+                            isActive ? FontWeight.w600 : FontWeight.w500,
                         color: isActive
                             ? Colors.white
                             : Colors.white.withValues(alpha: 0.7),
@@ -501,13 +522,15 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (!isActive && (call.isOnHold || call.state == AppCallState.held))
+                      if (!isActive &&
+                          (call.isOnHold || call.state == AppCallState.held))
                         Icon(
                           Icons.pause_circle_filled,
                           size: 12, // Smaller icon to match text size
                           color: _cardColors.onHold,
                         ),
-                      if (!isActive && (call.isOnHold || call.state == AppCallState.held))
+                      if (!isActive &&
+                          (call.isOnHold || call.state == AppCallState.held))
                         const SizedBox(width: 4),
                       Text(
                         _getCallStatus(call),
@@ -525,7 +548,8 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
                     style: TextStyle(
                       fontSize: 12, // Match call_action_screen
                       fontWeight: FontWeight.w400,
-                      color: Colors.white.withValues(alpha: 0.8), // Match call_action_screen
+                      color: Colors.white
+                          .withValues(alpha: 0.8), // Match call_action_screen
                     ),
                   ),
                 ],
@@ -537,14 +561,16 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
     );
   }
 
-  Widget _buildAvatar(CallInfo call, {bool hasPhoto = false, Uint8List? photo}) {
+  Widget _buildAvatar(CallInfo call,
+      {bool hasPhoto = false, Uint8List? photo}) {
     return Container(
       width: 32, // Match call_action_screen
       height: 32, // Match call_action_screen
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: _cardColors.avatar,
-        border: Border.all(color: Colors.white, width: 1.5), // Match call_action_screen
+        border: Border.all(
+            color: Colors.white, width: 1.5), // Match call_action_screen
       ),
       child: CircleAvatar(
         radius: 16, // Match call_action_screen
@@ -589,7 +615,7 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
           ],
         ),
         const SizedBox(height: 24),
-        // Second row: Keypad, Add Call, Merge Call
+        // Second row: Keypad, Transfer, Merge Call
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
@@ -599,9 +625,9 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
               onPressed: _onKeypad,
             ),
             _buildControlButton(
-              icon: Icons.person_add,
-              label: 'Add Call',
-              onPressed: _onAddCall,
+              icon: Icons.call_split,
+              label: 'Transfer',
+              onPressed: _onTransfer,
             ),
             _buildControlButton(
               icon: Icons.call_merge,
@@ -609,13 +635,6 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
               onPressed: _onMergeCall,
             ),
           ],
-        ),
-        const SizedBox(height: 24),
-        // Third row: Transfer (centered)
-        _buildControlButton(
-          icon: Icons.call_split,
-          label: 'Transfer',
-          onPressed: _onTransfer,
         ),
       ],
     );
@@ -639,7 +658,8 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
                 ? Colors.white.withValues(alpha: 0.3)
                 : Colors.white.withValues(alpha: 0.15),
             border: isActive
-                ? Border.all(color: Colors.white.withValues(alpha: 0.5), width: 2)
+                ? Border.all(
+                    color: Colors.white.withValues(alpha: 0.5), width: 2)
                 : null,
           ),
           child: Material(
