@@ -45,7 +45,19 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
     _secondCall = widget.secondCall;
     _loadContactInfo();
     _startTimer();
-    _listenToCallUpdates();
+
+    // Add CallsModel listener for all state updates
+    final callsModel = SipService.instance.callsModel;
+    if (callsModel != null) {
+      debugPrint('MultiCallScreen: Adding listener to CallsModel with ${callsModel.length} calls');
+      callsModel.addListener(_onCallsModelChanged);
+
+      // Trigger initial state update
+      debugPrint('MultiCallScreen: Triggering initial state update');
+      _onCallsModelChanged();
+    } else {
+      debugPrint('MultiCallScreen: CallsModel is null, cannot add listener');
+    }
   }
 
   @override
@@ -101,42 +113,6 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
     });
   }
 
-  void _listenToCallUpdates() {
-    // Listen to SIP service for call state updates
-    SipService.instance.currentCallStream.listen((callInfo) {
-      if (callInfo == null) return;
-
-      if (mounted) {
-        setState(() {
-          if (callInfo.id == _firstCall.id) {
-            _firstCall = callInfo;
-          } else if (callInfo.id == _secondCall.id) {
-            _secondCall = callInfo;
-          }
-        });
-
-        // Check if one call has ended and navigate to single call screen
-        _checkForCallEnded();
-      }
-    });
-
-    // Listen to all call state changes from the CallsModel (includes hold states)
-    _listenToCallsModelUpdates();
-  }
-
-  void _listenToCallsModelUpdates() {
-    final callsModel = SipService.instance.callsModel;
-    if (callsModel != null) {
-      debugPrint('MultiCallScreen: Adding listener to CallsModel with ${callsModel.length} calls');
-      callsModel.addListener(_onCallsModelChanged);
-
-      // Trigger initial state update
-      debugPrint('MultiCallScreen: Triggering initial state update');
-      _onCallsModelChanged();
-    } else {
-      debugPrint('MultiCallScreen: CallsModel is null, cannot add listener');
-    }
-  }
 
   void _onCallsModelChanged() {
     debugPrint('MultiCallScreen: CallsModel changed event triggered');
@@ -154,6 +130,10 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
 
     debugPrint('MultiCallScreen: CallsModel has ${callsModel.length} calls');
 
+    // Track calls that are still in the model
+    bool firstCallStillExists = false;
+    bool secondCallStillExists = false;
+
     setState(() {
       // Update call states and hold states from CallsModel
       for (int i = 0; i < callsModel.length; i++) {
@@ -167,12 +147,14 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
         final newAppState = _mapCallStateToAppState(call.state);
 
         if (callIdStr == _firstCall.id) {
+          firstCallStillExists = true;
           debugPrint('MultiCallScreen: Updating first call $callIdStr - from ${_firstCall.state} to $newAppState, hold: $isOnHold');
           _firstCall = _firstCall.copyWith(
             state: newAppState,
             isOnHold: isOnHold,
           );
         } else if (callIdStr == _secondCall.id) {
+          secondCallStillExists = true;
           debugPrint('MultiCallScreen: Updating second call $callIdStr - from ${_secondCall.state} to $newAppState, hold: $isOnHold');
           _secondCall = _secondCall.copyWith(
             state: newAppState,
@@ -182,7 +164,20 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
           debugPrint('MultiCallScreen: Call $callIdStr does not match any tracked calls (first: ${_firstCall.id}, second: ${_secondCall.id})');
         }
       }
+
+      // Mark calls as ended if they're no longer in the CallsModel
+      if (!firstCallStillExists && _firstCall.state != AppCallState.ended) {
+        debugPrint('MultiCallScreen: First call ${_firstCall.id} no longer exists in CallsModel, marking as ended');
+        _firstCall = _firstCall.copyWith(state: AppCallState.ended);
+      }
+      if (!secondCallStillExists && _secondCall.state != AppCallState.ended) {
+        debugPrint('MultiCallScreen: Second call ${_secondCall.id} no longer exists in CallsModel, marking as ended');
+        _secondCall = _secondCall.copyWith(state: AppCallState.ended);
+      }
     });
+
+    // Check if we need to navigate after state updates
+    _checkForCallEnded();
   }
 
   AppCallState _mapCallStateToAppState(CallState callState) {
@@ -440,9 +435,32 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
     }
   }
 
-  void _navigateToSingleCall(CallInfo remainingCall) {
-    // Add a small delay to ensure the call state has been properly updated
-    Future.delayed(const Duration(milliseconds: 100), () {
+  void _navigateToSingleCall(CallInfo remainingCall) async {
+    debugPrint('MultiCallScreen: Navigating to single call - callId: ${remainingCall.id}, isOnHold: ${remainingCall.isOnHold}');
+
+    try {
+      // If the remaining call is on hold, unhold it first
+      if (remainingCall.isOnHold || remainingCall.state == AppCallState.held) {
+        debugPrint('MultiCallScreen: Unholding remaining call ${remainingCall.id}');
+        await SipService.instance.unholdCall(remainingCall.id);
+
+        // Wait a bit for the unhold to take effect
+        await Future.delayed(const Duration(milliseconds: 200));
+      }
+
+      // Navigate to single call screen
+      if (mounted) {
+        debugPrint('MultiCallScreen: Navigating to InCallScreen for call ${remainingCall.id}');
+        NavigationService.goToInCall(
+          remainingCall.id,
+          phoneNumber: remainingCall.remoteNumber,
+          contactName: _getDisplayName(remainingCall),
+        );
+      }
+    } catch (e) {
+      debugPrint('MultiCallScreen: Error in _navigateToSingleCall: $e');
+
+      // Navigate anyway even if unhold fails
       if (mounted) {
         NavigationService.goToInCall(
           remainingCall.id,
@@ -450,7 +468,7 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
           contactName: _getDisplayName(remainingCall),
         );
       }
-    });
+    }
   }
 
   @override
