@@ -206,8 +206,18 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
           }
         }
       } else if (callInfo == null && mounted) {
-        // Call terminated - close the screen
+        // Call terminated - check if we should close the screen
         _callTimer?.cancel();
+
+        // Check if there are multiple calls - if so, let MultiCallScreen handle navigation
+        final callsModel = SipService.instance.callsModel;
+        final remainingCalls = callsModel?.length ?? 0;
+
+        if (remainingCalls > 1) {
+          debugPrint(
+              'InCallScreen: Call terminated but $remainingCalls calls remain - letting MultiCallScreen handle navigation');
+          return; // Don't navigate, let MultiCallScreen handle it
+        }
 
         // Prevent multiple navigation attempts
         if (!_isNavigatingAway) {

@@ -7,6 +7,7 @@ import 'package:siprix_voip_sdk/calls_model.dart';
 import '../../../../core/services/sip_service.dart';
 import '../../../../core/services/navigation_service.dart';
 import '../../../../core/services/contact_service.dart';
+import 'in_call_screen.dart';
 
 class MultiCallScreen extends ConsumerStatefulWidget {
   final CallInfo firstCall;
@@ -27,6 +28,7 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
   late CallInfo _secondCall;
   Timer? _timer;
   Map<String, ContactInfo?> _contactCache = {};
+  bool _isNavigating = false;
 
   // Constants - match call_action_screen styling
   static const _cardColors = (
@@ -49,8 +51,12 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
     // Add CallsModel listener for all state updates
     final callsModel = SipService.instance.callsModel;
     if (callsModel != null) {
-      debugPrint('MultiCallScreen: Adding listener to CallsModel with ${callsModel.length} calls');
+      debugPrint(
+          'MultiCallScreen: Adding listener to CallsModel with ${callsModel.length} calls');
       callsModel.addListener(_onCallsModelChanged);
+
+      // Set up switched event callback specifically for call switching navigation
+      callsModel.onCallSwitchedCallback = _onCallSwitched;
 
       // Trigger initial state update
       debugPrint('MultiCallScreen: Triggering initial state update');
@@ -66,8 +72,17 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
     final callsModel = SipService.instance.callsModel;
     if (callsModel != null) {
       callsModel.removeListener(_onCallsModelChanged);
+      callsModel.onCallSwitchedCallback = null; // Clear the callback
     }
     super.dispose();
+  }
+
+  void _onCallSwitched(int callId) {
+    debugPrint(
+        'MultiCallScreen: Call switched event received - callId: $callId');
+
+    // Only check for call switching on actual switched events
+    _checkForCallSwitched();
   }
 
   void _loadContactInfo() async {
@@ -113,7 +128,6 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
     });
   }
 
-
   void _onCallsModelChanged() {
     debugPrint('MultiCallScreen: CallsModel changed event triggered');
 
@@ -140,7 +154,8 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
         final call = callsModel[i];
         final callIdStr = call.myCallId.toString();
 
-        debugPrint('MultiCallScreen: Processing call $callIdStr - SDK state: ${call.state}, hold: ${call.isLocalHold || call.isRemoteHold}');
+        debugPrint(
+            'MultiCallScreen: Processing call $callIdStr - SDK state: ${call.state}, hold: ${call.isLocalHold || call.isRemoteHold}');
 
         // Determine if call is on hold (local or remote hold)
         final isOnHold = call.isLocalHold || call.isRemoteHold;
@@ -148,30 +163,35 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
 
         if (callIdStr == _firstCall.id) {
           firstCallStillExists = true;
-          debugPrint('MultiCallScreen: Updating first call $callIdStr - from ${_firstCall.state} to $newAppState, hold: $isOnHold');
+          debugPrint(
+              'MultiCallScreen: Updating first call $callIdStr - from ${_firstCall.state} to $newAppState, hold: $isOnHold');
           _firstCall = _firstCall.copyWith(
             state: newAppState,
             isOnHold: isOnHold,
           );
         } else if (callIdStr == _secondCall.id) {
           secondCallStillExists = true;
-          debugPrint('MultiCallScreen: Updating second call $callIdStr - from ${_secondCall.state} to $newAppState, hold: $isOnHold');
+          debugPrint(
+              'MultiCallScreen: Updating second call $callIdStr - from ${_secondCall.state} to $newAppState, hold: $isOnHold');
           _secondCall = _secondCall.copyWith(
             state: newAppState,
             isOnHold: isOnHold,
           );
         } else {
-          debugPrint('MultiCallScreen: Call $callIdStr does not match any tracked calls (first: ${_firstCall.id}, second: ${_secondCall.id})');
+          debugPrint(
+              'MultiCallScreen: Call $callIdStr does not match any tracked calls (first: ${_firstCall.id}, second: ${_secondCall.id})');
         }
       }
 
       // Mark calls as ended if they're no longer in the CallsModel
       if (!firstCallStillExists && _firstCall.state != AppCallState.ended) {
-        debugPrint('MultiCallScreen: First call ${_firstCall.id} no longer exists in CallsModel, marking as ended');
+        debugPrint(
+            'MultiCallScreen: First call ${_firstCall.id} no longer exists in CallsModel, marking as ended');
         _firstCall = _firstCall.copyWith(state: AppCallState.ended);
       }
       if (!secondCallStillExists && _secondCall.state != AppCallState.ended) {
-        debugPrint('MultiCallScreen: Second call ${_secondCall.id} no longer exists in CallsModel, marking as ended');
+        debugPrint(
+            'MultiCallScreen: Second call ${_secondCall.id} no longer exists in CallsModel, marking as ended');
         _secondCall = _secondCall.copyWith(state: AppCallState.ended);
       }
     });
@@ -187,7 +207,8 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
         result = AppCallState.connecting;
         break;
       case CallState.proceeding:
-        result = AppCallState.ringing; // Show as ringing for outgoing calls getting 180 Ringing
+        result = AppCallState
+            .ringing; // Show as ringing for outgoing calls getting 180 Ringing
         break;
       case CallState.ringing:
         result = AppCallState.ringing; // For incoming calls
@@ -214,10 +235,10 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
         result = AppCallState.none;
         break;
     }
-    debugPrint('MultiCallScreen: Mapped CallState.$callState to AppCallState.$result');
+    debugPrint(
+        'MultiCallScreen: Mapped CallState.$callState to AppCallState.$result');
     return result;
   }
-
 
   CallInfo get _activeCall {
     // First check the SDK's switched call to determine which is active
@@ -419,42 +440,130 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
     }
   }
 
-  void _checkForCallEnded() {
-    final firstEnded = _firstCall.state == AppCallState.ended;
-    final secondEnded = _secondCall.state == AppCallState.ended;
+  void _checkForCallSwitched() {
+    // Prevent multiple navigation attempts
+    if (_isNavigating) {
+      debugPrint(
+          'MultiCallScreen: Navigation already in progress, skipping switched check');
+      return;
+    }
 
-    if (firstEnded && !secondEnded) {
-      // First call ended, navigate to single call screen with second call
-      _navigateToSingleCall(_secondCall);
-    } else if (secondEnded && !firstEnded) {
-      // Second call ended, navigate to single call screen with first call
-      _navigateToSingleCall(_firstCall);
-    } else if (firstEnded && secondEnded) {
-      // Both calls ended, navigate back to keypad
+    final callsModel = SipService.instance.callsModel;
+    if (callsModel == null) return;
+
+    final callCount = callsModel.length;
+    debugPrint(
+        'MultiCallScreen: Checking call switch - CallsModel has $callCount calls');
+
+    // If we have only 1 call remaining, navigate to single call screen
+    if (callCount == 1) {
+      final remainingCall = callsModel[0];
+      final callIdStr = remainingCall.myCallId.toString();
+
+      // Find which of our tracked calls is still active
+      CallInfo? activeCallInfo;
+      if (_firstCall.id == callIdStr &&
+          _firstCall.state != AppCallState.ended) {
+        activeCallInfo = _firstCall;
+      } else if (_secondCall.id == callIdStr &&
+          _secondCall.state != AppCallState.ended) {
+        activeCallInfo = _secondCall;
+      }
+
+      if (activeCallInfo != null) {
+        debugPrint(
+            'MultiCallScreen: Single call remaining (${activeCallInfo.id}), navigating to InCallScreen');
+        _navigateToSingleCall(activeCallInfo);
+      }
+    } else if (callCount == 0) {
+      // No calls remaining, navigate to keypad
+      debugPrint('MultiCallScreen: No calls remaining, navigating to keypad');
+      _isNavigating = true;
+      NavigationService.goToKeypad();
+    }
+  }
+
+  void _checkForCallEnded() {
+    // Only handle the case where both calls ended simultaneously
+    // Single call termination is now handled by _checkForCallSwitched()
+    if (_isNavigating) {
+      debugPrint(
+          'MultiCallScreen: Navigation already in progress, skipping ended check');
+      return;
+    }
+
+    // final firstEnded = _firstCall.state == AppCallState.ended;
+    // final secondEnded = _secondCall.state == AppCallState.ended;
+
+    // if (firstEnded && secondEnded) {
+    //   // Both calls ended, navigate back to keypad
+    //   debugPrint('MultiCallScreen: Both calls ended simultaneously, navigating to keypad');
+    //   _isNavigating = true;
+    //   NavigationService.goToKeypad();
+    // }
+
+    final callsModel = SipService.instance.callsModel;
+    if (callsModel == null) return;
+
+    final callCount = callsModel.length;
+    debugPrint(
+        'MultiCallScreen: Checking call switch - CallsModel has $callCount calls');
+
+    // If we have only 1 call remaining, navigate to single call screen
+    if (callCount == 1) {
+      final remainingCall = callsModel[0];
+      final callIdStr = remainingCall.myCallId.toString();
+
+      // Find which of our tracked calls is still active
+      CallInfo? activeCallInfo;
+      if (_firstCall.id == callIdStr &&
+          _firstCall.state != AppCallState.ended) {
+        activeCallInfo = _firstCall;
+      } else if (_secondCall.id == callIdStr &&
+          _secondCall.state != AppCallState.ended) {
+        activeCallInfo = _secondCall;
+      }
+
+      if (activeCallInfo != null) {
+        debugPrint(
+            'MultiCallScreen: Single call remaining (${activeCallInfo.id}), navigating to InCallScreen');
+        _navigateToSingleCall(activeCallInfo);
+      }
+    } else if (callCount == 0) {
+      // No calls remaining, navigate to keypad
+      debugPrint('MultiCallScreen: No calls remaining, navigating to keypad');
+      _isNavigating = true;
       NavigationService.goToKeypad();
     }
   }
 
   void _navigateToSingleCall(CallInfo remainingCall) async {
-    debugPrint('MultiCallScreen: Navigating to single call - callId: ${remainingCall.id}, isOnHold: ${remainingCall.isOnHold}');
+    debugPrint(
+        'MultiCallScreen: Navigating to single call - callId: ${remainingCall.id}, isOnHold: ${remainingCall.isOnHold}');
 
     try {
       // If the remaining call is on hold, unhold it first
       if (remainingCall.isOnHold || remainingCall.state == AppCallState.held) {
-        debugPrint('MultiCallScreen: Unholding remaining call ${remainingCall.id}');
+        debugPrint(
+            'MultiCallScreen: Unholding remaining call ${remainingCall.id}');
         await SipService.instance.unholdCall(remainingCall.id);
 
         // Wait a bit for the unhold to take effect
         await Future.delayed(const Duration(milliseconds: 200));
       }
 
-      // Navigate to single call screen
+      // Navigate to single call screen using Navigator (not GoRouter) since we're in Navigator stack
       if (mounted) {
-        debugPrint('MultiCallScreen: Navigating to InCallScreen for call ${remainingCall.id}');
-        NavigationService.goToInCall(
-          remainingCall.id,
-          phoneNumber: remainingCall.remoteNumber,
-          contactName: _getDisplayName(remainingCall),
+        debugPrint(
+            'MultiCallScreen: Navigating to InCallScreen for call ${remainingCall.id}');
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => InCallScreen(
+              callId: remainingCall.id,
+              phoneNumber: remainingCall.remoteNumber,
+              contactName: _getDisplayName(remainingCall),
+            ),
+          ),
         );
       }
     } catch (e) {
@@ -462,10 +571,14 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
 
       // Navigate anyway even if unhold fails
       if (mounted) {
-        NavigationService.goToInCall(
-          remainingCall.id,
-          phoneNumber: remainingCall.remoteNumber,
-          contactName: _getDisplayName(remainingCall),
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => InCallScreen(
+              callId: remainingCall.id,
+              phoneNumber: remainingCall.remoteNumber,
+              contactName: _getDisplayName(remainingCall),
+            ),
+          ),
         );
       }
     }
@@ -658,12 +771,14 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: isActive
-          ? Colors.white.withValues(alpha: 0.9) // White background for active cards
-          : statusColor.withValues(alpha: 0.2), // Colored background for inactive cards
+            ? Colors.white
+                .withValues(alpha: 0.9) // White background for active cards
+            : statusColor.withValues(
+                alpha: 0.2), // Colored background for inactive cards
         borderRadius: BorderRadius.circular(8),
         border: isActive
-          ? null
-          : Border.all(color: statusColor.withValues(alpha: 0.4), width: 0.5),
+            ? null
+            : Border.all(color: statusColor.withValues(alpha: 0.4), width: 0.5),
       ),
       child: Text(
         status,
@@ -671,8 +786,8 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
           fontSize: 10, // Slightly smaller for chip
           fontWeight: FontWeight.w600,
           color: isActive
-            ? statusColor // Colored text on white background
-            : statusColor, // Colored text on colored background
+              ? statusColor // Colored text on white background
+              : statusColor, // Colored text on colored background
         ),
       ),
     );

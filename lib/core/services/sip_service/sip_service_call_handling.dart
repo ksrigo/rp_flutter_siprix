@@ -262,10 +262,18 @@ mixin _SipServiceCallHandling on _SipServiceBase {
   void _handleCallTerminated(int callId) {
     debugPrint('SIP Service: Handling call terminated - callId: $callId');
 
-    // Clear current call and cleanup
+    // Clear caller cache and stop timer for the terminated call
     _callerInfoCache.clear();
     _stopCallDurationTimer();
-    _updateCurrentCall(null);
+
+    // Only clear current call if no calls remain in CallsModel
+    final remainingCalls = _callsModel?.length ?? 0;
+    if (remainingCalls == 0) {
+      debugPrint('SIP Service: No calls remaining, clearing current call');
+      _updateCurrentCall(null);
+    } else {
+      debugPrint('SIP Service: $remainingCalls calls still remain, keeping current call');
+    }
 
     // Reset hangup flag after brief delay
     Timer(const Duration(milliseconds: 100), () => _isHangingUp = false);
@@ -275,8 +283,14 @@ mixin _SipServiceCallHandling on _SipServiceBase {
     debugPrint('SIP Service: Handling call switched - callId: $callId');
 
     if (callId == 0) {
-      // No active calls
-      _updateCurrentCall(null);
+      // No active calls - but check if any calls remain (might be held)
+      final remainingCalls = _callsModel?.length ?? 0;
+      if (remainingCalls == 0) {
+        debugPrint('SIP Service: No calls remaining after switch, clearing current call');
+        _updateCurrentCall(null);
+      } else {
+        debugPrint('SIP Service: No active call but $remainingCalls calls remain (likely held), keeping current call');
+      }
     } else {
       // Sync with the active call
       _syncCurrentCallFromModel();
@@ -305,9 +319,16 @@ mixin _SipServiceCallHandling on _SipServiceBase {
       debugPrint('SIP Service: Syncing active call ${activeCall.myCallId}');
       _syncCurrentCallFromModel();
     } else if (currentCall != null) {
-      debugPrint(
-          'SIP Service: No active call in CallsModel, clearing current call');
-      _updateCurrentCall(null);
+      // Check if there are any calls remaining (active or held) before clearing
+      final totalCalls = _callsModel!.length;
+      if (totalCalls == 0) {
+        debugPrint(
+            'SIP Service: No calls remaining in CallsModel, clearing current call');
+        _updateCurrentCall(null);
+      } else {
+        debugPrint(
+            'SIP Service: No active call but $totalCalls calls remain (likely held), keeping current call');
+      }
     }
   }
 
