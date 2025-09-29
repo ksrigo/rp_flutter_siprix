@@ -227,7 +227,24 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
     }
   }
 
-  void _goBack() => Navigator.of(context).pop();
+  void _goBack() async {
+    try {
+      // If we have an active call that's on hold, unhold it before going back
+      if (_currentCallInfo != null && _currentCallInfo!.isOnHold) {
+        debugPrint('CallActionScreen: Unholding call ${_currentCallInfo!.id} before going back');
+        final callObj = SipService.instance.findCallByCallId(_currentCallInfo!.id);
+        if (callObj != null) {
+          await callObj.hold(); // Toggle to unhold
+        }
+      }
+    } catch (e) {
+      debugPrint('CallActionScreen: Error unholding call on back: $e');
+    } finally {
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

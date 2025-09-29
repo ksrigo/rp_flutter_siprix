@@ -597,6 +597,13 @@ mixin _SipServiceCallHandling on _SipServiceBase {
           orElse: () => devices.first,
         );
         await _siprixSdk!.setPlayoutDevice(targetDevice.index);
+
+        // Update the current call state to reflect the speaker change
+        if (_currentCall != null && _currentCall!.id == callId) {
+          final updatedCall = _currentCall!.copyWith(isSpeakerOn: speaker);
+          _updateCurrentCall(updatedCall);
+          debugPrint('SIP Service: Updated speaker state to $speaker for call $callId');
+        }
       }
     } catch (e) {
       debugPrint('Set speaker failed: $e');
