@@ -131,27 +131,30 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
         final callIdStr = call.myCallId.toString();
 
         debugPrint(
-            'MultiCallScreen: Processing call $callIdStr - SDK state: ${call.state}, hold: ${call.isLocalHold || call.isRemoteHold}');
+            'MultiCallScreen: Processing call $callIdStr - SDK state: ${call.state}, hold: ${call.isLocalHold || call.isRemoteHold}, muted: ${call.isMicMuted}');
 
         // Determine if call is on hold (local or remote hold)
         final isOnHold = call.isLocalHold || call.isRemoteHold;
+        final isMuted = call.isMicMuted;
         final newAppState = _mapCallStateToAppState(call.state);
 
         if (callIdStr == _firstCall.id) {
           firstCallStillExists = true;
           debugPrint(
-              'MultiCallScreen: Updating first call $callIdStr - from ${_firstCall.state} to $newAppState, hold: $isOnHold');
+              'MultiCallScreen: Updating first call $callIdStr - from ${_firstCall.state} to $newAppState, hold: $isOnHold, muted: $isMuted');
           _firstCall = _firstCall.copyWith(
             state: newAppState,
             isOnHold: isOnHold,
+            isMuted: isMuted,
           );
         } else if (callIdStr == _secondCall.id) {
           secondCallStillExists = true;
           debugPrint(
-              'MultiCallScreen: Updating second call $callIdStr - from ${_secondCall.state} to $newAppState, hold: $isOnHold');
+              'MultiCallScreen: Updating second call $callIdStr - from ${_secondCall.state} to $newAppState, hold: $isOnHold, muted: $isMuted');
           _secondCall = _secondCall.copyWith(
             state: newAppState,
             isOnHold: isOnHold,
+            isMuted: isMuted,
           );
         } else {
           debugPrint(
@@ -289,10 +292,45 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
 
   void _onMute() async {
     try {
-      final currentMuteState = _activeCall.isMuted;
-      await SipService.instance.muteCall(_activeCall.id, !currentMuteState);
+      debugPrint('MultiCallScreen: Toggling mute for active call ${_activeCall.id}');
+
+      // Find the active call object
+      final activeCallObj = SipService.instance.findCallByCallId(_activeCall.id);
+      if (activeCallObj == null) {
+        debugPrint('MultiCallScreen: Could not find active call object');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to toggle mute: Call not found')),
+          );
+        }
+        return;
+      }
+
+      // Toggle mute state using CallModel's muteMic method
+      final newMuteState = !activeCallObj.isMicMuted;
+      debugPrint('MultiCallScreen: Setting mute to $newMuteState');
+      await activeCallObj.muteMic(newMuteState);
+
+      debugPrint('MultiCallScreen: Mute toggled successfully');
+
+      // Manually update the UI since SDK doesn't fire an event for mute changes
+      if (mounted) {
+        setState(() {
+          // Update the call that was muted
+          if (_firstCall.id == _activeCall.id) {
+            _firstCall = _firstCall.copyWith(isMuted: newMuteState);
+          } else if (_secondCall.id == _activeCall.id) {
+            _secondCall = _secondCall.copyWith(isMuted: newMuteState);
+          }
+        });
+      }
     } catch (e) {
       debugPrint('MultiCallScreen: Error toggling mute: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to toggle mute: $e')),
+        );
+      }
     }
   }
 
