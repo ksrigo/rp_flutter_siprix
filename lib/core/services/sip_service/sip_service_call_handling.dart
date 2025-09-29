@@ -62,6 +62,7 @@ mixin _SipServiceCallHandling on _SipServiceBase {
       _callsModel!.onCallTerminatedCallback = _handleCallTerminated;
       _callsModel!.onCallSwitchedCallback = _handleCallSwitched;
       _callsModel!.onCallHeldCallback = _handleCallHeld;
+      _callsModel!.onCallProceedingCallback = _handleCallProceeding;
       debugPrint('SIP Service: AppCallsModel callbacks set successfully');
 
       // Set up CallStateListener to route events to AppCallsModel
@@ -308,6 +309,28 @@ mixin _SipServiceCallHandling on _SipServiceBase {
 
     // Notify any listeners about the hold state change
     notifyListeners();
+  }
+
+  void _handleCallProceeding(int callId, String response) {
+    debugPrint('SIP Service: Handling call proceeding - callId: $callId, response: $response');
+
+    // Parse the SIP response code (e.g., "180 Ringing" -> 180)
+    final responseCode = int.tryParse(response.split(' ').first) ?? 0;
+
+    // Only update to ringing state for 180 (Ringing) or 183 (Session Progress)
+    if (responseCode == 180 || responseCode == 183) {
+      // Find and update the current call to ringing state
+      if (_currentCall?.id == callId.toString()) {
+        final updatedCall = _currentCall!.copyWith(
+          state: AppCallState.ringing,
+        );
+        _updateCurrentCall(updatedCall);
+      }
+    }
+    // For other response codes (like 100), keep the current state or sync from model
+    else {
+      _syncCurrentCallFromModel();
+    }
   }
 
   /// Sync current call when CallsModel structure changes (add/remove calls)
@@ -760,7 +783,7 @@ mixin _SipServiceCallHandling on _SipServiceBase {
       case CallState.dialing:
         return AppCallState.connecting;
       case CallState.proceeding:
-        return AppCallState.connecting;
+        return AppCallState.connecting; // Will be updated to ringing based on SIP response
       case CallState.ringing:
         return AppCallState.ringing;
       case CallState.rejecting:
