@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,6 +29,7 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
   late CallInfo _secondCall;
   Map<String, ContactInfo?> _contactCache = {};
   bool _isNavigating = false;
+  StreamSubscription<CallInfo?>? _currentCallSubscription;
 
   // Constants - match call_action_screen styling
   static const _cardColors = (
@@ -45,6 +47,16 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
     _firstCall = widget.firstCall;
     _secondCall = widget.secondCall;
     _loadContactInfo();
+
+    // Sync initial speaker state from SipService
+    _syncSpeakerState();
+
+    // Listen to currentCallStream for speaker state changes
+    _currentCallSubscription = SipService.instance.currentCallStream.listen((callInfo) {
+      if (callInfo != null && mounted) {
+        _syncSpeakerStateFromCallInfo(callInfo);
+      }
+    });
 
     // Add CallsModel listener for all state updates
     final callsModel = SipService.instance.callsModel;
@@ -64,8 +76,50 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
     }
   }
 
+  void _syncSpeakerState() {
+    // On Android, multi-call scenarios default to speaker
+    // The SDK's audio manager automatically switches to speaker for better UX
+    final isSpeakerOn = Platform.isAndroid ? true : (SipService.instance.currentCall?.isSpeakerOn ?? false);
+    debugPrint('MultiCallScreen: Setting initial speaker state to $isSpeakerOn (Android auto-speaker)');
+
+    // Update both calls with the speaker state
+    _firstCall = _firstCall.copyWith(isSpeakerOn: isSpeakerOn);
+    _secondCall = _secondCall.copyWith(isSpeakerOn: isSpeakerOn);
+  }
+
+  void _syncSpeakerStateFromCallInfo(CallInfo callInfo) {
+    // Update speaker state for both calls when it changes
+    if (_firstCall.isSpeakerOn != callInfo.isSpeakerOn ||
+        _secondCall.isSpeakerOn != callInfo.isSpeakerOn) {
+      debugPrint('MultiCallScreen: Speaker state changed to ${callInfo.isSpeakerOn}');
+      setState(() {
+        _firstCall = _firstCall.copyWith(isSpeakerOn: callInfo.isSpeakerOn);
+        _secondCall = _secondCall.copyWith(isSpeakerOn: callInfo.isSpeakerOn);
+      });
+    }
+
+    // On Android, when a call connects, the SDK may automatically switch to speaker
+    // We need to detect this and update our UI accordingly
+    if (callInfo.state == AppCallState.answered) {
+      // Add a small delay to let the audio device settle
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          final currentCall = SipService.instance.currentCall;
+          if (currentCall != null && currentCall.isSpeakerOn != _firstCall.isSpeakerOn) {
+            debugPrint('MultiCallScreen: Detected speaker state mismatch after connect, syncing to ${currentCall.isSpeakerOn}');
+            setState(() {
+              _firstCall = _firstCall.copyWith(isSpeakerOn: currentCall.isSpeakerOn);
+              _secondCall = _secondCall.copyWith(isSpeakerOn: currentCall.isSpeakerOn);
+            });
+          }
+        }
+      });
+    }
+  }
+
   @override
   void dispose() {
+    _currentCallSubscription?.cancel();
     final callsModel = SipService.instance.callsModel;
     if (callsModel != null) {
       callsModel.removeListener(_onCallsModelChanged);
@@ -336,11 +390,34 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
 
   void _onSpeaker() async {
     try {
+      debugPrint('MultiCallScreen: Toggling speaker for active call ${_activeCall.id}');
+
       final currentSpeakerState = _activeCall.isSpeakerOn;
-      await SipService.instance
-          .setSpeaker(_activeCall.id, !currentSpeakerState);
+      final newSpeakerState = !currentSpeakerState;
+
+      debugPrint('MultiCallScreen: Setting speaker to $newSpeakerState');
+      await SipService.instance.setSpeaker(_activeCall.id, newSpeakerState);
+
+      debugPrint('MultiCallScreen: Speaker toggled successfully');
+
+      // Manually update the UI since SDK doesn't fire an event for speaker changes
+      if (mounted) {
+        setState(() {
+          // Update the call that had speaker toggled
+          if (_firstCall.id == _activeCall.id) {
+            _firstCall = _firstCall.copyWith(isSpeakerOn: newSpeakerState);
+          } else if (_secondCall.id == _activeCall.id) {
+            _secondCall = _secondCall.copyWith(isSpeakerOn: newSpeakerState);
+          }
+        });
+      }
     } catch (e) {
       debugPrint('MultiCallScreen: Error toggling speaker: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to toggle speaker: $e')),
+        );
+      }
     }
   }
 
@@ -852,8 +929,8 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
               onPressed: _onMute,
             ),
             _buildControlButton(
-              icon: Icons.volume_up,
-              label: 'Speaker',
+              icon: _activeCall.isSpeakerOn ? Icons.volume_up : Icons.volume_down,
+              label: _activeCall.isSpeakerOn ? 'Speaker' : 'Earpiece',
               isActive: _activeCall.isSpeakerOn,
               onPressed: _onSpeaker,
             ),
