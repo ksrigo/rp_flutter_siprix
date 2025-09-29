@@ -352,8 +352,49 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
 
   void _onCallCardTap(CallInfo tappedCall) async {
     try {
+      debugPrint('MultiCallScreen: Tapping on call ${tappedCall.id} to switch to it');
+
       final callsModel = SipService.instance.callsModel;
-      await callsModel?.switchToCall(int.parse(tappedCall.id));
+      if (callsModel == null) return;
+
+      // Find the tapped call in the model
+      final tappedCallObj = SipService.instance.findCallByCallId(tappedCall.id);
+
+      if (tappedCallObj != null) {
+        debugPrint('MultiCallScreen: Found tapped call, isOnHold: ${tappedCallObj.isLocalHold}');
+
+        // If the tapped call is on hold, we need to swap the calls
+        if (tappedCallObj.isLocalHold) {
+          // First, find the currently active call and hold it
+          final firstCallObj = SipService.instance.findCallByCallId(_firstCall.id);
+          final secondCallObj = SipService.instance.findCallByCallId(_secondCall.id);
+
+          // Determine which call is currently active (not on hold)
+          CallModel? activeCallObj;
+          if (firstCallObj != null && !firstCallObj.isLocalHold && _firstCall.id != tappedCall.id) {
+            activeCallObj = firstCallObj;
+          } else if (secondCallObj != null && !secondCallObj.isLocalHold && _secondCall.id != tappedCall.id) {
+            activeCallObj = secondCallObj;
+          }
+
+          // Hold the currently active call first
+          if (activeCallObj != null) {
+            debugPrint('MultiCallScreen: Holding active call ${activeCallObj.myCallId} first');
+            await activeCallObj.hold();
+            // Small delay to ensure hold completes
+            await Future.delayed(const Duration(milliseconds: 100));
+          }
+
+          // Then unhold the tapped call
+          debugPrint('MultiCallScreen: Unholding tapped call ${tappedCall.id}');
+          await tappedCallObj.hold(); // hold() is a toggle method
+        } else {
+          // If it's not on hold, it's already active - do nothing
+          debugPrint('MultiCallScreen: Call ${tappedCall.id} is already active');
+        }
+      } else {
+        debugPrint('MultiCallScreen: Could not find call object for ${tappedCall.id}');
+      }
     } catch (e) {
       debugPrint('MultiCallScreen: Error switching calls: $e');
       if (mounted) {
