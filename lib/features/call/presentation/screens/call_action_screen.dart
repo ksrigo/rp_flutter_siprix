@@ -213,17 +213,35 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
     if (!_hasEnteredNumber) return;
 
     try {
-      // Use builtin SDK method directly
-      final callsModel = SipService.instance.callsModel;
-      final callId = int.tryParse(_currentCallInfo?.id ?? '0') ?? 0;
-      final currentCall = SipService.instance.findCallByCallId(callId.toString());
+      debugPrint('CallActionScreen: Initiating blind transfer to $_enteredNumber');
+
+      // Find the call object to transfer
+      final currentCall = SipService.instance.findCallByCallId(_currentCallInfo?.id ?? '');
 
       if (currentCall != null) {
+        debugPrint('CallActionScreen: Transferring call ${_currentCallInfo?.id} to $_enteredNumber');
         await currentCall.transferBlind(_enteredNumber);
-        NavigationService.goToKeypad();
+        debugPrint('CallActionScreen: Blind transfer initiated successfully');
+
+        // Navigate back to keypad after transfer
+        if (mounted) {
+          NavigationService.goToKeypad();
+        }
+      } else {
+        debugPrint('CallActionScreen: Could not find call to transfer');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to transfer: Call not found')),
+          );
+        }
       }
     } catch (e) {
       debugPrint('CallActionScreen: Transfer failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to transfer call: $e')),
+        );
+      }
     }
   }
 
