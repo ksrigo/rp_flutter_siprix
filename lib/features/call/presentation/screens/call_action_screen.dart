@@ -122,7 +122,7 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
           : _currentCallInfo?.remoteNumber ?? 'Unknown';
 
   String get _callDuration {
-    if (_currentCallInfo == null) return '00:00';
+    if (_currentCallInfo == null || _currentCallInfo!.isOnHold) return '';
     final duration = DateTime.now().difference(_currentCallInfo!.startTime);
     return '${duration.inMinutes.toString().padLeft(2, '0')}:${(duration.inSeconds % 60).toString().padLeft(2, '0')}';
   }
@@ -347,7 +347,7 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
               ],
             ),
           ),
-          if (status != null && duration != null)
+          if (status != null)
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -356,12 +356,14 @@ class _CallActionScreenState extends ConsumerState<CallActionScreen> {
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: statusColor ?? _cardColors.active)),
-                const SizedBox(height: 1),
-                Text(duration,
-                    style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.white.withValues(alpha: 0.8))),
+                if (duration != null && duration.isNotEmpty) ...[
+                  const SizedBox(height: 1),
+                  Text(duration,
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w400,
+                          color: Colors.white.withValues(alpha: 0.8))),
+                ],
               ],
             ),
           if (trailing != null) trailing,

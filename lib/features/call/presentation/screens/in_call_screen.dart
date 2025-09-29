@@ -433,7 +433,7 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
     if (_isCallAnswered) {
       switch (_currentCallState) {
         case AppCallState.held:
-          displayText = 'On Hold - ${_formatCallDuration()}';
+          displayText = 'On Hold';
           break;
         case AppCallState.reconnecting:
           // Show only "Reconnecting" without timer during network issues
