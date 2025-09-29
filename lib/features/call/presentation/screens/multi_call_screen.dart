@@ -343,11 +343,75 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
     }
   }
 
-  void _onTransfer() {
-    // Navigate to transfer screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Transfer functionality coming soon')),
-    );
+  void _onTransfer() async {
+    try {
+      debugPrint('MultiCallScreen: Initiating attended transfer');
+
+      // Find which call is active and which is on hold
+      CallInfo? activeCall;
+      CallInfo? heldCall;
+
+      if (!_firstCall.isOnHold && _firstCall.state != AppCallState.held) {
+        activeCall = _firstCall;
+        heldCall = _secondCall;
+      } else if (!_secondCall.isOnHold && _secondCall.state != AppCallState.held) {
+        activeCall = _secondCall;
+        heldCall = _firstCall;
+      }
+
+      if (activeCall == null || heldCall == null) {
+        debugPrint('MultiCallScreen: Cannot transfer - need one active and one held call');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Cannot transfer: Need one active and one held call')),
+          );
+        }
+        return;
+      }
+
+      // Find the active call object
+      final activeCallObj = SipService.instance.findCallByCallId(activeCall.id);
+      if (activeCallObj == null) {
+        debugPrint('MultiCallScreen: Could not find active call object');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to transfer: Active call not found')),
+          );
+        }
+        return;
+      }
+
+      // Parse the held call ID
+      final heldCallId = int.tryParse(heldCall.id);
+      if (heldCallId == null) {
+        debugPrint('MultiCallScreen: Invalid held call ID: ${heldCall.id}');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to transfer: Invalid call ID')),
+          );
+        }
+        return;
+      }
+
+      debugPrint('MultiCallScreen: Transferring active call ${activeCall.id} to held call ${heldCall.id}');
+
+      // Perform attended transfer
+      await activeCallObj.transferAttended(heldCallId);
+
+      debugPrint('MultiCallScreen: Attended transfer initiated successfully');
+
+      // Navigate back to keypad after transfer
+      if (mounted) {
+        NavigationService.goToKeypad();
+      }
+    } catch (e) {
+      debugPrint('MultiCallScreen: Transfer failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to transfer: $e')),
+        );
+      }
+    }
   }
 
   void _onCallCardTap(CallInfo tappedCall) async {
