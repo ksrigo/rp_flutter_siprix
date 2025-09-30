@@ -29,6 +29,7 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
   late CallInfo _secondCall;
   Map<String, ContactInfo?> _contactCache = {};
   bool _isNavigating = false;
+  bool _isMergingCalls = false;
   StreamSubscription<CallInfo?>? _currentCallSubscription;
 
   // Constants - match call_action_screen styling
@@ -446,15 +447,70 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
   }
 
   void _onMergeCall() async {
+    if (_isMergingCalls) {
+      debugPrint('MultiCallScreen: Merge already in progress');
+      return;
+    }
+
     try {
-      // Merge both calls into a conference
-      // This would require conference functionality from Siprix
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Conference merge functionality coming soon')),
-      );
+      debugPrint('MultiCallScreen: Initiating conference merge');
+
+      // Disable the merge button
+      setState(() {
+        _isMergingCalls = true;
+      });
+
+      final callsModel = SipService.instance.callsModel;
+      if (callsModel == null) {
+        debugPrint('MultiCallScreen: CallsModel is null');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to merge: CallsModel not available')),
+          );
+        }
+        return;
+      }
+
+      // Before merging, ensure all calls are active (not on hold)
+      // Find which call is on hold and unhold it
+      CallModel? heldCallObj;
+      if (_firstCall.isOnHold || _firstCall.state == AppCallState.held) {
+        heldCallObj = SipService.instance.findCallByCallId(_firstCall.id);
+        debugPrint('MultiCallScreen: First call ${_firstCall.id} is on hold');
+      } else if (_secondCall.isOnHold || _secondCall.state == AppCallState.held) {
+        heldCallObj = SipService.instance.findCallByCallId(_secondCall.id);
+        debugPrint('MultiCallScreen: Second call ${_secondCall.id} is on hold');
+      }
+
+      // Unhold the held call before merging
+      if (heldCallObj != null) {
+        debugPrint('MultiCallScreen: Unholding call ${heldCallObj.myCallId} before merge');
+        await heldCallObj.hold(); // Toggle to unhold
+        // Wait a bit for the unhold to complete
+        await Future.delayed(const Duration(milliseconds: 300));
+      }
+
+      // Make conference using CallsModel
+      debugPrint('MultiCallScreen: Calling makeConference()');
+      await callsModel.makeConference();
+
+      debugPrint('MultiCallScreen: Conference created successfully');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Calls merged into conference')),
+        );
+      }
     } catch (e) {
       debugPrint('MultiCallScreen: Error merging calls: $e');
+      if (mounted) {
+        setState(() {
+          _isMergingCalls = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to merge calls: $e')),
+        );
+      }
     }
   }
 
@@ -960,7 +1016,7 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
             _buildControlButton(
               icon: Icons.call_merge,
               label: 'Merge Call',
-              onPressed: _onMergeCall,
+              onPressed: _isMergingCalls ? null : _onMergeCall,
             ),
           ],
         ),
@@ -972,8 +1028,10 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
     required IconData icon,
     required String label,
     bool isActive = false,
-    required VoidCallback onPressed,
+    VoidCallback? onPressed,
   }) {
+    final bool isEnabled = onPressed != null;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -982,10 +1040,12 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
           height: 80,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: isActive
-                ? Colors.white.withValues(alpha: 0.3)
-                : Colors.white.withValues(alpha: 0.15),
-            border: isActive
+            color: !isEnabled
+                ? Colors.grey.withValues(alpha: 0.3)
+                : isActive
+                    ? Colors.white.withValues(alpha: 0.3)
+                    : Colors.white.withValues(alpha: 0.15),
+            border: isActive && isEnabled
                 ? Border.all(
                     color: Colors.white.withValues(alpha: 0.5), width: 2)
                 : null,
@@ -994,11 +1054,13 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
             color: Colors.transparent,
             child: InkWell(
               borderRadius: BorderRadius.circular(40),
-              onTap: onPressed,
+              onTap: isEnabled ? onPressed : null,
               child: Icon(
                 icon,
                 size: 32,
-                color: Colors.white,
+                color: !isEnabled
+                    ? Colors.grey.withValues(alpha: 0.7)
+                    : Colors.white,
               ),
             ),
           ),
@@ -1009,7 +1071,9 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: Colors.white.withValues(alpha: 0.9),
+            color: !isEnabled
+                ? Colors.grey.withValues(alpha: 0.7)
+                : Colors.white.withValues(alpha: 0.9),
           ),
         ),
       ],

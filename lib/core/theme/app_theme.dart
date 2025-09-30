@@ -18,10 +18,10 @@ class AppTheme {
   static const Color warning = Color(0xFFED6C02);
 
   // Dark Theme Colors
-  static const Color primaryDark = Color(0xFFBB86FC); // Soft Purple glow
-  static const Color primaryVariantDark = Color(0xFF985EFF);
-  static const Color secondaryDark = Color(0xFF7C4DFF);
-  static const Color accentDark = Color(0xFFC792EA); // Lavender accent
+  static const Color primaryDark = Color(0xFF6200EE); // Soft Purple glow
+  static const Color primaryVariantDark = Color(0xFF7C4DFF);
+  static const Color secondaryDark = Color(0xFF9C27B0);
+  static const Color accentDark = Color(0xFFB388FF); // Lavender accent
   static const Color backgroundDark = Color(0xFF0F172A); // Dark Navy-Gray
   static const Color surfaceDark = Color(0xFF1E1E2E); // Panels, cards
   static const Color surfaceVariantDark = Color(0xFF2A2A3C);
