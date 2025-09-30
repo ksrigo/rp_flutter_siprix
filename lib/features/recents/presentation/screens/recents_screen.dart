@@ -26,7 +26,7 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
   bool _isLoading = true;
   bool _selectionMode = false;
   final Set<String> _selectedCallKeys = <String>{};
-  
+
   // Contact name cache for performance optimization
   final Map<String, String?> _contactNameCache = {};
   final Map<String, Future<String?>> _pendingLookups = {};
@@ -97,10 +97,10 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
   /// Normalize phone number for consistent matching
   String _normalizePhoneNumber(String phoneNumber) {
     if (phoneNumber.isEmpty) return '';
-    
+
     // Remove all non-digit characters
     String normalized = phoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
-    
+
     // Handle international formats
     if (normalized.startsWith('00')) {
       // Convert 0044... to +44...
@@ -117,7 +117,7 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
       // For numbers without country code, try common formats
       return normalized;
     }
-    
+
     return normalized.startsWith('+') ? normalized : '+$normalized';
   }
 
@@ -156,7 +156,8 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
   /// Perform actual contact lookup with multiple phone number variants
   Future<String?> _performContactLookup(String phoneNumber) async {
     try {
-      ContactModel? contact = await ContactsService.instance.getContactByPhone(phoneNumber);
+      ContactModel? contact =
+          await ContactsService.instance.getContactByPhone(phoneNumber);
       if (contact != null) return contact.formattedName;
 
       for (final alternative in _getPhoneNumberAlternatives(phoneNumber)) {
@@ -174,7 +175,7 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
   /// Generate alternative phone number formats for better matching
   List<String> _getPhoneNumberAlternatives(String phoneNumber) {
     final alternatives = <String>[];
-    
+
     if (phoneNumber.startsWith('+44')) {
       // UK number: try with leading 0
       alternatives.add('0${phoneNumber.substring(3)}');
@@ -192,7 +193,7 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
       // Domestic: try with +
       alternatives.add('+$phoneNumber');
     }
-    
+
     return alternatives;
   }
 
@@ -377,8 +378,7 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
     }
 
     return Map.fromEntries(
-      grouped.entries.toList()
-        ..sort((a, b) => b.key.compareTo(a.key)),
+      grouped.entries.toList()..sort((a, b) => b.key.compareTo(a.key)),
     );
   }
 
@@ -388,9 +388,8 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
     if (cdrs == null) return {};
 
     final allCalls = List<CdrModel>.generate(cdrs.length, (i) => cdrs[i]);
-    final missedCalls = allCalls.where((call) =>
-      call.incoming && !call.connected
-    ).toList();
+    final missedCalls =
+        allCalls.where((call) => call.incoming && !call.connected).toList();
 
     final Map<String, List<CdrModel>> grouped = {};
 
@@ -400,8 +399,7 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
     }
 
     return Map.fromEntries(
-      grouped.entries.toList()
-        ..sort((a, b) => b.key.compareTo(a.key)),
+      grouped.entries.toList()..sort((a, b) => b.key.compareTo(a.key)),
     );
   }
 
@@ -443,7 +441,6 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
       return CallType.outgoing;
     }
   }
-
 
   Widget _buildTabBarView() {
     final cdrs = SipService.instance.cdrs;
@@ -886,7 +883,8 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
     if (phoneNumber.isEmpty) return;
 
     try {
-      final existingContact = await ContactsService.instance.getContactByPhone(phoneNumber);
+      final existingContact =
+          await ContactsService.instance.getContactByPhone(phoneNumber);
 
       if (existingContact != null && mounted) {
         final shouldUpdate = await showDialog<bool>(
@@ -1098,17 +1096,17 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
     // First check if we have a contact name from cache
     final normalizedNumber = _normalizePhoneNumber(call.remoteExt);
     final contactName = _contactNameCache[normalizedNumber];
-    
+
     if (contactName != null && contactName.isNotEmpty) {
       return contactName;
     }
-    
+
     // Trigger async lookup if not in cache and not already pending
-    if (!_contactNameCache.containsKey(normalizedNumber) && 
+    if (!_contactNameCache.containsKey(normalizedNumber) &&
         !_pendingLookups.containsKey(normalizedNumber)) {
       _getContactNameAsync(call.remoteExt);
     }
-    
+
     // Fallback to original logic while contact lookup is in progress
     if (call.displName.isNotEmpty &&
         call.displName != call.remoteExt &&
@@ -1136,7 +1134,6 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
     return call.incoming ? 'Missed call' : 'Not answered';
   }
 
-
   String? _resolveDuration(CdrModel call) {
     // Use the builtin SDK duration that was set when call was terminated
     final duration = call.duration.trim();
@@ -1153,7 +1150,6 @@ class _RecentsScreenState extends ConsumerState<RecentsScreen> {
 
     return null;
   }
-
 
   String _formatFullDateTime(DateTime dateTime) {
     return DateFormat('EEE, MMM d · h:mm a').format(dateTime);

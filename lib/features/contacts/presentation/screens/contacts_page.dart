@@ -202,7 +202,7 @@ class _ContactsPageState extends State<ContactsPage> {
     _refreshSectionKeys(grouped.keys);
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.background,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: Stack(
           children: [

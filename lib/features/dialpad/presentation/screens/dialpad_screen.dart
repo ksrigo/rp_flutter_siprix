@@ -47,9 +47,9 @@ class _DialpadScreenState extends ConsumerState<DialpadScreen> {
   Widget build(BuildContext context) {
     final authService = AuthService.instance;
     final extensionDetails = authService.extensionDetails;
-    
+
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.background,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -68,7 +68,8 @@ class _DialpadScreenState extends ConsumerState<DialpadScreen> {
                         style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.w600,
-                          color: Theme.of(context).colorScheme.onPrimaryContainer,
+                          color:
+                              Theme.of(context).colorScheme.onPrimaryContainer,
                         ),
                       ),
                       Text(
@@ -87,15 +88,16 @@ class _DialpadScreenState extends ConsumerState<DialpadScreen> {
                     builder: (context, child) {
                       final sipService = SipService.instance;
                       return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
-                          color: sipService.isRegistered 
-                              ? const Color(0xFFE6F7F1) 
+                          color: sipService.isRegistered
+                              ? const Color(0xFFE6F7F1)
                               : const Color(0xFFFFE6E6),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: sipService.isRegistered 
-                                ? const Color(0xFF00C853) 
+                            color: sipService.isRegistered
+                                ? const Color(0xFF00C853)
                                 : const Color(0xFFFF5252),
                             width: 1,
                           ),
@@ -107,8 +109,8 @@ class _DialpadScreenState extends ConsumerState<DialpadScreen> {
                               width: 8,
                               height: 8,
                               decoration: BoxDecoration(
-                                color: sipService.isRegistered 
-                                    ? const Color(0xFF00C853) 
+                                color: sipService.isRegistered
+                                    ? const Color(0xFF00C853)
                                     : const Color(0xFFFF5252),
                                 shape: BoxShape.circle,
                               ),
@@ -119,8 +121,8 @@ class _DialpadScreenState extends ConsumerState<DialpadScreen> {
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
-                                color: sipService.isRegistered 
-                                    ? const Color(0xFF00C853) 
+                                color: sipService.isRegistered
+                                    ? const Color(0xFF00C853)
                                     : const Color(0xFFFF5252),
                               ),
                             ),
@@ -131,7 +133,7 @@ class _DialpadScreenState extends ConsumerState<DialpadScreen> {
                   ),
                 ],
               ),
-              
+
               // Dialed Number Display - Large and prominent in center
               Container(
                 width: double.infinity,
@@ -150,7 +152,7 @@ class _DialpadScreenState extends ConsumerState<DialpadScreen> {
                   ),
                 ),
               ),
-              
+
               // Dialpad Grid
               Flexible(
                 flex: 3,
@@ -172,7 +174,7 @@ class _DialpadScreenState extends ConsumerState<DialpadScreen> {
                               _buildDialpadButton('3', 'DEF'),
                             ],
                           ),
-                          
+
                           // Row 2: 4, 5, 6
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -182,7 +184,7 @@ class _DialpadScreenState extends ConsumerState<DialpadScreen> {
                               _buildDialpadButton('6', 'MNO'),
                             ],
                           ),
-                          
+
                           // Row 3: 7, 8, 9
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -192,7 +194,7 @@ class _DialpadScreenState extends ConsumerState<DialpadScreen> {
                               _buildDialpadButton('9', 'WXYZ'),
                             ],
                           ),
-                          
+
                           // Row 4: *, 0, #
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -208,7 +210,7 @@ class _DialpadScreenState extends ConsumerState<DialpadScreen> {
                   },
                 ),
               ),
-              
+
               // Bottom Action Buttons - Fixed positions aligned with keypad
               const SizedBox(height: 20),
               Row(
@@ -216,7 +218,7 @@ class _DialpadScreenState extends ConsumerState<DialpadScreen> {
                 children: [
                   // Left space (empty to align with "*" key)
                   const SizedBox(width: 90),
-                  
+
                   // Call Button - centered under "0" key
                   Container(
                     width: 80,
@@ -245,13 +247,13 @@ class _DialpadScreenState extends ConsumerState<DialpadScreen> {
                       ),
                     ),
                   ),
-                  
+
                   // Delete Button - positioned under "#" key
                   Container(
                     width: 90,
                     height: 90,
                     child: Center(
-                      child: _dialedNumber.isNotEmpty 
+                      child: _dialedNumber.isNotEmpty
                           ? Container(
                               width: 48,
                               height: 48,
@@ -273,7 +275,6 @@ class _DialpadScreenState extends ConsumerState<DialpadScreen> {
                   ),
                 ],
               ),
-              
             ],
           ),
         ),
