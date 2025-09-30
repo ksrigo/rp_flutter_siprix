@@ -23,7 +23,7 @@ class _DtmfKeypadScreenState extends State<DtmfKeypadScreen> {
     [('*', ''), ('0', '+'), ('#', '')],
   ];
 
-  void _sendDtmf(String digit) {
+  void _sendDtmf(String digit) async {
     setState(() {
       _enteredDigits += digit;
     });
@@ -31,8 +31,10 @@ class _DtmfKeypadScreenState extends State<DtmfKeypadScreen> {
     try {
       final call = SipService.instance.findCallByCallId(widget.callId);
       if (call != null) {
-        call.sendDtmf(digit);
+        await call.sendDtmf(digit);
         debugPrint('DtmfKeypadScreen: Sent DTMF digit: $digit');
+      } else {
+        debugPrint('DtmfKeypadScreen: Call not found for callId: ${widget.callId}');
       }
     } catch (e) {
       debugPrint('DtmfKeypadScreen: Error sending DTMF: $e');
