@@ -86,9 +86,8 @@ flutter:
 
   assets:
     - assets/images/
-    - assets/icons/
-    - assets/sounds/
-
+#    - assets/icons/
+#    - assets/sounds/
 
 # fonts:
 # - family: Roboto
