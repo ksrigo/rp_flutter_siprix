@@ -7,6 +7,7 @@ import '../../../../core/services/sip_service.dart';
 import '../../../../core/services/navigation_service.dart';
 import '../../../../core/services/contact_service.dart';
 import 'call_action_screen.dart';
+import 'dtmf_keypad_screen.dart';
 
 class InCallScreen extends ConsumerStatefulWidget {
   final String callId;
@@ -27,7 +28,6 @@ class InCallScreen extends ConsumerStatefulWidget {
 class _InCallScreenState extends ConsumerState<InCallScreen> {
   bool _isMuted = false;
   bool _isOnHold = false;
-  bool _showKeypad = false;
   Timer? _callTimer;
   int _callDuration = 0;
   StreamSubscription<CallInfo?>? _callStateSubscription;
@@ -526,7 +526,6 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
             _buildControlButton(
               icon: Icons.dialpad,
               label: 'Keypad',
-              isActive: _showKeypad,
               onPressed: _isCallAnswered ? _toggleKeypad : null,
             ),
             _buildControlButton(
@@ -866,9 +865,14 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
   }
 
   void _toggleKeypad() {
-    setState(() {
-      _showKeypad = !_showKeypad;
-    });
+    if (mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DtmfKeypadScreen(callId: widget.callId),
+        ),
+      );
+    }
   }
 
   void _addCall() async {
