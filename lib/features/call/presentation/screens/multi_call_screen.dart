@@ -9,6 +9,7 @@ import '../../../../core/services/sip_service.dart';
 import '../../../../core/services/navigation_service.dart';
 import '../../../../core/services/contact_service.dart';
 import 'in_call_screen.dart';
+import 'dtmf_keypad_screen.dart';
 
 class MultiCallScreen extends ConsumerStatefulWidget {
   final CallInfo firstCall;
@@ -435,15 +436,14 @@ class _MultiCallScreenState extends ConsumerState<MultiCallScreen> {
   }
 
   void _onKeypad() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => Scaffold(
-          appBar: AppBar(title: const Text('Keypad')),
-          body: const Center(child: Text('Keypad functionality coming soon')),
+    if (mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DtmfKeypadScreen(callId: _activeCall.id),
         ),
-      ),
-    );
+      );
+    }
   }
 
   void _onMergeCall() async {
