@@ -210,7 +210,28 @@ class _IncomingCallScreenState extends ConsumerState<IncomingCallScreen>
         // Add small delay before navigation to prevent GlobalKey conflicts
         await Future.delayed(const Duration(milliseconds: 100));
         if (mounted) {
-          NavigationService.goToKeypad();
+          // Check if there are still active calls after rejecting this one
+          final callsModel = SipService.instance.callsModel;
+          final hasRemainingCalls = callsModel != null && callsModel.length > 0;
+
+          debugPrint('🔥 IncomingCallScreen: Remaining calls after reject: ${callsModel?.length ?? 0}');
+
+          if (hasRemainingCalls) {
+            // Navigate back to the active call screen
+            final switchedCall = callsModel!.switchedCall();
+            if (switchedCall != null) {
+              debugPrint('🔥 IncomingCallScreen: Navigating to in-call screen for existing call: ${switchedCall.myCallId}');
+              NavigationService.goToInCall(
+                switchedCall.myCallId.toString(),
+                phoneNumber: switchedCall.remoteExt,
+                contactName: switchedCall.displName,
+              );
+            } else {
+              NavigationService.goToKeypad();
+            }
+          } else {
+            NavigationService.goToKeypad();
+          }
         }
       }
     } catch (e) {
