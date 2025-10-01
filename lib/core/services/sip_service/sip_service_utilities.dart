@@ -1,6 +1,33 @@
 part of 'sip_service_base.dart';
 
 mixin _SipServiceUtilities on _SipServiceBase {
+  // Do Not Disturb storage key
+  static const String _dndPreferenceKey = 'sip_service_do_not_disturb';
+
+  // Do Not Disturb methods
+  Future<bool> isDoNotDisturbEnabled() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final enabled = prefs.getBool(_dndPreferenceKey) ?? false;
+      debugPrint('SIP Service: DND state retrieved: $enabled');
+      return enabled;
+    } catch (e) {
+      debugPrint('SIP Service: Error getting DND state: $e');
+      return false;
+    }
+  }
+
+  Future<void> setDoNotDisturb(bool enabled) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_dndPreferenceKey, enabled);
+      debugPrint('SIP Service: DND state saved: $enabled');
+    } catch (e) {
+      debugPrint('SIP Service: Error saving DND state: $e');
+      rethrow;
+    }
+  }
+
   // Network monitoring
   Future<void> _initializeNetworkMonitoring() async {
     try {

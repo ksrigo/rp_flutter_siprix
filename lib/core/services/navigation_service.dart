@@ -16,6 +16,7 @@ import '../../features/dialpad/presentation/screens/dialpad_screen.dart';
 import '../../features/recents/presentation/screens/recents_screen.dart';
 import '../../shared/widgets/main_navigation.dart';
 import '../services/auth_service.dart';
+import '../services/sip_service.dart';
 import '../../features/settings/presentation/screens/settings_main_screen.dart';
 import '../../features/settings/presentation/screens/account_settings_screen.dart';
 import '../services/api_service.dart';
@@ -271,6 +272,7 @@ class CallsSettingsScreen extends StatefulWidget {
 class _CallsSettingsScreenState extends State<CallsSettingsScreen> {
   bool _showCallerID = true;
   bool _enableRecording = false;
+  bool _doNotDisturb = false;
   bool _isLoading = true;
   bool _isUpdating = false;
 
@@ -278,6 +280,17 @@ class _CallsSettingsScreenState extends State<CallsSettingsScreen> {
   void initState() {
     super.initState();
     _loadExtensionSettings();
+    _loadDoNotDisturbState();
+  }
+
+  Future<void> _loadDoNotDisturbState() async {
+    final dndEnabled = await SipService.instance.isDoNotDisturbEnabled();
+    if (mounted) {
+      setState(() {
+        _doNotDisturb = dndEnabled;
+      });
+      debugPrint('🔄 CallsSettings: Loaded DND state: $_doNotDisturb');
+    }
   }
 
   Future<void> _loadExtensionSettings({bool showLoading = true}) async {
@@ -563,6 +576,37 @@ class _CallsSettingsScreenState extends State<CallsSettingsScreen> {
     }
   }
 
+  Future<void> _updateDoNotDisturbSetting(bool value) async {
+    debugPrint(
+        '🔄 CallsSettings: _updateDoNotDisturbSetting called with value: $value');
+
+    try {
+      await SipService.instance.setDoNotDisturb(value);
+      if (mounted) {
+        setState(() {
+          _doNotDisturb = value;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Do Not Disturb ${value ? 'enabled' : 'disabled'}'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        debugPrint('✅ CallsSettings: Do Not Disturb updated to: $value');
+      }
+    } catch (e) {
+      debugPrint('❌ CallsSettings: Error updating Do Not Disturb setting: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update Do Not Disturb setting: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Widget _buildToggleItem({
     required String title,
     required String subtitle,
@@ -676,6 +720,13 @@ class _CallsSettingsScreenState extends State<CallsSettingsScreen> {
                               value: _enableRecording,
                               onChanged:
                                   _isUpdating ? null : _updateRecordingSetting,
+                            ),
+                            _buildToggleItem(
+                              title: 'Do Not Disturb',
+                              subtitle:
+                                  'Automatically reject incoming calls',
+                              value: _doNotDisturb,
+                              onChanged: _updateDoNotDisturbSetting,
                             ),
                           ],
                         ),

@@ -14,6 +14,29 @@ class DialpadScreen extends ConsumerStatefulWidget {
 
 class _DialpadScreenState extends ConsumerState<DialpadScreen> {
   String _dialedNumber = '';
+  bool _isDndEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDndState();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Reload DND state when screen becomes active
+    _loadDndState();
+  }
+
+  Future<void> _loadDndState() async {
+    final dndEnabled = await SipService.instance.isDoNotDisturbEnabled();
+    if (mounted) {
+      setState(() {
+        _isDndEnabled = dndEnabled;
+      });
+    }
+  }
 
   void _onDigitPressed(String digit) {
     setState(() {
@@ -87,18 +110,34 @@ class _DialpadScreenState extends ConsumerState<DialpadScreen> {
                     listenable: SipService.instance,
                     builder: (context, child) {
                       final sipService = SipService.instance;
+
+                      // Determine chip content based on DND status
+                      final String chipText;
+                      final Color chipColor;
+                      final Color chipBgColor;
+
+                      if (_isDndEnabled) {
+                        chipText = 'DND';
+                        chipColor = const Color(0xFFFF5252); // Red
+                        chipBgColor = const Color(0xFFFFE6E6); // Light red background
+                      } else if (sipService.isRegistered) {
+                        chipText = 'Online';
+                        chipColor = const Color(0xFF00C853); // Green
+                        chipBgColor = const Color(0xFFE6F7F1); // Light green background
+                      } else {
+                        chipText = 'Offline';
+                        chipColor = const Color(0xFFFF5252); // Red
+                        chipBgColor = const Color(0xFFFFE6E6); // Light red background
+                      }
+
                       return Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
-                          color: sipService.isRegistered
-                              ? const Color(0xFFE6F7F1)
-                              : const Color(0xFFFFE6E6),
+                          color: chipBgColor,
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: sipService.isRegistered
-                                ? const Color(0xFF00C853)
-                                : const Color(0xFFFF5252),
+                            color: chipColor,
                             width: 1,
                           ),
                         ),
@@ -109,21 +148,17 @@ class _DialpadScreenState extends ConsumerState<DialpadScreen> {
                               width: 8,
                               height: 8,
                               decoration: BoxDecoration(
-                                color: sipService.isRegistered
-                                    ? const Color(0xFF00C853)
-                                    : const Color(0xFFFF5252),
+                                color: chipColor,
                                 shape: BoxShape.circle,
                               ),
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              sipService.isRegistered ? 'Online' : 'Offline',
+                              chipText,
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
-                                color: sipService.isRegistered
-                                    ? const Color(0xFF00C853)
-                                    : const Color(0xFFFF5252),
+                                color: chipColor,
                               ),
                             ),
                           ],

@@ -68,31 +68,39 @@ mixin _SipServiceCallHandling on _SipServiceBase {
       // Set up CallStateListener to route events to AppCallsModel
       _siprixSdk!.callListener = CallStateListener(
         proceeding: (int callId, String response) {
-          debugPrint('>>> CallStateListener.proceeding CALLED - routing to AppCallsModel: callId=$callId, response=$response');
+          debugPrint(
+              '>>> CallStateListener.proceeding CALLED - routing to AppCallsModel: callId=$callId, response=$response');
           _callsModel?.onProceeding(callId, response);
         },
-        incoming: (int callId, int accId, bool withVideo, String from, String to) {
-          debugPrint('>>> CallStateListener.incoming CALLED - routing to AppCallsModel');
+        incoming:
+            (int callId, int accId, bool withVideo, String from, String to) {
+          debugPrint(
+              '>>> CallStateListener.incoming CALLED - routing to AppCallsModel');
           _callsModel?.onIncomingSip(callId, accId, withVideo, from, to);
         },
         connected: (int callId, String from, String to, bool withVideo) {
-          debugPrint('>>> CallStateListener.connected CALLED - routing to AppCallsModel');
+          debugPrint(
+              '>>> CallStateListener.connected CALLED - routing to AppCallsModel');
           _callsModel?.onConnected(callId, from, to, withVideo);
         },
         terminated: (int callId, int statusCode) {
-          debugPrint('>>> CallStateListener.terminated CALLED - routing to AppCallsModel');
+          debugPrint(
+              '>>> CallStateListener.terminated CALLED - routing to AppCallsModel');
           _callsModel?.onTerminated(callId, statusCode);
         },
         switched: (int callId) {
-          debugPrint('>>> CallStateListener.switched CALLED - routing to AppCallsModel');
+          debugPrint(
+              '>>> CallStateListener.switched CALLED - routing to AppCallsModel');
           _callsModel?.onSwitched(callId);
         },
         held: (int callId, HoldState holdState) {
-          debugPrint('>>> CallStateListener.held CALLED - routing to AppCallsModel: callId=$callId, holdState=$holdState');
+          debugPrint(
+              '>>> CallStateListener.held CALLED - routing to AppCallsModel: callId=$callId, holdState=$holdState');
           _callsModel?.onHeld(callId, holdState);
         },
         incomingPush: _onIncomingPush, // Enable push call handling for CallKit
-        acceptNotif: _onCallAcceptNotif, // Handle Android notification acceptance
+        acceptNotif:
+            _onCallAcceptNotif, // Handle Android notification acceptance
       );
 
       // Note: Call history is now handled by Siprix CDRs automatically
@@ -180,13 +188,29 @@ mixin _SipServiceCallHandling on _SipServiceBase {
 
   // Handler methods called by AppCallsModel after builtin processing
 
-  void _handleIncomingCall(int callId, String from, String to, bool withVideo) {
-    debugPrint('>>> SIP Service: _handleIncomingCall CALLED - callId: $callId, from: $from, to: $to, withVideo: $withVideo');
+  void _handleIncomingCall(
+      int callId, String from, String to, bool withVideo) async {
+    debugPrint(
+        '>>> SIP Service: _handleIncomingCall CALLED - callId: $callId, from: $from, to: $to, withVideo: $withVideo');
 
     // Ignore incoming calls if we're in the middle of hanging up
     if (_isHangingUp) {
       debugPrint('SIP Service: Ignoring incoming call - hangup in progress');
       return;
+    }
+
+    // Check if Do Not Disturb is enabled
+    final isDndEnabled = await isDoNotDisturbEnabled();
+    if (isDndEnabled) {
+      debugPrint(
+          'SIP Service: Do Not Disturb is enabled, auto-rejecting call $callId');
+      try {
+        await SiprixVoipSdk().reject(callId, 480); // 486 Busy Here
+        debugPrint('SIP Service: Call $callId auto-rejected successfully');
+      } catch (e) {
+        debugPrint('SIP Service: Failed to auto-reject call $callId: $e');
+      }
+      return; // Exit early, don't process this call further
     }
 
     // Get cached caller information (parsed using builtin SDK functions)
@@ -273,7 +297,8 @@ mixin _SipServiceCallHandling on _SipServiceBase {
       debugPrint('SIP Service: No calls remaining, clearing current call');
       _updateCurrentCall(null);
     } else {
-      debugPrint('SIP Service: $remainingCalls calls still remain, keeping current call');
+      debugPrint(
+          'SIP Service: $remainingCalls calls still remain, keeping current call');
     }
 
     // Reset hangup flag after brief delay
@@ -287,10 +312,12 @@ mixin _SipServiceCallHandling on _SipServiceBase {
       // No active calls - but check if any calls remain (might be held)
       final remainingCalls = _callsModel?.length ?? 0;
       if (remainingCalls == 0) {
-        debugPrint('SIP Service: No calls remaining after switch, clearing current call');
+        debugPrint(
+            'SIP Service: No calls remaining after switch, clearing current call');
         _updateCurrentCall(null);
       } else {
-        debugPrint('SIP Service: No active call but $remainingCalls calls remain (likely held), keeping current call');
+        debugPrint(
+            'SIP Service: No active call but $remainingCalls calls remain (likely held), keeping current call');
       }
     } else {
       // Sync with the active call
@@ -299,7 +326,8 @@ mixin _SipServiceCallHandling on _SipServiceBase {
   }
 
   void _handleCallHeld(int callId, HoldState holdState) {
-    debugPrint('SIP Service: Handling call held - callId: $callId, holdState: $holdState');
+    debugPrint(
+        'SIP Service: Handling call held - callId: $callId, holdState: $holdState');
 
     // Update the current call with the new hold state
     _syncCurrentCallFromModel();
@@ -312,7 +340,8 @@ mixin _SipServiceCallHandling on _SipServiceBase {
   }
 
   void _handleCallProceeding(int callId, String response) {
-    debugPrint('SIP Service: Handling call proceeding - callId: $callId, response: $response');
+    debugPrint(
+        'SIP Service: Handling call proceeding - callId: $callId, response: $response');
 
     // Parse the SIP response code (e.g., "180 Ringing" -> 180)
     final responseCode = int.tryParse(response.split(' ').first) ?? 0;
@@ -587,8 +616,10 @@ mixin _SipServiceCallHandling on _SipServiceBase {
       final intCallId = int.tryParse(callId);
       if (intCallId == null) throw Exception('Invalid call ID format');
 
-      final targetCall = _findCallByCallId(intCallId) ?? _callsModel?.switchedCall();
-      if (targetCall == null) throw Exception('No active call available for muting');
+      final targetCall =
+          _findCallByCallId(intCallId) ?? _callsModel?.switchedCall();
+      if (targetCall == null)
+        throw Exception('No active call available for muting');
 
       await targetCall.muteMic(mute);
     } catch (e) {
@@ -616,7 +647,8 @@ mixin _SipServiceCallHandling on _SipServiceBase {
         if (_currentCall != null && _currentCall!.id == callId) {
           final updatedCall = _currentCall!.copyWith(isSpeakerOn: speaker);
           _updateCurrentCall(updatedCall);
-          debugPrint('SIP Service: Updated speaker state to $speaker for call $callId');
+          debugPrint(
+              'SIP Service: Updated speaker state to $speaker for call $callId');
         }
       }
     } catch (e) {
@@ -633,7 +665,8 @@ mixin _SipServiceCallHandling on _SipServiceBase {
       final device = devices[i];
       final category = _getAudioDeviceCategory(device);
 
-      if (category == AudioDeviceCategory.earpiece || category == AudioDeviceCategory.builtin) {
+      if (category == AudioDeviceCategory.earpiece ||
+          category == AudioDeviceCategory.builtin) {
         if (!hasBuiltinAdded) {
           categorized.add(AudioDeviceInfo(
             device: device,
@@ -804,7 +837,8 @@ mixin _SipServiceCallHandling on _SipServiceBase {
       case CallState.dialing:
         return AppCallState.connecting;
       case CallState.proceeding:
-        return AppCallState.connecting; // Will be updated to ringing based on SIP response
+        return AppCallState
+            .connecting; // Will be updated to ringing based on SIP response
       case CallState.ringing:
         return AppCallState.ringing;
       case CallState.rejecting:

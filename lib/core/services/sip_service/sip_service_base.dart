@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:siprix_voip_sdk/accounts_model.dart';
 import 'package:siprix_voip_sdk/calls_model.dart';
 import 'package:siprix_voip_sdk/cdrs_model.dart';
@@ -268,6 +269,10 @@ abstract class _SipServiceBase extends ChangeNotifier
   void debugIOSPushConfiguration();
   void _onModelsChanged();
   void _onNetworkChanged();
+
+  // Do Not Disturb methods
+  Future<bool> isDoNotDisturbEnabled();
+  Future<void> setDoNotDisturb(bool enabled);
 }
 
 @pragma('vm:entry-point')
