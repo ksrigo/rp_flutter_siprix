@@ -546,6 +546,20 @@ mixin _SipServiceCallHandling on _SipServiceBase {
     }
   }
 
+  Future<void> rejectCall(String callId) async {
+    try {
+      debugPrint('SIP Service: Rejecting call: $callId');
+      final call = _findCallByCallId(int.tryParse(callId) ?? 0);
+      if (call == null) throw Exception('Call not found');
+
+      await call.reject(); // Use built-in SDK method
+      debugPrint('SIP Service: Call rejected successfully');
+    } catch (e) {
+      debugPrint('Reject call failed: $e');
+      rethrow;
+    }
+  }
+
   Future<void> holdCall(String callId) async {
     try {
       final call = _findCallByCallId(int.tryParse(callId) ?? 0);

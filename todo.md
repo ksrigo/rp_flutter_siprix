@@ -101,23 +101,12 @@ Finish Voicemail
 Android splash screen using flutter_native_splash
 Call Options windows take time to load bcz it has to call an API. Add a cache and update in async in background from API
 DND to implement on SCP
+2 double incoming
 
 Unit test
 Need to clean the code using codex + coderabbit.ai, Reduce APP size
 
 ---
-
-D/permissions_handler(21168): No permissions found in manifest for: []2
-D/permissions_handler(21168): No permissions found in manifest for: []2
-I/flutter (21168): ContactsRepository: Contacts permission denied
-
-I/Choreographer(31367): Skipped 39 frames! The application may be doing too much work on its main thread.
-
-I/flutter (16298): event OnAccountRegState {response: 503 No DNS results, accId: 1, regState: 1}
-I/flutter (16298): 🔥 SIP Service: Models changed - checking registration status and call states...
-I/flutter (16298): 🔥 SIP Service: Account 0 - Extension: 1002, State: RegState.failed, Text: 503 No DNS results
-I/flutter (16298): 🔥 SIP Service: Overall registration status: true
-I/flutter (16298): 🔥 SIP Service: Call model check - Active call: null, switched ID: 0, total calls: 0
 
 ## \*\*
 
@@ -132,4 +121,7 @@ refactor the code of sip_service_call_handling.dart. Remove unused, redundancy c
 
 ---
 
-Jst Implemented Merge Call.
+Currently when we open the app for few seconds we have a white screen then followed by flutter splash screen. I tried to use flutter_native_splash to generate android splash screen to avoid the white screen. But the image in the center is stretched. I tried with various images size. Still have the same issue.
+Fix the config not having stretched Image on the Android splash screen
+
+Check this

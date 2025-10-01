@@ -196,16 +196,16 @@ class _IncomingCallScreenState extends ConsumerState<IncomingCallScreen>
     debugPrint('🔥 IncomingCallScreen: Decline button pressed! CallId: ${widget.callId}');
     debugPrint('🔥 IncomingCallScreen: Current mounted state: $mounted');
     debugPrint('🔥 IncomingCallScreen: Current _isNavigatingAway: $_isNavigatingAway');
-    
+
     if (_isNavigatingAway) {
       debugPrint('🔥 IncomingCallScreen: Already navigating away, ignoring decline');
       return;
     }
-    
+
     try {
       debugPrint('🔥 IncomingCallScreen: Attempting to decline call...');
       _isNavigatingAway = true;
-      await SipService.instance.hangupCall(widget.callId);
+      await SipService.instance.rejectCall(widget.callId);
       if (mounted) {
         // Add small delay before navigation to prevent GlobalKey conflicts
         await Future.delayed(const Duration(milliseconds: 100));
