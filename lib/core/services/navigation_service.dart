@@ -14,6 +14,8 @@ import '../services/contacts_service.dart';
 import '../../features/contacts/data/models/contact_model.dart';
 import '../../features/dialpad/presentation/screens/dialpad_screen.dart';
 import '../../features/recents/presentation/screens/recents_screen.dart';
+import '../../features/voicemail/presentation/screens/voicemail_screen.dart';
+import '../../features/voicemail/presentation/screens/voicemail_details_screen.dart';
 import '../../shared/widgets/main_navigation.dart';
 import '../services/auth_service.dart';
 import '../services/sip_service.dart';
@@ -245,22 +247,6 @@ class NavigationService {
     router.go('/voicemail/details/$voicemailId');
   }
 }
-
-class VoicemailScreen extends StatelessWidget {
-  const VoicemailScreen({super.key});
-  @override
-  Widget build(BuildContext context) =>
-      const Scaffold(body: Center(child: Text('Voicemail')));
-}
-
-class VoicemailDetailsScreen extends StatelessWidget {
-  final String voicemailId;
-  const VoicemailDetailsScreen({super.key, required this.voicemailId});
-  @override
-  Widget build(BuildContext context) =>
-      Scaffold(body: Center(child: Text('Voicemail Details $voicemailId')));
-}
-
 
 class CallsSettingsScreen extends StatefulWidget {
   const CallsSettingsScreen({super.key});

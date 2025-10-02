@@ -1,0 +1,6 @@
+- Clean the code
+- App crash sometimes
+- Currently Android native splash screen is not defined (we have a white screen), set it same as flutter splash screen (using flutter_native_splash??)
+- Add Ringplus icons
+- Make sure app works on IOS the same way as the Android one
+- Check Voicemail From_number against contacts if found show Contacts name instead of from_name
