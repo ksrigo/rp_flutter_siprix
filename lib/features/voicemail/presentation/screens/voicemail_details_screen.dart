@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/services/auth_service.dart';
 import '../../../../core/services/navigation_service.dart';
+import '../../../../core/services/sip_service.dart';
 import '../../../../core/services/voicemail_service.dart';
 import '../../data/models/voicemail_model.dart';
 
@@ -195,11 +196,28 @@ class _VoicemailDetailsScreenState extends State<VoicemailDetailsScreen> {
     }
   }
 
-  void _callBack() {
-    if (_voicemail != null) {
-      // Navigate to keypad - the dialpad screen will need to be updated to accept phone number parameter
-      NavigationService.goToKeypad();
-      // TODO: Pass phone number to dialpad screen once navigation supports it
+  Future<void> _callBack() async {
+    if (_voicemail == null) return;
+
+    final phoneNumber = _voicemail!.fromUser;
+    if (phoneNumber.isEmpty) return;
+
+    try {
+      final callId = await SipService.instance.makeCall(phoneNumber);
+      if (callId != null && mounted) {
+        NavigationService.goToInCall(
+          callId,
+          phoneNumber: phoneNumber,
+          contactName: _voicemail!.fromName.isNotEmpty ? _voicemail!.fromName : null,
+        );
+      }
+    } catch (e) {
+      debugPrint('VoicemailDetails: Error making call to $phoneNumber: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error making call: $e')),
+        );
+      }
     }
   }
 
