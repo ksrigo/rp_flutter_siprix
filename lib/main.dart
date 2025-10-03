@@ -61,18 +61,13 @@ Future<void> _initializeServices() async {
     debugPrint('🚀 MAIN: Initializing StorageService...');
     await StorageService.instance.initialize();
     debugPrint('🚀 MAIN: StorageService initialized');
-    
+
     // Initialize API service before auth service (auth service needs API for extension details)
     debugPrint('🚀 MAIN: Initializing ApiService...');
     await ApiService.instance.initialize();
     debugPrint('🚀 MAIN: ApiService initialized');
-    
-    // Initialize authentication service
-    debugPrint('🚀 MAIN: Initializing AuthService...');
-    await AuthService.instance.initialize();
-    debugPrint('🚀 MAIN: AuthService initialized');
-    
-    // Initialize notification service
+
+    // Initialize notification service BEFORE auth service (FCM token needed for SIP registration)
     debugPrint('🚀 MAIN: Initializing NotificationService...');
     try {
       await NotificationService.instance.initialize().timeout(
@@ -87,6 +82,12 @@ Future<void> _initializeServices() async {
       debugPrint('🚀 MAIN: NotificationService initialization failed: $e');
       // Continue with app initialization even if notification service fails
     }
+
+    // Initialize authentication service AFTER notification service (SIP needs FCM token)
+    debugPrint('🚀 MAIN: Initializing AuthService...');
+    await AuthService.instance.initialize();
+    debugPrint('🚀 MAIN: AuthService initialized');
+
     
     // Initialize contacts service (cache only, no API call)
     debugPrint('🚀 MAIN: Initializing ContactsService...');

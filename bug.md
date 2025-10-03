@@ -4,3 +4,4 @@
 - Add Ringplus icons
 - Make sure app works on IOS the same way as the Android one
 - Check Voicemail From_number against contacts if found show Contacts name instead of from_name
+- When an Incoming was missed. Need to show missed call notification in notifications
