@@ -15,31 +15,48 @@ import 'core/services/api_service.dart';
 import 'core/services/contacts_service.dart';
 import 'shared/services/storage_service.dart';
 
+// Global flag to track if we're in fast-start mode (launched from notification)
+bool _isFastStartMode = false;
+
 void main() async {
   try {
     WidgetsFlutterBinding.ensureInitialized();
-    
+
     debugPrint('🚀 MAIN: Application starting...');
     print('🚀 MAIN: Application starting (print)...');
-    
-    
+
     // Register Firebase background message handler for Android push notifications
     if (Platform.isAndroid) {
       FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
     }
-    
+
+    // Check if app was launched from notification (fast-start mode)
+    if (Platform.isAndroid) {
+      try {
+        final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+        if (initialMessage != null &&
+            (initialMessage.data['type'] == 'INCOMING_CALL' ||
+             initialMessage.data['type'] == 'incoming_call') &&
+            initialMessage.data['action'] == 'accept') {
+          _isFastStartMode = true;
+          debugPrint('🚀 MAIN: Fast-start mode enabled - launched from notification acceptance');
+        }
+      } catch (e) {
+        debugPrint('🚀 MAIN: Error checking initial message: $e');
+      }
+    }
+
     debugPrint('🚀 MAIN: About to initialize services...');
     // Initialize core services
     await _initializeServices();
     debugPrint('🚀 MAIN: Services initialized successfully');
-    
+
     // Set preferred orientations
     await SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
     ]);
-    
-    
+
     debugPrint('🚀 Main: Starting app with runApp');
     runApp(
       const ProviderScope(
@@ -57,56 +74,67 @@ void main() async {
 
 Future<void> _initializeServices() async {
   try {
-    // Initialize storage service first (required by other services)
+    // Always initialize critical services first
     debugPrint('🚀 MAIN: Initializing StorageService...');
     await StorageService.instance.initialize();
     debugPrint('🚀 MAIN: StorageService initialized');
 
-    // Initialize API service before auth service (auth service needs API for extension details)
     debugPrint('🚀 MAIN: Initializing ApiService...');
     await ApiService.instance.initialize();
     debugPrint('🚀 MAIN: ApiService initialized');
 
-    // Initialize notification service BEFORE auth service (FCM token needed for SIP registration)
+    // Initialize notification service (needed for SIP registration)
     debugPrint('🚀 MAIN: Initializing NotificationService...');
     try {
       await NotificationService.instance.initialize().timeout(
-        const Duration(seconds: 10),
+        Duration(seconds: _isFastStartMode ? 3 : 10), // Shorter timeout in fast mode
         onTimeout: () {
           debugPrint('🚀 MAIN: NotificationService initialization timed out');
-          throw TimeoutException('NotificationService initialization timed out', const Duration(seconds: 10));
+          throw TimeoutException('NotificationService initialization timed out');
         },
       );
       debugPrint('🚀 MAIN: NotificationService initialized');
     } catch (e) {
       debugPrint('🚀 MAIN: NotificationService initialization failed: $e');
-      // Continue with app initialization even if notification service fails
     }
 
-    // Initialize authentication service AFTER notification service (SIP needs FCM token)
+    // Initialize authentication service
     debugPrint('🚀 MAIN: Initializing AuthService...');
     await AuthService.instance.initialize();
     debugPrint('🚀 MAIN: AuthService initialized');
 
-    
-    // Initialize contacts service (cache only, no API call)
-    debugPrint('🚀 MAIN: Initializing ContactsService...');
-    try {
-      await ContactsService.instance.initializeWithoutApiCall().timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          debugPrint('🚀 MAIN: ContactsService initialization timed out');
-          throw TimeoutException('ContactsService initialization timed out', const Duration(seconds: 10));
-        },
-      );
-      debugPrint('🚀 MAIN: ContactsService initialized (cache only)');
-    } catch (e) {
-      debugPrint('🚀 MAIN: ContactsService initialization failed: $e');
-      // Continue with app initialization even if contacts service fails
+    // In fast-start mode, defer non-critical services to background
+    if (_isFastStartMode) {
+      debugPrint('🚀 MAIN: Fast-start mode - deferring ContactsService initialization');
+      // Initialize contacts in background after app is shown
+      Future.microtask(() async {
+        debugPrint('🚀 MAIN: Background: Initializing ContactsService...');
+        try {
+          await ContactsService.instance.initializeWithoutApiCall();
+          debugPrint('🚀 MAIN: Background: ContactsService initialized');
+        } catch (e) {
+          debugPrint('🚀 MAIN: Background: ContactsService initialization failed: $e');
+        }
+      });
+    } else {
+      // Normal mode - initialize contacts service synchronously
+      debugPrint('🚀 MAIN: Initializing ContactsService...');
+      try {
+        await ContactsService.instance.initializeWithoutApiCall().timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            debugPrint('🚀 MAIN: ContactsService initialization timed out');
+            throw TimeoutException('ContactsService initialization timed out');
+          },
+        );
+        debugPrint('🚀 MAIN: ContactsService initialized (cache only)');
+      } catch (e) {
+        debugPrint('🚀 MAIN: ContactsService initialization failed: $e');
+      }
     }
-    
+
     // SIP service will be initialized after successful authentication
-    
+
   } catch (e, stackTrace) {
     debugPrint('🚀 MAIN: Error initializing services: $e');
     debugPrint('🚀 MAIN: Service initialization stack trace: $stackTrace');

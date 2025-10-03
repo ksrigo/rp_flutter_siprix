@@ -116,6 +116,7 @@ class NotificationService {
       // Check for initial message (app opened from terminated state)
       final initialMessage = await _firebaseMessaging!.getInitialMessage();
       if (initialMessage != null) {
+        debugPrint('Android: App opened from terminated state via notification');
         _handleNotificationTap(initialMessage);
       }
 
@@ -304,21 +305,39 @@ class NotificationService {
 
   Future<void> _handleNotificationTap(RemoteMessage message) async {
     debugPrint('Android: Notification tapped: ${message.data}');
-    
+
     final data = message.data;
     if (data['type'] == 'INCOMING_CALL' || data['type'] == 'incoming_call') {
       final callId = data['call_id'];
       final callerName = data['caller_name'] ?? 'Unknown';
       final callerNumber = data['caller_number'] ?? 'Unknown';
       final action = data['action']; // Check if user accepted/rejected from notification
-      
+
       debugPrint('Android: Incoming call notification - CallId: $callId, Action: $action');
-      
+
       if (callId != null) {
         // Check if user accepted the call from the notification
         if (action == 'accept') {
-          debugPrint('Android: User accepted call from notification, answering call directly');
-          await _handleNotificationAccept(callId, callerName, callerNumber);
+          debugPrint('Android: User accepted call from notification via deep link');
+          debugPrint('Android: Deep link detected - will answer and navigate to in-call screen');
+
+          // Answer the call and navigate directly to in-call screen
+          try {
+            await SipService.instance.initialize();
+            await SipService.instance.answerCall(callId);
+            debugPrint('Android: Call answered from deep link, navigating to in-call screen');
+
+            // Navigate directly to in-call screen (bypass incoming_call_screen)
+            NavigationService.goToInCall(
+              callId,
+              phoneNumber: callerNumber,
+              contactName: callerName,
+            );
+          } catch (e) {
+            debugPrint('Android: Error handling deep link accept: $e');
+            // Set auto-answer as fallback
+            SipService.instance.setAutoAnswerCall(callId, callerName, callerNumber);
+          }
         } else if (action == 'reject') {
           debugPrint('Android: User rejected call from notification, hanging up call');
           await _handleNotificationReject(callId);
