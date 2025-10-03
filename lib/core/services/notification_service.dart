@@ -344,7 +344,7 @@ class NotificationService {
   Future<void> _handleNotificationAccept(String callId, String callerName, String callerNumber) async {
     try {
       debugPrint('🔥 Android: Handling notification accept for callId: $callId');
-      
+
       // Initialize SIP service if needed
       try {
         debugPrint('🔥 Android: Ensuring SIP service is initialized...');
@@ -352,84 +352,52 @@ class NotificationService {
       } catch (e) {
         debugPrint('🔥 Android: Error initializing SIP service: $e');
       }
-      
-      // Set flag for auto-answer when call arrives (critical fix)
+
+      // Set flag for auto-answer when call arrives
       debugPrint('🔥 Android: Setting auto-answer flag for callId: $callId');
       SipService.instance.setAutoAnswerCall(callId, callerName, callerNumber);
-      
-      // Wait for actual SIP call to arrive before attempting to answer
-      debugPrint('🔥 Android: Waiting for SIP call to arrive...');
-      bool callAnswered = false;
-      int attempts = 0;
-      const maxAttempts = 10; // Wait up to 10 seconds
-      
-      while (!callAnswered && attempts < maxAttempts) {
-        await Future.delayed(const Duration(seconds: 1));
-        attempts++;
-        
-        // Check if call exists in SIP service now
-        final currentCall = SipService.instance.currentCall;
-        if (currentCall != null && currentCall.id == callId) {
-          debugPrint('🔥 Android: SIP call arrived! State: ${currentCall.state}');
-          
-          if (currentCall.state == AppCallState.ringing) {
-            debugPrint('🔥 Android: Call is ringing, answering now...');
-            await SipService.instance.answerCall(callId);
-            debugPrint('🔥 Android: Call answered successfully from notification');
-            callAnswered = true;
-            
-            // Navigate directly to in-call screen
-            NavigationService.goToInCall(
-              callId,
-              phoneNumber: callerNumber,
-              contactName: callerName,
-            );
-            break;
-          } else if (currentCall.state == AppCallState.answered) {
-            debugPrint('🔥 Android: Call already answered (auto-answer worked)');
-            callAnswered = true;
-            
-            // Navigate directly to in-call screen
-            NavigationService.goToInCall(
-              callId,
-              phoneNumber: callerNumber,
-              contactName: callerName,
-            );
-            break;
-          }
-        } else {
-          debugPrint('🔥 Android: Waiting for SIP call (attempt $attempts/$maxAttempts)...');
+
+      // Check if call already exists (arrived during app wake-up)
+      final currentCall = SipService.instance.currentCall;
+      if (currentCall != null && currentCall.id == callId) {
+        debugPrint('🔥 Android: SIP call already arrived! State: ${currentCall.state}');
+
+        if (currentCall.state == AppCallState.ringing) {
+          debugPrint('🔥 Android: Call is ringing, answering now...');
+          await SipService.instance.answerCall(callId);
+          debugPrint('🔥 Android: Call answered, navigating to in-call screen');
+
+          // Navigate directly to in-call screen
+          NavigationService.goToInCall(
+            callId,
+            phoneNumber: callerNumber,
+            contactName: callerName,
+          );
+          return;
+        } else if (currentCall.state == AppCallState.answered) {
+          debugPrint('🔥 Android: Call already answered, navigating to in-call screen');
+
+          // Navigate directly to in-call screen
+          NavigationService.goToInCall(
+            callId,
+            phoneNumber: callerNumber,
+            contactName: callerName,
+          );
+          return;
         }
       }
-      
-      if (!callAnswered) {
-        debugPrint('🔥 Android: Timeout waiting for SIP call, showing incoming call screen as fallback');
-        NavigationService.goToIncomingCall(
-          callId: callId,
-          callerName: callerName,
-          callerNumber: callerNumber,
-        );
-      }
-      
+
+      // Call hasn't arrived yet - auto-answer flag is set, so when it arrives
+      // it will be auto-answered and incoming_call_screen will detect the
+      // answered state and navigate to in_call_screen automatically
+      debugPrint('🔥 Android: Call not arrived yet, auto-answer flag is set');
+      debugPrint('🔥 Android: When call arrives, it will be auto-answered and screen will auto-navigate');
+
       debugPrint('🔥 Android: Notification accept handling completed');
     } catch (e) {
       debugPrint('🔥 Android: Error handling notification accept: $e');
-      // Fallback: show incoming call screen if call is still active
-      try {
-        final currentCall = SipService.instance.currentCall;
-        if (currentCall != null && currentCall.id == callId) {
-          NavigationService.goToIncomingCall(
-            callId: callId,
-            callerName: callerName,
-            callerNumber: callerNumber,
-          );
-        } else {
-          NavigationService.goToKeypad();
-        }
-      } catch (fallbackError) {
-        debugPrint('🔥 Android: Fallback navigation error: $fallbackError');
-        NavigationService.goToKeypad();
-      }
+      // If there's an error, the auto-answer flag is still set
+      // so the call will be answered when it arrives
     }
   }
 

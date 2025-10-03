@@ -234,6 +234,9 @@ mixin _SipServiceCallHandling on _SipServiceBase {
     if (_autoAnswerCallId == callId.toString()) {
       debugPrint('SIP Service: Auto-answering call $callId');
 
+      final savedCallerName = _autoAnswerCallerName ?? callerName;
+      final savedCallerNumber = _autoAnswerCallerNumber ?? callerNumber;
+
       // Clear the auto-answer flag
       clearAutoAnswerCall();
 
@@ -241,7 +244,14 @@ mixin _SipServiceCallHandling on _SipServiceBase {
       Future.delayed(const Duration(milliseconds: 100)).then((_) async {
         try {
           await answerCall(callId.toString());
-          debugPrint('SIP Service: Auto-answer successful');
+          debugPrint('SIP Service: Auto-answer successful, navigating to in-call screen');
+
+          // Navigate to in-call screen after successful answer
+          NavigationService.goToInCall(
+            callId.toString(),
+            phoneNumber: savedCallerNumber,
+            contactName: savedCallerName,
+          );
         } catch (e) {
           debugPrint('SIP Service: Auto-answer failed: $e');
         }
@@ -420,10 +430,22 @@ mixin _SipServiceCallHandling on _SipServiceBase {
     final call = _findCallByCallId(callId);
     if (call != null) {
       debugPrint('SIP Service: Found call $callId, answering');
+
+      // Extract caller details for navigation
+      final callerName = call.displName ?? 'Unknown';
+      final callerNumber = call.remoteExt ?? 'Unknown';
+
       Future.delayed(const Duration(milliseconds: 50)).then((_) async {
         try {
           await answerCall(callId.toString());
-          debugPrint('SIP Service: Call answered from notification');
+          debugPrint('SIP Service: Call answered from notification, navigating to in-call screen');
+
+          // Navigate directly to in-call screen
+          NavigationService.goToInCall(
+            callId.toString(),
+            phoneNumber: callerNumber,
+            contactName: callerName,
+          );
         } catch (e) {
           debugPrint('SIP Service: Error answering call from notification: $e');
         }
