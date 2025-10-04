@@ -237,6 +237,17 @@ class NavigationService {
     router.go(url);
   }
 
+  static void goToConsultCall({
+    required String consultCallId,
+    required String targetNumber,
+    required String originalCallId,
+  }) {
+    String url = '/consult-call?consultCallId=${Uri.encodeQueryComponent(consultCallId)}'
+        '&targetNumber=${Uri.encodeQueryComponent(targetNumber)}'
+        '&originalCallId=${Uri.encodeQueryComponent(originalCallId)}';
+    router.go(url);
+  }
+
   static void goBack() {
     if (router.canPop()) {
       router.pop();

@@ -172,18 +172,20 @@ class _DialpadScreenState extends ConsumerState<DialpadScreen> {
               // Dialed Number Display - Large and prominent in center
               Container(
                 width: double.infinity,
-                height: 80,
-                margin: const EdgeInsets.symmetric(vertical: 20),
+                height: isKeyboardOpen ? 50 : 80,
+                margin: EdgeInsets.symmetric(vertical: isKeyboardOpen ? 10 : 20),
                 child: Center(
                   child: Text(
                     _dialedNumber.isEmpty ? '' : _dialedNumber,
                     style: TextStyle(
-                      fontSize: 48,
+                      fontSize: isKeyboardOpen ? 32 : 48,
                       fontWeight: FontWeight.w400,
                       color: Theme.of(context).colorScheme.onPrimaryContainer,
                       letterSpacing: 1.0,
                     ),
                     textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ),

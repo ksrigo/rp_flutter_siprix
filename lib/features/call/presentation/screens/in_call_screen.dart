@@ -928,6 +928,138 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
     }
   }
 
+  Future<void> _performBlindTransfer(String targetNumber) async {
+    try {
+      debugPrint('Initiating blind transfer to: $targetNumber');
+
+      // Validate input
+      if (targetNumber.trim().isEmpty) {
+        throw Exception('Target number cannot be empty');
+      }
+
+      // Check if SIP service is ready
+      if (!SipService.instance.isRegistered) {
+        throw Exception('SIP service not registered. Please check your connection.');
+      }
+
+      // Show transferring state
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+              SizedBox(width: 16),
+              Text('Transferring call...'),
+            ],
+          ),
+          duration: Duration(seconds: 3),
+          backgroundColor: Color(0xFF6B46C1),
+        ),
+      );
+
+      await SipService.instance.transferBlind(widget.callId, targetNumber);
+
+      debugPrint('Blind transfer completed successfully');
+
+      // Success feedback
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 12),
+                Text('Call transferred to $targetNumber'),
+              ],
+            ),
+            backgroundColor: Colors.green[600],
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+
+    } catch (e) {
+      debugPrint('Blind transfer failed: $e');
+      // Hide any loading indicators
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> _performAttendedTransfer(String targetNumber) async {
+    try {
+      debugPrint('Initiating attended transfer to: $targetNumber');
+
+      // Validate input
+      if (targetNumber.trim().isEmpty) {
+        throw Exception('Target number cannot be empty');
+      }
+
+      // Check if SIP service is ready
+      if (!SipService.instance.isRegistered) {
+        throw Exception('SIP service not registered. Please check your connection.');
+      }
+
+      // Show initiating state
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+              SizedBox(width: 16),
+              Text('Starting consult call...'),
+            ],
+          ),
+          duration: Duration(seconds: 2),
+          backgroundColor: Color(0xFF6B46C1),
+        ),
+      );
+
+      final consultCallId = await SipService.instance.transferAttendedStart(widget.callId, targetNumber);
+
+      debugPrint('Attended transfer initiated successfully, consult call ID: $consultCallId');
+
+      // Hide loading indicator
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      }
+
+      // Navigate to consult call screen using GoRouter
+      if (mounted) {
+        NavigationService.goToConsultCall(
+          consultCallId: consultCallId,
+          targetNumber: targetNumber,
+          originalCallId: widget.callId,
+        );
+      }
+
+    } catch (e) {
+      debugPrint('Attended transfer start failed: $e');
+      // Hide any loading indicators
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      }
+      rethrow;
+    }
+  }
+
   void _endCall() {
     if (!_isNavigatingAway) {
       _isNavigatingAway = true;
