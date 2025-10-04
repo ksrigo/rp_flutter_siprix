@@ -41,6 +41,22 @@ mixin _SipServiceCallHandling on _SipServiceBase {
       _accountsModel = AccountsModel();
       _cdrsModel =
           CdrsModel(maxItems: 100); // Create CDRs model with max 100 items
+
+      // Set up CDR persistence - save changes to storage
+      _cdrsModel!.onSaveChanges = (String jsonStr) async {
+        debugPrint('SIP Service: Saving CDR history to storage');
+        await StorageService.instance.saveCdrCallHistory(jsonStr);
+      };
+
+      // Load CDRs from storage
+      final savedCdrs = await StorageService.instance.getCdrCallHistory();
+      if (savedCdrs != null && savedCdrs.isNotEmpty) {
+        final loaded = _cdrsModel!.loadFromJson(savedCdrs);
+        debugPrint('SIP Service: Loaded ${_cdrsModel!.length} CDR entries from storage');
+      } else {
+        debugPrint('SIP Service: No saved CDR history found');
+      }
+
       _callsModel = AppCallsModel(
           _accountsModel!, null, _cdrsModel); // Use our extended AppCallsModel
 
