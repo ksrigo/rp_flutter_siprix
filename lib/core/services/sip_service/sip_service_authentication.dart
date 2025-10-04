@@ -48,7 +48,8 @@ mixin _SipServiceAuthentication on _SipServiceBase {
           extension; // Authentication ID (usually same as extension)
       account.expireTime = 120;
       account.sipProxy = '$proxy:$port'; // Concatenate proxy with port
-      account.port = 0; // Use random port selection by Siprix SDK
+      //account.port = 0; // Use random port selection by Siprix SDK
+      account.port = 38380; //hardcoded port
       account.userAgent = '${AppConstants.appName}/${AppConstants.appVersion}';
 
       // Set display name for proper caller ID
@@ -88,28 +89,29 @@ mixin _SipServiceAuthentication on _SipServiceBase {
       ];
 
       // Additional media/RTP configurations for better timing
-      account.expireTime = 300; // Registration expiry time
+      //account.expireTime = 300; // Registration expiry time
 
       // Add custom authentication headers if needed
-      if (account.xheaders == null) {
-        account.xheaders = <String, String>{};
-      }
+      // if (account.xheaders == null) {
+      //   account.xheaders = <String, String>{};
+      // }
+      // Add any custom headers that might help with proxy authentication
+      //account.xheaders!['User-Agent'] = 'RingPlus-Siprix/1.0';
 
       // Add RFC 8599 push notification parameters for Android
       if (Platform.isAndroid) {
         final fcmToken = NotificationService.instance.getCurrentFCMToken();
         if (fcmToken != null) {
           // Add FCM token to X-headers for backward compatibility
-          account.xheaders!['X-Token'] = fcmToken;
+          //account.xheaders!['X-Token'] = fcmToken;
 
           // Add RFC 8599 push notification parameters to Contact URI
           account.xContactUriParams ??= <String, String>{};
           account.xContactUriParams!['pn-provider'] = 'fcm';
-          account.xContactUriParams!['pn-param'] = fcmToken;
-          account.xContactUriParams!['pn-prid'] =
-              'com.ringplus.app'; // App bundle ID
-          account.xContactUriParams!['pn-timeout'] = '0';
-          account.xContactUriParams!['pn-silent'] = '1';
+          account.xContactUriParams!['pn-param'] = 'none';
+          account.xContactUriParams!['pn-prid'] = fcmToken;
+          //account.xContactUriParams!['pn-timeout'] = '0';
+          //account.xContactUriParams!['pn-silent'] = '1';
 
           debugPrint(
               'Register: Added RFC 8599 push notification parameters to Contact URI');
@@ -120,8 +122,6 @@ mixin _SipServiceAuthentication on _SipServiceBase {
               'Register: No FCM token available yet - push notifications will not work');
         }
       }
-      // Add any custom headers that might help with proxy authentication
-      account.xheaders!['User-Agent'] = 'RingPlus-Siprix/1.0';
 
       // TODO: Add PushKit token when push notifications are implemented
       // Note: PushKit is currently disabled - enable when push infrastructure is ready
