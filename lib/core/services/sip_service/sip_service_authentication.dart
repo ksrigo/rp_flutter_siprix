@@ -57,7 +57,9 @@ mixin _SipServiceAuthentication on _SipServiceBase {
 
       // Critical settings for proxy authentication
       account.forceSipProxy = true; // Force using proxy for all requests
-      account.rewriteContactIp = true; // Enable IP rewrite for NAT handling
+      //account.rewriteContactIp = true; // Enable IP rewrite for NAT handling
+      account.rewriteContactIp =
+          false; // Disable IP rewrite to prevent second REGISTER
       account.keepAliveTime = 30; // Keep alive packets every 30 seconds
 
       // Transport configuration - load from saved setting
