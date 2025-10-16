@@ -5,6 +5,8 @@
 - When an Incoming was missed. Need to show missed call notification in notifications
 - When accepting a call when the app is not running (following a push notification), we need skip Androind splash screen to in_call_screen
 - Automatic/Force update of the app
+- Order Recents by DESC
+- When changing Account Recents doesnt get clean up
 
 SDK Siprix:
 https://pub.dev/documentation/siprix_voip_sdk/latest/index.html
