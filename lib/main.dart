@@ -6,6 +6,9 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'dart:io';
 import 'dart:async';
 
+import 'package:siprix_voip_sdk/siprix_voip_sdk.dart';
+import 'package:siprix_voip_sdk/accounts_model.dart';
+
 import 'core/constants/app_constants.dart';
 import 'core/theme/app_theme.dart';
 import 'core/services/navigation_service.dart';
@@ -13,6 +16,7 @@ import 'core/services/notification_service.dart';
 import 'core/services/auth_service.dart';
 import 'core/services/api_service.dart';
 import 'core/services/contacts_service.dart';
+import 'core/models/app_calls_model.dart';
 import 'shared/services/storage_service.dart';
 
 // Global flag to track if we're in fast-start mode (launched from notification)
@@ -24,6 +28,15 @@ void main() async {
 
     debugPrint('🚀 MAIN: Application starting...');
     print('🚀 MAIN: Application starting (print)...');
+
+    // CRITICAL FOR iOS: Initialize Siprix SDK IMMEDIATELY to handle VoIP push
+    // This must happen BEFORE runApp() so the CallStateListener is ready
+    // when iOS delivers the pending push notification
+    if (Platform.isIOS) {
+      debugPrint('🚀 MAIN: iOS detected - initializing Siprix SDK for VoIP push handling');
+      print('🚀 MAIN: iOS detected - initializing Siprix SDK for VoIP push handling (print)');
+      await _initializeSiprixForPush();
+    }
 
     // Register Firebase background message handler for Android push notifications
     if (Platform.isAndroid) {
@@ -183,6 +196,57 @@ class RingplusApp extends ConsumerWidget {
         );
       },
     );
+  }
+}
+
+/// Initialize Siprix SDK early for iOS VoIP push handling
+/// This MUST be called BEFORE runApp() to ensure CallStateListener is ready
+Future<void> _initializeSiprixForPush() async {
+  try {
+    debugPrint('🚀 MAIN: Initializing Siprix SDK for VoIP push...');
+    print('🚀 MAIN: Initializing Siprix SDK for VoIP push (print)...');
+
+    // Create Siprix SDK instance
+    final siprixSdk = SiprixVoipSdk();
+
+    // Create minimal init data with CallKit and PushKit enabled
+    final initData = InitData();
+    initData.license = "";
+    initData.singleCallMode = false;
+    initData.shareUdpTransport = true;
+    initData.enableVideoCall = false;
+    initData.enableCallKit = true;
+    initData.enablePushKit = true;
+    initData.unregOnDestroy = false;
+
+    // CRITICAL: Create AccountsModel BEFORE initializing SDK
+    // This way we can set up CallStateListener immediately after SDK init
+    final accountsModel = AccountsModel();
+    debugPrint('🚀 MAIN: AccountsModel created');
+    print('🚀 MAIN: AccountsModel created (print)');
+
+    // Create AppCallsModel BEFORE initializing SDK
+    // This sets up CallStateListener so it's ready when SDK initialization completes
+    final callsModel = AppCallsModel(accountsModel, null, null);
+    debugPrint('🚀 MAIN: AppCallsModel created - CallStateListener is now configured');
+    print('🚀 MAIN: AppCallsModel created - CallStateListener is now configured (print)');
+
+    // NOW initialize the SDK - CallStateListener is already set up
+    await siprixSdk.initialize(initData);
+    debugPrint('🚀 MAIN: Siprix SDK initialized');
+    print('🚀 MAIN: Siprix SDK initialized (print)');
+
+    // Store references globally so SipService can use them later
+    // The SipService.initialize() will check if SDK is already initialized
+    // and reuse these instances instead of creating new ones
+
+    debugPrint('🚀 MAIN: ✅ Siprix SDK ready for VoIP push notifications');
+    print('🚀 MAIN: ✅ Siprix SDK ready for VoIP push notifications (print)');
+  } catch (e, stackTrace) {
+    debugPrint('🚀 MAIN: ❌ Failed to initialize Siprix SDK: $e');
+    debugPrint('🚀 MAIN: Stack trace: $stackTrace');
+    print('🚀 MAIN: ❌ Failed to initialize Siprix SDK: $e (print)');
+    // Don't rethrow - let the app continue and try to initialize later
   }
 }
 
