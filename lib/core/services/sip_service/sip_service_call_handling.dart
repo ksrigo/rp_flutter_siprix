@@ -57,8 +57,19 @@ mixin _SipServiceCallHandling on _SipServiceBase {
         debugPrint('SIP Service: No saved CDR history found');
       }
 
-      _callsModel = AppCallsModel(
-          _accountsModel!, null, _cdrsModel); // Use our extended AppCallsModel
+      // CRITICAL FOR iOS PUSH: Check if AppCallsModel was already created in main.dart
+      // If so, reuse it to maintain the same CallStateListener instance
+      final globalCallsModel = getGlobalCallsModel();
+      if (globalCallsModel != null) {
+        _callsModel = globalCallsModel;
+        debugPrint('SIP Service: ✅ Reusing AppCallsModel from early initialization (iOS push)');
+        // Note: Need to update the CDRs model in the existing instance
+        // but AppCallsModel constructor doesn't expose cdrs setter, so we'll manage this separately
+      } else {
+        _callsModel = AppCallsModel(
+            _accountsModel!, null, _cdrsModel); // Use our extended AppCallsModel
+        debugPrint('SIP Service: Created new AppCallsModel');
+      }
 
       _networkModel = NetworkModel();
       _devicesModel = DevicesModel();

@@ -22,6 +22,15 @@ import 'shared/services/storage_service.dart';
 // Global flag to track if we're in fast-start mode (launched from notification)
 bool _isFastStartMode = false;
 
+// Global references to early-initialized Siprix components (for iOS push handling)
+// These are created in _initializeSiprixForPush() and reused by SipService
+AppCallsModel? _globalCallsModel;
+AccountsModel? _globalAccountsModel;
+
+// Getter functions for SipService to access the early-initialized instances
+AppCallsModel? getGlobalCallsModel() => _globalCallsModel;
+AccountsModel? getGlobalAccountsModel() => _globalAccountsModel;
+
 void main() async {
   try {
     WidgetsFlutterBinding.ensureInitialized();
@@ -221,13 +230,13 @@ Future<void> _initializeSiprixForPush() async {
 
     // CRITICAL: Create AccountsModel BEFORE initializing SDK
     // This way we can set up CallStateListener immediately after SDK init
-    final accountsModel = AccountsModel();
+    _globalAccountsModel = AccountsModel();
     debugPrint('🚀 MAIN: AccountsModel created');
     print('🚀 MAIN: AccountsModel created (print)');
 
     // Create AppCallsModel BEFORE initializing SDK
     // This sets up CallStateListener so it's ready when SDK initialization completes
-    final callsModel = AppCallsModel(accountsModel, null, null);
+    _globalCallsModel = AppCallsModel(_globalAccountsModel!, null, null);
     debugPrint('🚀 MAIN: AppCallsModel created - CallStateListener is now configured');
     print('🚀 MAIN: AppCallsModel created - CallStateListener is now configured (print)');
 
@@ -238,7 +247,8 @@ Future<void> _initializeSiprixForPush() async {
 
     // Store references globally so SipService can use them later
     // The SipService.initialize() will check if SDK is already initialized
-    // and reuse these instances instead of creating new ones
+    // and reuse these instances (_globalCallsModel and _globalAccountsModel)
+    // instead of creating new ones
 
     debugPrint('🚀 MAIN: ✅ Siprix SDK ready for VoIP push notifications');
     print('🚀 MAIN: ✅ Siprix SDK ready for VoIP push notifications (print)');

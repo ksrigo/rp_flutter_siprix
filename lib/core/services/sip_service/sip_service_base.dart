@@ -21,6 +21,7 @@ import '../auth_service.dart';
 import '../contact_service.dart';
 import '../navigation_service.dart';
 import '../notification_service.dart';
+import '../../../main.dart' show getGlobalCallsModel, getGlobalAccountsModel;
 
 part 'sip_service_authentication.dart';
 part 'sip_service_call_handling.dart';

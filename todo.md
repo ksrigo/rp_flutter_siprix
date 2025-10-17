@@ -148,7 +148,7 @@ https://developer.apple.com/documentation/usernotifications/sending-push-notific
 https://icloud.developer.apple.com/dashboard/notifications/teams/79K2J33UNY/app/com.ringplus.app/tools/generateJwt
 https://developer.apple.com/library/archive/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/CommunicatingwithAPNs.html
 https://getstream.io/blog/pushkit-for-calls/
-https://stackoverflow.com/questions/69650283/open-ios-flutter-app-directly-after-answering-voip-call-from-locked-ios-device
+https://stackoverflow.com/questions/69650283/https://stackoverflow.com/questions/69650283/open-ios-flutter-app-directly-after-answering-voip-call-from-locked-ios-device
 
 openssl pkcs12 -in Certificates.p12 -out Certificates.pem -legacy
 
@@ -159,3 +159,19 @@ curl -v \
 --cert "voip_services.cer" --cert-type DER --key "Certificates.pem" --key-type PEM \
 --http2 \
 https://api.sandbox.push.apple.com/3/device/6dc9cbf3ae843ee31d32d9554787d6ac7d69358e557ab3bba33774a337d9f91a
+
+curl -v \
+-d '{"aps":{"alert":"test","callerId":"1001", "callerNumber":"1001", "pushHint":"somehint"}}' \
+-H "apns-push-type: voip" \
+-H "apns-expiration: 0" \
+-H "apns-priority: 0" \
+-H "apns-topic: com.ringplus.app.voip" \
+--cert "voip_services.cer" --cert-type DER --key "Certificates.pem" --key-type PEM \
+--http2 \
+https://api.sandbox.push.apple.com/3/device/6dc9cbf3ae843ee31d32d9554787d6ac7d69358e557ab3bba33774a337d9f91a
+
+log show --predicate 'processImagePath contains "Runner"' --last 2m --info --debug 2>&1 | grep -E "(🚀|🔔|MAIN|SIP Service|Application starting)"
+
+flutter logs -d 00008140-0002211204E3C01C
+
+flutter run -d 00008140-0002211204E3C01C --release
