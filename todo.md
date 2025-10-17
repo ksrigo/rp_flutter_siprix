@@ -93,15 +93,7 @@ All phases have been successfully completed. The Ringplus PBX Softphone is ready
 
 ---
 
-Incoming miss call notitifcation
-Notifications numbers on the app icon
-Bypass Login page when incoming call through push notification
-on Keypad screen: need to implement: Add Call, Transfer, Keypad for DTMF
-Finish Voicemail
-Android splash screen using flutter_native_splash
-Call Options windows take time to load bcz it has to call an API. Add a cache and update in async in background from API
-DND to implement on SCP
-2 double incoming
+At start: 2 times sending SIP register
 
 Unit test
 Need to clean the code using codex + coderabbit.ai, Reduce APP size
@@ -109,8 +101,6 @@ Need to clean the code using codex + coderabbit.ai, Reduce APP size
 ---
 
 ## \*\*
-
-Outgoing/Incoming calls: - Speaker once enabled cant be disabled - Hold button once enabled doesnt show the status - When remote party hang up it doesnt hangup
 
 Refactor the code of multi_call_screen, call_action_screen, in_call_screen without breaking any functionalities: Remove unused code, redundancy codes or simplify overcomplicated custom logic into simple code. Use builtins functions from siprix whereever possible
 
@@ -121,7 +111,51 @@ refactor the code of sip_service_call_handling.dart. Remove unused, redundancy c
 
 ---
 
-Currently when we open the app for few seconds we have a white screen then followed by flutter splash screen. I tried to use flutter_native_splash to generate android splash screen to avoid the white screen. But the image in the center is stretched. I tried with various images size. Still have the same issue.
-Fix the config not having stretched Image on the Android splash screen
+What if in unregister(), we change our current accountmodel and apply updateAccount()
 
-Check this
+curl -v \
+ -d '{"aps": {"alert": "Incoming call"}, "uuid": "test-uuid", "callerName": "Ravi"}' \
+ -H "apns-topic: com.ringplus.app" \
+ -H "apns-push-type: voip" \
+ -H "authorization: bearer <JWT_TOKEN>" \
+ --http2 https://api.sandbox.push.apple.com/3/device/6dc9cbf3ae843ee31d32d9554787d6ac7d69358e557ab3bba33774a337d9f91a
+
+---
+
+curl -v \
+-d '{"aps":{"alert":"test","callerId":"someCallerId1", "pushHint":"somehint"}}' \
+-H "apns-topic: com.ringplus.app.voip" \
+-H "apns-push-type: voip" \
+-H "apns-priority: 10" \
+-H "authorization: bearer eyJhbGciOiJFUzI1NiIsImtpZCI6IkxGSEZWNjgzNDYifQ.eyJpc3MiOiI3OUsySjMzVU5ZIiwiaWF0IjoxNzYwNjg3ODc2fQ.YhN5HgQzOSa7R9wadDr3ZH2Ypeeip3Vuc1HIct8_V0S0vCfSofe18PPQX1atxU-NxMPV4m0Sz41sQMm2OaowkA" \
+--http2 \
+https://api.sandbox.push.apple.com/3/device/6dc9cbf3ae843ee31d32d9554787d6ac7d69358e557ab3bba33774a337d9f91a
+
+Name:Test APNS Key
+Key ID:8MMSJQPF2W
+Services:Apple Push Notifications service (APNs)
+
+##All topics:
+Name:TESTAPNS2
+Key ID:LFHFV68346
+Services:Apple Push Notifications service (APNs)
+
+TeamID: 79K2J33UNY
+
+https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns
+https://developer.apple.com/documentation/usernotifications/establishing-a-token-based-connection-to-apns
+https://developer.apple.com/documentation/usernotifications/sending-push-notifications-using-command-line-tools
+https://icloud.developer.apple.com/dashboard/notifications/teams/79K2J33UNY/app/com.ringplus.app/tools/generateJwt
+https://developer.apple.com/library/archive/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/CommunicatingwithAPNs.html
+https://getstream.io/blog/pushkit-for-calls/
+https://stackoverflow.com/questions/69650283/open-ios-flutter-app-directly-after-answering-voip-call-from-locked-ios-device
+
+openssl pkcs12 -in Certificates.p12 -out Certificates.pem -legacy
+
+curl -v \
+-d '{"aps":{"alert":"test","callerId":"1001", "callerNumber":"1001", "pushHint":"somehint"}}' \
+-H "apns-push-type: voip" \
+-H "apns-priority: 10" \
+--cert "voip_services.cer" --cert-type DER --key "Certificates.pem" --key-type PEM \
+--http2 \
+https://api.sandbox.push.apple.com/3/device/6dc9cbf3ae843ee31d32d9554787d6ac7d69358e557ab3bba33774a337d9f91a

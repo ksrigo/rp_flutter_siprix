@@ -149,16 +149,18 @@ mixin _SipServiceAuthentication on _SipServiceBase {
           if (pushToken != null && pushToken.isNotEmpty) {
             // Add push token to SIP headers for backward compatibility
             account.xheaders ??= <String, String>{};
-            account.xheaders!['X-Push-Token'] = pushToken;
+            //account.xheaders!['X-Push-Token'] = pushToken;
 
             // Add RFC 8599 push notification parameters to Contact URI for iOS
             account.xContactUriParams ??= <String, String>{};
             account.xContactUriParams!['pn-provider'] = 'apns';
-            account.xContactUriParams!['pn-param'] = pushToken;
-            account.xContactUriParams!['pn-prid'] =
-                'com.ringplus.app'; // App bundle ID
-            account.xContactUriParams!['pn-timeout'] = '0';
-            account.xContactUriParams!['pn-silent'] = '1';
+            //account.xContactUriParams!['pn-param'] = pushToken;
+            account.xContactUriParams!['pn-prid'] = pushToken;
+            account.xContactUriParams!['pn-param'] = 'none';
+            //account.xContactUriParams!['pn-prid'] =
+            //    'com.ringplus.app'; // App bundle ID
+            //account.xContactUriParams!['pn-timeout'] = '0';
+            //account.xContactUriParams!['pn-silent'] = '1';
 
             debugPrint(
                 'SIP Service: ✅ Added PushKit token to account headers: $pushToken');

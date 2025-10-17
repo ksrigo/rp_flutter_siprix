@@ -125,6 +125,25 @@ class CallInfo {
   }
 }
 
+//PUSH Srigo
+/// Helper class used to keep different ids of the same call
+class CallMatcher {
+  static const String kStubPushHint = 'stubPushHint';
+
+  ///Id assigned by CallKit when push notification received
+  String callkit_CallUUID;
+
+  ///Some data received in push payload (put by remote SIP server)
+  ///This field is using to identify/match push and SIP calls
+  /// each aplication may use its own way
+  String push_Hint;
+
+  ///Id assigned by library when SIP INVITE received
+  int sip_CallId;
+
+  CallMatcher(this.callkit_CallUUID, this.push_Hint, [this.sip_CallId = 0]);
+}
+
 abstract class _SipServiceBase extends ChangeNotifier
     with WidgetsBindingObserver {
   // Siprix SDK components
@@ -218,7 +237,8 @@ abstract class _SipServiceBase extends ChangeNotifier
       StreamController<CallInfo?>.broadcast();
 
   // Hold event listeners
-  final List<void Function(int callId, HoldState holdState)> _holdEventListeners = [];
+  final List<void Function(int callId, HoldState holdState)>
+      _holdEventListeners = [];
 
   // Getters
   SipRegistrationState get registrationState => _registrationState;
@@ -241,11 +261,13 @@ abstract class _SipServiceBase extends ChangeNotifier
   Stream<CallInfo?> get currentCallStream => _currentCallController.stream;
 
   // Hold event listener management
-  void addHoldEventListener(void Function(int callId, HoldState holdState) listener) {
+  void addHoldEventListener(
+      void Function(int callId, HoldState holdState) listener) {
     _holdEventListeners.add(listener);
   }
 
-  void removeHoldEventListener(void Function(int callId, HoldState holdState) listener) {
+  void removeHoldEventListener(
+      void Function(int callId, HoldState holdState) listener) {
     _holdEventListeners.remove(listener);
   }
 

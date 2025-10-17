@@ -71,7 +71,8 @@ mixin _SipServiceCallHandling on _SipServiceBase {
       // Load audio devices - CallKit will handle audio configuration
       _devicesModel?.load();
 
-      // Set up AppCallsModel callbacks instead of direct SDK listeners
+      // Set up AppCallsModel callbacks
+      // Note: CallStateListener is already configured in AppCallsModel constructor
       debugPrint('SIP Service: Setting up AppCallsModel callbacks...');
       _callsModel!.onIncomingCallCallback = _handleIncomingCall;
       _callsModel!.onCallConnectedCallback = _handleCallConnected;
@@ -80,48 +81,6 @@ mixin _SipServiceCallHandling on _SipServiceBase {
       _callsModel!.onCallHeldCallback = _handleCallHeld;
       _callsModel!.onCallProceedingCallback = _handleCallProceeding;
       debugPrint('SIP Service: AppCallsModel callbacks set successfully');
-
-      // Set up CallStateListener to route events to AppCallsModel
-      _siprixSdk!.callListener = CallStateListener(
-        proceeding: (int callId, String response) {
-          debugPrint(
-              '>>> CallStateListener.proceeding CALLED - routing to AppCallsModel: callId=$callId, response=$response');
-          _callsModel?.onProceeding(callId, response);
-        },
-        incoming:
-            (int callId, int accId, bool withVideo, String from, String to) {
-          debugPrint(
-              '>>> CallStateListener.incoming CALLED - routing to AppCallsModel');
-          _callsModel?.onIncomingSip(callId, accId, withVideo, from, to);
-        },
-        connected: (int callId, String from, String to, bool withVideo) {
-          debugPrint(
-              '>>> CallStateListener.connected CALLED - routing to AppCallsModel');
-          _callsModel?.onConnected(callId, from, to, withVideo);
-        },
-        terminated: (int callId, int statusCode) {
-          debugPrint(
-              '>>> CallStateListener.terminated CALLED - routing to AppCallsModel');
-          _callsModel?.onTerminated(callId, statusCode);
-        },
-        switched: (int callId) {
-          debugPrint(
-              '>>> CallStateListener.switched CALLED - routing to AppCallsModel');
-          _callsModel?.onSwitched(callId);
-        },
-        held: (int callId, HoldState holdState) {
-          debugPrint(
-              '>>> CallStateListener.held CALLED - routing to AppCallsModel: callId=$callId, holdState=$holdState');
-          _callsModel?.onHeld(callId, holdState);
-        },
-        incomingPush: _onIncomingPush, // Enable push call handling for CallKit
-        acceptNotif:
-            _onCallAcceptNotif, // Handle Android notification acceptance
-      );
-
-      // Note: Call history is now handled by Siprix CDRs automatically
-
-      debugPrint('SIP Service: Call and push listeners configured');
 
       // Set up contact name resolution callback after SDK is fully initialized
       if (_callsModel != null) {
@@ -439,6 +398,7 @@ mixin _SipServiceCallHandling on _SipServiceBase {
   }
 
   // Push notifications and special SDK event handlers
+  // Note: iOS push notifications are handled in AppCallsModel.onIncomingPush
 
   void _onCallAcceptNotif(int callId, bool withVideo) {
     debugPrint('SIP Service: Call accept notification - callId: $callId');
@@ -468,42 +428,6 @@ mixin _SipServiceCallHandling on _SipServiceBase {
       });
     } else {
       debugPrint('SIP Service: AcceptNotif for unknown call ID: $callId');
-    }
-  }
-
-  // Handle incoming push notifications for CallKit
-
-  // Handle incoming push notifications for CallKit
-  void _onIncomingPush(String callkitUuid, Map<String, dynamic> payload) {
-    if (!Platform.isIOS) return;
-
-    try {
-      debugPrint(
-          'SIP Service: Incoming push - CallKit UUID: $callkitUuid, Payload: $payload');
-
-      // Extract caller details from payload
-      String callerName = payload['callerName'] ?? 'Incoming Call';
-      String callerNumber = payload['callerNumber'] ?? '';
-
-      debugPrint(
-          'SIP Service: Push notification - Name: $callerName, Number: $callerNumber');
-
-      // Update CallKit call details with push notification information
-      try {
-        _siprixSdk?.updateCallKitCallDetails(
-          callkitUuid,
-          null, // SIP call ID will be provided when SIP call arrives
-          callerName,
-          callerNumber,
-          false, // withVideo
-        );
-        debugPrint(
-            'SIP Service: Updated CallKit details from push notification');
-      } catch (e) {
-        debugPrint('SIP Service: Failed to update CallKit details: $e');
-      }
-    } catch (e) {
-      debugPrint('SIP Service: Error handling incoming push: $e');
     }
   }
 
