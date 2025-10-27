@@ -26,7 +26,8 @@ class AppCallsModel extends CallsModel {
       switched: onSwitched,
       held: onHeld,
     );
-    debugPrint('AppCallsModel: CallStateListener configured with incomingPush routing');
+    debugPrint(
+        'AppCallsModel: CallStateListener configured with incomingPush routing');
   }
 
   // Callback functions that will be set by SIP service
@@ -75,11 +76,13 @@ class AppCallsModel extends CallsModel {
       debugPrint('  - pushHint: $pushHint');
       debugPrint('  - callerName: $localizedCallerName');
       debugPrint('  - callerNumber: $genericHandle');
-      print('🔔 iOS PUSH: Extracted - pushHint: $pushHint, caller: $localizedCallerName, number: $genericHandle');
+      print(
+          '🔔 iOS PUSH: Extracted - pushHint: $pushHint, caller: $localizedCallerName, number: $genericHandle');
 
       // Add to call matchers
       _callMatchers.add(CallMatcher(callkitUuid, pushHint));
-      debugPrint('🔔 iOS PUSH: Added CallMatcher (total: ${_callMatchers.length})');
+      debugPrint(
+          '🔔 iOS PUSH: Added CallMatcher (total: ${_callMatchers.length})');
       print('🔔 iOS PUSH: Added CallMatcher (total: ${_callMatchers.length})');
 
       // Update CallKit call details with push notification information
@@ -137,11 +140,10 @@ class AppCallsModel extends CallsModel {
       //Get some hint from just received SIP INVITE (added by remote server) or math this SIP-call with CallKit-call
 
       //For Test, Disable below Code for prod
-      String pushHint = 'somehint';
+      //String pushHint = 'somehint';
 
-      //String pushHint =
-      //    await SiprixVoipSdk().getSipHeader(callId, "X-PushHint") ??
-      //        CallMatcher.kStubPushHint;
+      String pushHint = await SiprixVoipSdk().getSipHeader(callId, "Call-ID") ??
+          CallMatcher.kStubPushHint;
 
       debugPrint('onIncomingSip callId:$callId pushHint:$pushHint');
       //Searchs is there CallKit call which matches this one

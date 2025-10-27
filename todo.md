@@ -175,3 +175,41 @@ log show --predicate 'processImagePath contains "Runner"' --last 2m --info --deb
 flutter logs -d 00008140-0002211204E3C01C
 
 flutter run -d 00008140-0002211204E3C01C --release
+
+---
+
+Process to test:
+
+Check for the code in the branch: ios-1710
+
+##Command for sending push notification:
+
+```
+curl -v \
+-d '{"aps":{"alert":"test","callerId":"1002", "callerNumber":"1002", "pushHint":"somehint"}}' \
+-H "apns-push-type: voip" \
+-H "apns-expiration: 0" \
+-H "apns-priority: 0" \
+-H "apns-topic: com.ringplus.app.voip" \
+--cert "voip_services.cer" --cert-type DER --key "Certificates.pem" --key-type PEM \
+--http2 \
+https://api.sandbox.push.apple.com/3/device/<DEVICE_TOKEN>  ===>>>> CHANGE IT
+```
+
+DEVICE_TOKEN === CHANGE IT in the curl
+Adopt callerId and callerNumber according to the number you are testing from
+
+Run:
+
+```
+flutter run --release
+```
+
+"pushHint":"somehint" is important to link call between SIP Invite and Callkit PN. It's for now hardcoded for test purpose.
+
+#Tests:
+
+1. Put the app in background/Terminate
+2. Execute the curl command
+3. when CallKit shows up on your iphone, Call from 1002 to 1004(Iphone extension)
+4. Accept the call, call should be connected.
