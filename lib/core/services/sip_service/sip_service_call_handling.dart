@@ -39,22 +39,31 @@ mixin _SipServiceCallHandling on _SipServiceBase {
 
       // Create models for account and call management
       _accountsModel = AccountsModel();
-      _cdrsModel =
-          CdrsModel(maxItems: 100); // Create CDRs model with max 100 items
 
-      // Set up CDR persistence - save changes to storage
-      _cdrsModel!.onSaveChanges = (String jsonStr) async {
-        debugPrint('SIP Service: Saving CDR history to storage');
-        await StorageService.instance.saveCdrCallHistory(jsonStr);
-      };
-
-      // Load CDRs from storage
-      final savedCdrs = await StorageService.instance.getCdrCallHistory();
-      if (savedCdrs != null && savedCdrs.isNotEmpty) {
-        final loaded = _cdrsModel!.loadFromJson(savedCdrs);
-        debugPrint('SIP Service: Loaded ${_cdrsModel!.length} CDR entries from storage');
+      // CRITICAL FOR iOS PUSH: Check if CdrsModel was already created in main.dart
+      // If so, reuse it to maintain consistency with early-initialized AppCallsModel
+      final globalCdrsModel = getGlobalCdrsModel();
+      if (globalCdrsModel != null) {
+        _cdrsModel = globalCdrsModel;
+        debugPrint('SIP Service: ✅ Reusing CdrsModel from early initialization (iOS push)');
+        debugPrint('SIP Service: CdrsModel has ${_cdrsModel!.length} existing entries');
       } else {
-        debugPrint('SIP Service: No saved CDR history found');
+        _cdrsModel = CdrsModel(maxItems: 100); // Create CDRs model with max 100 items
+
+        // Set up CDR persistence - save changes to storage
+        _cdrsModel!.onSaveChanges = (String jsonStr) async {
+          debugPrint('SIP Service: Saving CDR history to storage');
+          await StorageService.instance.saveCdrCallHistory(jsonStr);
+        };
+
+        // Load CDRs from storage
+        final savedCdrs = await StorageService.instance.getCdrCallHistory();
+        if (savedCdrs != null && savedCdrs.isNotEmpty) {
+          final loaded = _cdrsModel!.loadFromJson(savedCdrs);
+          debugPrint('SIP Service: Loaded ${_cdrsModel!.length} CDR entries from storage');
+        } else {
+          debugPrint('SIP Service: No saved CDR history found');
+        }
       }
 
       // CRITICAL FOR iOS PUSH: Check if AppCallsModel was already created in main.dart
@@ -63,12 +72,11 @@ mixin _SipServiceCallHandling on _SipServiceBase {
       if (globalCallsModel != null) {
         _callsModel = globalCallsModel;
         debugPrint('SIP Service: ✅ Reusing AppCallsModel from early initialization (iOS push)');
-        // Note: Need to update the CDRs model in the existing instance
-        // but AppCallsModel constructor doesn't expose cdrs setter, so we'll manage this separately
+        debugPrint('SIP Service: AppCallsModel already has CdrsModel connected');
       } else {
         _callsModel = AppCallsModel(
             _accountsModel!, null, _cdrsModel); // Use our extended AppCallsModel
-        debugPrint('SIP Service: Created new AppCallsModel');
+        debugPrint('SIP Service: Created new AppCallsModel with CdrsModel');
       }
 
       _networkModel = NetworkModel();

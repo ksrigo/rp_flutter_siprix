@@ -8,6 +8,7 @@ import 'dart:async';
 
 import 'package:siprix_voip_sdk/siprix_voip_sdk.dart';
 import 'package:siprix_voip_sdk/accounts_model.dart';
+import 'package:siprix_voip_sdk/cdrs_model.dart';
 
 import 'core/constants/app_constants.dart';
 import 'core/theme/app_theme.dart';
@@ -26,10 +27,12 @@ bool _isFastStartMode = false;
 // These are created in _initializeSiprixForPush() and reused by SipService
 AppCallsModel? _globalCallsModel;
 AccountsModel? _globalAccountsModel;
+CdrsModel? _globalCdrsModel;
 
 // Getter functions for SipService to access the early-initialized instances
 AppCallsModel? getGlobalCallsModel() => _globalCallsModel;
 AccountsModel? getGlobalAccountsModel() => _globalAccountsModel;
+CdrsModel? getGlobalCdrsModel() => _globalCdrsModel;
 
 void main() async {
   try {
@@ -234,11 +237,38 @@ Future<void> _initializeSiprixForPush() async {
     debugPrint('🚀 MAIN: AccountsModel created');
     print('🚀 MAIN: AccountsModel created (print)');
 
+    // Create CdrsModel to track call history
+    _globalCdrsModel = CdrsModel(maxItems: 100);
+    debugPrint('🚀 MAIN: CdrsModel created');
+    print('🚀 MAIN: CdrsModel created (print)');
+
+    // Set up CDR persistence - save changes to storage
+    _globalCdrsModel!.onSaveChanges = (String jsonStr) async {
+      debugPrint('🚀 MAIN: Saving CDR history to storage');
+      await StorageService.instance.saveCdrCallHistory(jsonStr);
+    };
+
+    // Load CDRs from storage
+    try {
+      final savedCdrs = await StorageService.instance.getCdrCallHistory();
+      if (savedCdrs != null && savedCdrs.isNotEmpty) {
+        final loaded = _globalCdrsModel!.loadFromJson(savedCdrs);
+        debugPrint('🚀 MAIN: Loaded ${_globalCdrsModel!.length} CDR entries from storage');
+        print('🚀 MAIN: Loaded ${_globalCdrsModel!.length} CDR entries from storage (print)');
+      } else {
+        debugPrint('🚀 MAIN: No saved CDR history found');
+        print('🚀 MAIN: No saved CDR history found (print)');
+      }
+    } catch (e) {
+      debugPrint('🚀 MAIN: Error loading CDR history: $e');
+      print('🚀 MAIN: Error loading CDR history: $e (print)');
+    }
+
     // Create AppCallsModel BEFORE initializing SDK
     // This sets up CallStateListener so it's ready when SDK initialization completes
-    _globalCallsModel = AppCallsModel(_globalAccountsModel!, null, null);
-    debugPrint('🚀 MAIN: AppCallsModel created - CallStateListener is now configured');
-    print('🚀 MAIN: AppCallsModel created - CallStateListener is now configured (print)');
+    _globalCallsModel = AppCallsModel(_globalAccountsModel!, null, _globalCdrsModel);
+    debugPrint('🚀 MAIN: AppCallsModel created with CdrsModel - CallStateListener is now configured');
+    print('🚀 MAIN: AppCallsModel created with CdrsModel - CallStateListener is now configured (print)');
 
     // NOW initialize the SDK - CallStateListener is already set up
     await siprixSdk.initialize(initData);
