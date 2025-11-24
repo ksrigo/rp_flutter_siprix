@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:siprix_voip_sdk/calls_model.dart';
 
 class ContactInfo {
   final String displayName;
@@ -93,9 +94,15 @@ class ContactService {
   /// Find contact information by phone number
   Future<ContactInfo?> findContactByPhoneNumber(String phoneNumber) async {
     try {
-      if (!_permissionGranted || _cachedContacts == null) {
-        debugPrint('ContactService: Cannot search - permission not granted or contacts not loaded');
-        return null;
+      if (!_permissionGranted) {
+        debugPrint('ContactService: Cannot search - permission not granted');
+        // return null;
+        await initialize();
+      }
+
+      if (_cachedContacts == null) {
+        debugPrint('ContactService: Cannot search - contacts not loaded');
+        await _loadContacts();
       }
 
       // Clean the phone number for comparison (remove spaces, dashes, etc.)
@@ -130,6 +137,7 @@ class ContactService {
       return null;
     }
   }
+
 
   /// Clean phone number by removing non-digit characters except +
   String _cleanPhoneNumber(String phoneNumber) {

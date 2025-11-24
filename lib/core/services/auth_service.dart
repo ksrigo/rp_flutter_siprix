@@ -394,7 +394,18 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> _saveTokensToStorage() async {
+    debugPrint('Auth: _saveTokensToStorage');
     final storage = StorageService.instance;
+    if(!storage.isInitialized){
+      try {
+        debugPrint('Auth: Attempting to initialize StorageService...');
+        await StorageService.instance.initialize();
+      } catch (e) {
+        debugPrint('Auth: StorageService initialization failed, continuing without storage: $e');
+        // Continue without storage - tokens will be lost on app restart
+      }
+    }
+
     if (_accessToken != null) {
       await storage.saveAccessToken(_accessToken!);
     }
@@ -406,6 +417,52 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+
+  /// Special authentication check for push notifications in killed/locked state
+  /// This method doesn't redirect to login and handles token refresh silently
+  Future<bool> ensureAuthenticatedForPush() async {
+    try {
+      debugPrint('🔐 AUTH PUSH: Checking authentication for push notification...');
+
+      // Load tokens from storage first
+      await _loadTokensFromStorage();
+
+      // Check if we have any tokens at all
+      if (_accessToken == null && _refreshToken == null) {
+        debugPrint('🔐 AUTH PUSH: No tokens available - cannot authenticate');
+        return false;
+      }
+
+      // If we have an access token, check if it's valid
+      if (_accessToken != null && _isTokenValid()) {
+        debugPrint('🔐 AUTH PUSH: Access token is valid');
+        _isAuthenticated = true;
+        return true;
+      }
+
+      // Token is expired but we have refresh token - try to refresh
+      if (_refreshToken != null) {
+        debugPrint('🔐 AUTH PUSH: Token expired, attempting refresh...');
+        final refreshed = await _refreshAccessToken();
+        if (refreshed) {
+          debugPrint('🔐 AUTH PUSH: Token refresh successful');
+          _isAuthenticated = true;
+          return true;
+        } else {
+          debugPrint('🔐 AUTH PUSH: Token refresh failed');
+          return false;
+        }
+      }
+
+      // No valid tokens and no way to refresh
+      debugPrint('🔐 AUTH PUSH: No valid authentication available');
+      return false;
+
+    } catch (e) {
+      debugPrint('🔐 AUTH PUSH: Error during push authentication: $e');
+      return false;
+    }
+  }
   Future<void> _fetchExtensionDetailsAndInitializeSIP() async {
     try {
       debugPrint('Auth: Fetching extension details...');

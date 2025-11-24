@@ -6,6 +6,7 @@ import '../../features/auth/presentation/screens/splash_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/call/presentation/screens/incoming_call_screen.dart';
 import '../../features/call/presentation/screens/in_call_screen.dart';
+import '../../features/call/presentation/screens/multi_call_screen.dart';
 import '../../features/contacts/presentation/screens/contacts_page.dart';
 import '../../features/contacts/presentation/screens/add_contact_screen.dart';
 import '../../features/contacts/presentation/screens/edit_contact_screen.dart';
@@ -13,16 +14,17 @@ import '../services/contacts_service.dart';
 import '../../features/contacts/data/models/contact_model.dart';
 import '../../features/dialpad/presentation/screens/dialpad_screen.dart';
 import '../../features/recents/presentation/screens/recents_screen.dart';
+import '../../features/voicemail/presentation/screens/voicemail_screen.dart';
+import '../../features/voicemail/presentation/screens/voicemail_details_screen.dart';
 import '../../shared/widgets/main_navigation.dart';
 import '../services/auth_service.dart';
+import '../services/sip_service.dart';
 import '../../features/settings/presentation/screens/settings_main_screen.dart';
 import '../../features/settings/presentation/screens/account_settings_screen.dart';
 import '../services/api_service.dart';
 
 class NavigationService {
-  static final GlobalKey<NavigatorState> navigatorKey =
-      GlobalKey<NavigatorState>();
-
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
   static final GoRouter router = GoRouter(
     navigatorKey: navigatorKey,
     initialLocation: '/splash',
@@ -148,6 +150,23 @@ class NavigationService {
           );
         },
       ),
+      GoRoute(
+        path: '/multi-call',
+        name: 'multi-call',
+        builder: (context, state) {
+          // Note: Multi-call screen parameters are passed via Navigator.push
+          // This route is mainly for deep linking support
+          return Container(
+            color: Colors.black,
+            child: const Center(
+              child: Text(
+                'Multi-call screen requires call parameters',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          );
+        },
+      ),
     ],
 
     // Error handling
@@ -186,13 +205,10 @@ class NavigationService {
   static void goToKeypad() => router.go('/keypad');
   static void goToRecents() => router.go('/recents');
   static void goToContacts() => router.go('/contacts');
-  static void goToAddContact({String? prefilledPhone}) => 
-      router.go('/contacts/add', extra: prefilledPhone);
-  static void goToEditContact(ContactModel contact) =>
-      router.go('/contacts/edit', extra: contact);
+  static void goToAddContact({String? prefilledPhone}) => router.go('/contacts/add', extra: prefilledPhone);
+  static void goToEditContact(ContactModel contact) => router.go('/contacts/edit', extra: contact);
   static void goToVoicemail() => router.go('/voicemail');
   static void goToSettings() => router.go('/settings');
-
   static void goToLogin() => router.go('/login');
 
   static void goToIncomingCall({
@@ -200,12 +216,10 @@ class NavigationService {
     required String callerName,
     required String callerNumber,
   }) {
-    router.go(
-        '/incoming-call?callId=$callId&callerName=$callerName&callerNumber=$callerNumber');
+    router.go('/incoming-call?callId=$callId&callerName=$callerName&callerNumber=$callerNumber');
   }
 
-  static void goToInCall(String callId,
-      {String? phoneNumber, String? contactName}) {
+  static void goToInCall(String callId, {String? phoneNumber, String? contactName}) {
     String url = '/in-call?callId=$callId';
     if (phoneNumber != null && phoneNumber.isNotEmpty) {
       url += '&phoneNumber=${Uri.encodeQueryComponent(phoneNumber)}';
@@ -215,6 +229,7 @@ class NavigationService {
     }
     router.go(url);
   }
+
 
   static void goBack() {
     if (router.canPop()) {
@@ -227,22 +242,6 @@ class NavigationService {
   }
 }
 
-class VoicemailScreen extends StatelessWidget {
-  const VoicemailScreen({super.key});
-  @override
-  Widget build(BuildContext context) =>
-      const Scaffold(body: Center(child: Text('Voicemail')));
-}
-
-class VoicemailDetailsScreen extends StatelessWidget {
-  final String voicemailId;
-  const VoicemailDetailsScreen({super.key, required this.voicemailId});
-  @override
-  Widget build(BuildContext context) =>
-      Scaffold(body: Center(child: Text('Voicemail Details $voicemailId')));
-}
-
-
 class CallsSettingsScreen extends StatefulWidget {
   const CallsSettingsScreen({super.key});
 
@@ -253,6 +252,7 @@ class CallsSettingsScreen extends StatefulWidget {
 class _CallsSettingsScreenState extends State<CallsSettingsScreen> {
   bool _showCallerID = true;
   bool _enableRecording = false;
+  bool _doNotDisturb = false;
   bool _isLoading = true;
   bool _isUpdating = false;
 
@@ -260,6 +260,17 @@ class _CallsSettingsScreenState extends State<CallsSettingsScreen> {
   void initState() {
     super.initState();
     _loadExtensionSettings();
+    _loadDoNotDisturbState();
+  }
+
+  Future<void> _loadDoNotDisturbState() async {
+    final dndEnabled = await SipService.instance.isDoNotDisturbEnabled();
+    if (mounted) {
+      setState(() {
+        _doNotDisturb = dndEnabled;
+      });
+      debugPrint('🔄 CallsSettings: Loaded DND state: $_doNotDisturb');
+    }
   }
 
   Future<void> _loadExtensionSettings({bool showLoading = true}) async {
@@ -545,6 +556,37 @@ class _CallsSettingsScreenState extends State<CallsSettingsScreen> {
     }
   }
 
+  Future<void> _updateDoNotDisturbSetting(bool value) async {
+    debugPrint(
+        '🔄 CallsSettings: _updateDoNotDisturbSetting called with value: $value');
+
+    try {
+      await SipService.instance.setDoNotDisturb(value);
+      if (mounted) {
+        setState(() {
+          _doNotDisturb = value;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Do Not Disturb ${value ? 'enabled' : 'disabled'}'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        debugPrint('✅ CallsSettings: Do Not Disturb updated to: $value');
+      }
+    } catch (e) {
+      debugPrint('❌ CallsSettings: Error updating Do Not Disturb setting: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update Do Not Disturb setting: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Widget _buildToggleItem({
     required String title,
     required String subtitle,
@@ -658,6 +700,13 @@ class _CallsSettingsScreenState extends State<CallsSettingsScreen> {
                               value: _enableRecording,
                               onChanged:
                                   _isUpdating ? null : _updateRecordingSetting,
+                            ),
+                            _buildToggleItem(
+                              title: 'Do Not Disturb',
+                              subtitle:
+                                  'Automatically reject incoming calls',
+                              value: _doNotDisturb,
+                              onChanged: _updateDoNotDisturbSetting,
                             ),
                           ],
                         ),

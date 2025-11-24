@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/services/sip_service.dart';
 import '../../../../core/services/navigation_service.dart';
+import 'multi_call_screen.dart';
 
 class IncomingCallScreen extends ConsumerStatefulWidget {
   final String callId;
@@ -164,25 +165,81 @@ class _IncomingCallScreenState extends ConsumerState<IncomingCallScreen>
     debugPrint('🔥 IncomingCallScreen: Answer button pressed! CallId: ${widget.callId}');
     debugPrint('🔥 IncomingCallScreen: Current mounted state: $mounted');
     debugPrint('🔥 IncomingCallScreen: Current _isNavigatingAway: $_isNavigatingAway');
-    
+
     if (_isNavigatingAway) {
       debugPrint('🔥 IncomingCallScreen: Already navigating away, ignoring answer');
       return;
     }
-    
+
     try {
       debugPrint('🔥 IncomingCallScreen: Attempting to answer call...');
       _isNavigatingAway = true;
+
+      // Check if there's already an active call
+      final callsModel = SipService.instance.callsModel;
+      final switchedCall = callsModel?.switchedCall();
+      final hasExistingCall = switchedCall != null && switchedCall.myCallId.toString() != widget.callId;
+
+      if (hasExistingCall) {
+        debugPrint('🔥 IncomingCallScreen: Existing call detected (${switchedCall!.myCallId}), putting it on hold before answering');
+        // Put the existing call on hold before answering the new one
+        await SipService.instance.holdCall(switchedCall.myCallId.toString());
+        debugPrint('🔥 IncomingCallScreen: Existing call put on hold successfully');
+      }
+
+      // Answer the incoming call
       await SipService.instance.answerCall(widget.callId);
+      debugPrint('🔥 IncomingCallScreen: New call answered successfully');
+
       if (mounted) {
         // Add small delay before navigation to prevent GlobalKey conflicts
         await Future.delayed(const Duration(milliseconds: 100));
         if (mounted) {
-          NavigationService.goToInCall(
-            widget.callId,
-            phoneNumber: widget.callerNumber,
-            contactName: widget.callerName,
-          );
+          if (hasExistingCall) {
+            // Navigate to multi-call screen with both calls
+            debugPrint('🔥 IncomingCallScreen: Navigating to multi-call screen');
+
+            // Create CallInfo for the existing (now held) call
+            final firstCallInfo = CallInfo(
+              id: switchedCall.myCallId.toString(),
+              remoteNumber: switchedCall.remoteExt,
+              remoteName: switchedCall.displName.isNotEmpty ? switchedCall.displName : switchedCall.remoteExt,
+              state: AppCallState.held,
+              startTime: switchedCall.startTime,
+              isIncoming: switchedCall.isIncoming,
+              isOnHold: true,
+            );
+
+            // Create CallInfo for the new (active) call
+            final secondCallInfo = CallInfo(
+              id: widget.callId,
+              remoteNumber: widget.callerNumber,
+              remoteName: widget.callerName.isNotEmpty ? widget.callerName : widget.callerNumber,
+              state: AppCallState.answered,
+              startTime: DateTime.now(),
+              isIncoming: true,
+              isOnHold: false,
+            );
+
+            // Use imperative navigation to push multi-call screen
+            // We use the root navigator to bypass GoRouter's page-based routing
+            Navigator.of(NavigationService.navigatorKey.currentContext!, rootNavigator: true).push(
+              MaterialPageRoute(
+                builder: (context) => MultiCallScreen(
+                  firstCall: firstCallInfo,
+                  secondCall: secondCallInfo,
+                ),
+              ),
+            );
+          } else {
+            // Single call scenario - navigate to in-call screen
+            debugPrint('🔥 IncomingCallScreen: Navigating to in-call screen');
+            NavigationService.goToInCall(
+              widget.callId,
+              phoneNumber: widget.callerNumber,
+              contactName: widget.callerName,
+            );
+          }
         }
       }
     } catch (e) {
@@ -196,21 +253,42 @@ class _IncomingCallScreenState extends ConsumerState<IncomingCallScreen>
     debugPrint('🔥 IncomingCallScreen: Decline button pressed! CallId: ${widget.callId}');
     debugPrint('🔥 IncomingCallScreen: Current mounted state: $mounted');
     debugPrint('🔥 IncomingCallScreen: Current _isNavigatingAway: $_isNavigatingAway');
-    
+
     if (_isNavigatingAway) {
       debugPrint('🔥 IncomingCallScreen: Already navigating away, ignoring decline');
       return;
     }
-    
+
     try {
       debugPrint('🔥 IncomingCallScreen: Attempting to decline call...');
       _isNavigatingAway = true;
-      await SipService.instance.hangupCall(widget.callId);
+      await SipService.instance.rejectCall(widget.callId);
       if (mounted) {
         // Add small delay before navigation to prevent GlobalKey conflicts
         await Future.delayed(const Duration(milliseconds: 100));
         if (mounted) {
-          NavigationService.goToKeypad();
+          // Check if there are still active calls after rejecting this one
+          final callsModel = SipService.instance.callsModel;
+          final hasRemainingCalls = callsModel != null && callsModel.length > 0;
+
+          debugPrint('🔥 IncomingCallScreen: Remaining calls after reject: ${callsModel?.length ?? 0}');
+
+          if (hasRemainingCalls) {
+            // Navigate back to the active call screen
+            final switchedCall = callsModel!.switchedCall();
+            if (switchedCall != null) {
+              debugPrint('🔥 IncomingCallScreen: Navigating to in-call screen for existing call: ${switchedCall.myCallId}');
+              NavigationService.goToInCall(
+                switchedCall.myCallId.toString(),
+                phoneNumber: switchedCall.remoteExt,
+                contactName: switchedCall.displName,
+              );
+            } else {
+              NavigationService.goToKeypad();
+            }
+          } else {
+            NavigationService.goToKeypad();
+          }
         }
       }
     } catch (e) {

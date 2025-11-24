@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../services/sip_service/sip_service_base.dart';
+
 class AppConstants {
   // App Information
   static const String appName = 'Ringplus';
@@ -99,4 +101,7 @@ class AppConstants {
   static const double minTextSize = 12.0;
   static const double maxTextSize = 24.0;
   static const double defaultTextSize = 16.0;
+
+  static bool isCallConnected = false;
+  static bool isMainCalled = false;
 }

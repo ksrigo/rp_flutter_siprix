@@ -144,10 +144,18 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     debugPrint('📱 SplashScreen: Checking if widget is mounted: $mounted');
     if (mounted) {
       if (route == '/keypad') {
-        debugPrint('🎯 SplashScreen: User has valid token, navigating to keypad');
-        // ignore: use_build_context_synchronously
-        context.go('/keypad');
-        debugPrint('✅ SplashScreen: Navigation to keypad completed');
+        if(AppConstants.isCallConnected){
+          debugPrint('🎯 SplashScreen: User has valid token, navigating to keypad');
+          // ignore: use_build_context_synchronously
+          AppConstants.isCallConnected = false;
+          context.go('/in-call');
+          debugPrint('✅ SplashScreen: Navigation to keypad completed');
+        }else{
+          debugPrint('🎯 SplashScreen: User has valid token, navigating to keypad');
+          // ignore: use_build_context_synchronously
+          context.go('/keypad');
+          debugPrint('✅ SplashScreen: Navigation to keypad completed');
+        }
       } else {
         debugPrint('🔐 SplashScreen: No valid token, navigating to login');
         // ignore: use_build_context_synchronously

@@ -6,6 +6,10 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../../../core/services/sip_service.dart';
 import '../../../../core/services/navigation_service.dart';
 import '../../../../core/services/contact_service.dart';
+import 'call_action_screen.dart';
+import 'dtmf_keypad_screen.dart';
+import 'package:permission_handler/permission_handler.dart';
+
 
 class InCallScreen extends ConsumerStatefulWidget {
   final String callId;
@@ -26,11 +30,10 @@ class InCallScreen extends ConsumerStatefulWidget {
 class _InCallScreenState extends ConsumerState<InCallScreen> {
   bool _isMuted = false;
   bool _isOnHold = false;
-  bool _showKeypad = false;
   Timer? _callTimer;
   int _callDuration = 0;
   StreamSubscription<CallInfo?>? _callStateSubscription;
-  StreamSubscription<ConnectivityResult>? _connectivitySubscription;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   AppCallState _currentCallState = AppCallState.connecting;
   bool _isCallAnswered = false;
   CallInfo? _currentCallInfo;
@@ -63,7 +66,6 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
     });
   }
 
-
   String _formatCallDuration() {
     final minutes = (_callDuration / 60).floor().toString().padLeft(2, '0');
     final seconds = (_callDuration % 60).toString().padLeft(2, '0');
@@ -75,31 +77,35 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
       // Check initial connectivity
       final initialResult = await Connectivity().checkConnectivity();
       _isNetworkConnected = initialResult != ConnectivityResult.none;
-      
+
       // Listen to connectivity changes
-      _connectivitySubscription = Connectivity().onConnectivityChanged.listen(
-        (ConnectivityResult result) {
-          final wasConnected = _isNetworkConnected;
-          _isNetworkConnected = result != ConnectivityResult.none;
-          
-          if (mounted) {
-            setState(() {
-              // Update call state based on network connectivity
-              if (!_isNetworkConnected && wasConnected) {
-                // Network lost
-                debugPrint('InCallScreen: Network lost during call');
-                _currentCallState = AppCallState.reconnecting;
-              } else if (_isNetworkConnected && !wasConnected) {
-                // Network restored
-                debugPrint('InCallScreen: Network restored during call');
-                if (_isCallAnswered) {
-                  _currentCallState = AppCallState.answered;
+      _connectivitySubscription =
+          Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
+            final wasConnected = _isNetworkConnected;
+
+            // Check if any active connection type exists
+            _isNetworkConnected = results.any((r) =>
+            r == ConnectivityResult.mobile ||
+                r == ConnectivityResult.wifi ||
+                r == ConnectivityResult.ethernet ||
+                r == ConnectivityResult.vpn);
+
+            if (mounted) {
+              setState(() {
+                if (!_isNetworkConnected && wasConnected) {
+                  // Network lost
+                  debugPrint('InCallScreen: Network lost during call');
+                  _currentCallState = AppCallState.reconnecting;
+                } else if (_isNetworkConnected && !wasConnected) {
+                  // Network restored
+                  debugPrint('InCallScreen: Network restored during call');
+                  if (_isCallAnswered) {
+                    _currentCallState = AppCallState.answered;
+                  }
                 }
-              }
-            });
-          }
-        },
-      );
+              });
+            }
+          });
     } catch (e) {
       debugPrint('InCallScreen: Error setting up network monitoring: $e');
     }
@@ -110,19 +116,23 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
       final phoneNumber = widget.phoneNumber ?? _getPhoneNumber();
       if (phoneNumber.isNotEmpty && phoneNumber != 'Unknown') {
         debugPrint('InCallScreen: Loading contact info for: $phoneNumber');
-        
+
         // Check if ContactService has permission before attempting lookup
         if (!ContactService.instance.hasPermission) {
-          debugPrint('InCallScreen: ContactService does not have permission, skipping lookup');
-          return;
+          var isInit = await ContactService.instance.initialize();
+          if (!isInit) {
+              debugPrint('InCallScreen: ContactService does not have permission, skipping lookup');
+              return;
+          }
         }
-        
+
         final contactInfo = await ContactService.instance.findContactByPhoneNumber(phoneNumber);
         if (mounted) {
           setState(() {
             _contactInfo = contactInfo;
           });
-          debugPrint('InCallScreen: Contact info loaded: ${contactInfo?.displayName ?? 'No contact found'}');
+          debugPrint(
+              'InCallScreen: Contact info loaded: ${contactInfo?.displayName ?? 'No contact found'}');
         }
       }
     } catch (e) {
@@ -135,20 +145,22 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
     // Check if there's already an active call when this screen loads
     final currentCall = SipService.instance.currentCall;
     if (currentCall != null) {
-      debugPrint('InCallScreen: Found existing call on init - state: ${currentCall.state}');
-      
+      debugPrint(
+          'InCallScreen: Found existing call on init - state: ${currentCall.state}');
+
       setState(() {
         _currentCallState = currentCall.state;
         _currentCallInfo = currentCall;
         _isMuted = currentCall.isMuted ?? false;
         _isOnHold = currentCall.isOnHold ?? false;
       });
-      
+
       // If the call is already answered, start the timer immediately
       if (currentCall.state == AppCallState.answered && !_isCallAnswered) {
         _isCallAnswered = true;
         _startCallTimer();
-        debugPrint('InCallScreen: Call was already answered on init, starting timer');
+        debugPrint(
+            'InCallScreen: Call was already answered on init, starting timer');
       }
     }
   }
@@ -157,7 +169,7 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
     debugPrint('InCallScreen: Setting up call state listener for callId: ${widget.callId}');
     _callStateSubscription = SipService.instance.currentCallStream.listen((callInfo) {
       debugPrint('InCallScreen: Received call state update - callId: ${callInfo?.id}, state: ${callInfo?.state}, widgetCallId: ${widget.callId}');
-      
+
       if (callInfo != null && mounted) {
         setState(() {
           _currentCallState = callInfo.state;
@@ -167,23 +179,25 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
           // Sync hold state from call info
           _isOnHold = callInfo.isOnHold ?? false;
         });
-        
+
         // Start timer when call is answered
         if (callInfo.state == AppCallState.answered && !_isCallAnswered) {
           _isCallAnswered = true;
           _startCallTimer();
           debugPrint('InCallScreen: Call answered, starting timer');
         }
-        
+
         // Stop timer if call ends or fails
-        if (callInfo.state == AppCallState.ended || callInfo.state == AppCallState.failed) {
+        if (callInfo.state == AppCallState.ended ||
+            callInfo.state == AppCallState.failed) {
           _callTimer?.cancel();
-          
+
           // Prevent multiple navigation attempts
           if (!_isNavigatingAway) {
             _isNavigatingAway = true;
-            debugPrint('InCallScreen: Call ${callInfo.state.name}: Navigating back to keypad');
-            
+            debugPrint(
+                'InCallScreen: Call ${callInfo.state.name}: Navigating back to keypad');
+
             // Add small delay before navigation to prevent GlobalKey conflicts
             Future.delayed(const Duration(milliseconds: 150), () {
               if (mounted) {
@@ -191,8 +205,39 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
               }
             });
           } else {
-            debugPrint('InCallScreen: Call ${callInfo.state.name}: Navigation already in progress, skipping');
+            debugPrint(
+                'InCallScreen: Call ${callInfo.state.name}: Navigation already in progress, skipping');
           }
+        }
+      } else if (callInfo == null && mounted) {
+        // Call terminated - check if we should close the screen
+        _callTimer?.cancel();
+
+        // Check if there are multiple calls - if so, let MultiCallScreen handle navigation
+        final callsModel = SipService.instance.callsModel;
+        final remainingCalls = callsModel?.length ?? 0;
+
+        if (remainingCalls > 1) {
+          debugPrint(
+              'InCallScreen: Call terminated but $remainingCalls calls remain - letting MultiCallScreen handle navigation');
+          return; // Don't navigate, let MultiCallScreen handle it
+        }
+
+        // Prevent multiple navigation attempts
+        if (!_isNavigatingAway) {
+          _isNavigatingAway = true;
+          debugPrint(
+              'InCallScreen: Call terminated (null callInfo): Navigating back to keypad');
+
+          // Add small delay before navigation to prevent GlobalKey conflicts
+          Future.delayed(const Duration(milliseconds: 150), () {
+            if (mounted) {
+              NavigationService.goToKeypad();
+            }
+          });
+        } else {
+          debugPrint(
+              'InCallScreen: Call terminated: Navigation already in progress, skipping');
         }
       }
     });
@@ -200,6 +245,23 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final height = media.size.height;
+    final width = media.size.width;
+    final safeBottom = media.padding.bottom;
+
+    // 🔹 Dynamic scaling based on device height
+    final double scale = (height / 800).clamp(0.85, 1.15).toDouble();
+    final double avatarSize = (150 * scale).toDouble();
+    final double controlButtonSize = (80 * scale).clamp(64.0, 90.0);
+    final double iconSize = (32 * scale).clamp(26.0, 36.0);
+    final double labelFontSize = (14 * scale).clamp(12.0, 16.0);
+    final double titleFontSize = (28 * scale).clamp(22.0, 30.0);
+    final double spacing = (height * 0.018).clamp(12.0, 28.0);
+    final double endCallHeight = (56 * scale).clamp(48.0, 64.0);
+    final double bottomPadding = (safeBottom + height * 0.015).clamp(10.0, 30.0);
+
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -208,47 +270,296 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
             end: Alignment.bottomCenter,
             colors: [
               Color(0xFF0A0A0A), // Almost black at top
-              Color(0xFF1A0B2E), // Dark black-purple 
+              Color(0xFF1A0B2E), // Dark black-purple
               Color(0xFF2D1B69), // Deep purple
               Color(0xFF4A1458), // Purple-black at bottom
             ],
             stops: [0.0, 0.3, 0.7, 1.0],
           ),
         ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                children: [
-                  // Quality indicator
-                  _buildQualityIndicator(),
-                  
-                  const SizedBox(height: 48),
-                  
-                  // Contact avatar and name
-                  _buildContactInfo(),
-                  
-                  const SizedBox(height: 16),
-                  
-                  // Call duration
-                  _buildCallDuration(),
-                  
-                  const Spacer(),
-                  
-                  // Call controls
-                  _buildCallControls(),
-                  
-                  const SizedBox(height: 48),
-                  
-                  // End call button
-                  _buildEndCallButton(),
-                ],
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              children: [
+                // Quality indicator
+                _buildQualityIndicator(),
+
+               // const SizedBox(height: 48),
+                SizedBox(height: spacing * 2),
+
+                // Contact avatar and name
+               // _buildContactInfo(),
+                _buildContactInfoScaled(avatarSize, titleFontSize),
+
+                //const SizedBox(height: 16),
+                SizedBox(height: spacing),
+
+                // Call duration
+                _buildCallDuration(),
+
+                const Spacer(),
+
+                // Call controls
+                //_buildCallControls(),
+                _buildCallControlsScaled(controlButtonSize, iconSize, labelFontSize),
+
+                //const SizedBox(height: 48),
+                SizedBox(height: spacing * 2),
+
+                // End call button
+               // _buildEndCallButton(),
+                _buildEndCallButtonScaled(endCallHeight),
+                SizedBox(height: bottomPadding),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContactInfoScaled(double avatarSize, double titleFontSize) {
+    final String displayName = _getDisplayName();
+    final String phoneNumber = _getPhoneNumber();
+
+    return Column(
+      children: [
+        Container(
+          width: avatarSize,
+          height: avatarSize,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFFE6E6FA),
+            border: Border.all(color: Colors.white, width: 2.0),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.white.withValues(alpha: 0.4),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+              BoxShadow(
+                color: Colors.white.withValues(alpha: 0.2),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: CircleAvatar(
+            radius: avatarSize / 2,
+            backgroundColor: const Color(0xFFE6E6FA),
+            backgroundImage: _contactInfo?.hasPhoto == true &&
+                _contactInfo?.photo != null
+                ? MemoryImage(_contactInfo!.photo!)
+                : null,
+            child: _contactInfo?.hasPhoto == true &&
+                _contactInfo?.photo != null
+                ? null
+                : Icon(
+              Icons.person,
+              size: avatarSize * 0.4,
+              color: const Color(0xFF6B46C1),
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        Text(
+          displayName,
+          style: TextStyle(
+            fontSize: titleFontSize,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        if (widget.contactName != null && widget.contactName!.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            phoneNumber,
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.white.withValues(alpha: 0.8),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildCallControlsScaled(
+      double buttonSize, double iconSize, double labelFontSize) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _buildControlButtonScaled(
+              icon: _isMuted ? Icons.mic_off : Icons.mic,
+              label: 'Mute',
+              size: buttonSize,
+              iconSize: iconSize,
+              labelFontSize: labelFontSize,
+              isActive: _isMuted,
+              onPressed:
+              _isCallAnswered && _isCallActive() ? _toggleMute : null,
+            ),
+            _buildSpeakerButtonScaled(buttonSize, iconSize, labelFontSize),
+            _buildControlButtonScaled(
+              icon: _isOnHold ? Icons.play_arrow : Icons.pause,
+              label: _isOnHold ? 'Resume' : 'Hold',
+              size: buttonSize,
+              iconSize: iconSize,
+              labelFontSize: labelFontSize,
+              isActive: _isOnHold,
+              onPressed: _isCallAnswered ? _toggleHold : null,
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _buildControlButtonScaled(
+              icon: Icons.dialpad,
+              label: 'Keypad',
+              size: buttonSize,
+              iconSize: iconSize,
+              labelFontSize: labelFontSize,
+              onPressed: _isCallAnswered ? _toggleKeypad : null,
+            ),
+            _buildControlButtonScaled(
+              icon: Icons.person_add,
+              label: 'Add Call',
+              size: buttonSize,
+              iconSize: iconSize,
+              labelFontSize: labelFontSize,
+              onPressed: _isCallAnswered ? _addCall : null,
+            ),
+            _buildControlButtonScaled(
+              icon: Icons.call_merge,
+              label: 'Transfer',
+              size: buttonSize,
+              iconSize: iconSize,
+              labelFontSize: labelFontSize,
+              onPressed: _isCallAnswered ? _transferCall : null,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildControlButtonScaled({
+    required IconData icon,
+    required String label,
+    required double size,
+    required double iconSize,
+    required double labelFontSize,
+    bool isActive = false,
+    VoidCallback? onPressed,
+  }) {
+    final bool isEnabled = onPressed != null;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: !isEnabled
+                ? Colors.grey.withValues(alpha: 0.3)
+                : isActive
+                ? Colors.white.withValues(alpha: 0.3)
+                : Colors.white.withValues(alpha: 0.15),
+            border: isActive
+                ? Border.all(
+                color: Colors.white.withValues(alpha: 0.5), width: 2)
+                : null,
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(size / 2),
+              onTap: isEnabled ? onPressed : null,
+              child: Icon(
+                icon,
+                size: iconSize,
+                color: !isEnabled
+                    ? Colors.grey.withValues(alpha: 0.7)
+                    : Colors.white,
               ),
             ),
           ),
         ),
-      );
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: labelFontSize,
+            color: !isEnabled
+                ? Colors.grey.withValues(alpha: 0.7)
+                : Colors.white.withValues(alpha: 0.9),
+          ),
+        ),
+      ],
+    );
   }
+
+  Widget _buildSpeakerButtonScaled(
+      double buttonSize, double iconSize, double labelFontSize) {
+    final sipService = SipService.instance;
+    return ListenableBuilder(
+      listenable: sipService,
+      builder: (context, _) {
+        final currentCall = sipService.currentCall;
+        final isSpeakerOn = currentCall?.isSpeakerOn ?? false;
+        final isEnabled = _isCallAnswered;
+        return _buildControlButtonScaled(
+          icon: isSpeakerOn ? Icons.volume_up : Icons.volume_down,
+          label: isSpeakerOn ? 'Speaker' : 'Earpiece',
+          size: buttonSize,
+          iconSize: iconSize,
+          labelFontSize: labelFontSize,
+          isActive: isSpeakerOn,
+          onPressed: isEnabled ? _toggleSpeaker : null,
+        );
+      },
+    );
+  }
+
+  Widget _buildEndCallButtonScaled(double height) {
+    return Center(
+      child: Container(
+        width: 280,
+        height: height,
+        decoration: BoxDecoration(
+          color: const Color(0xFFE53E3E),
+          borderRadius: BorderRadius.circular(height / 2),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(height / 2),
+          onTap: _endCall,
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.call_end, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text(
+                'End Call',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
 
   Widget _buildQualityIndicator() {
     return Row(
@@ -275,7 +586,7 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
     // Get the display name and phone number from call info or widget params
     final String displayName = _getDisplayName();
     final String phoneNumber = _getPhoneNumber();
-    
+
     return Column(
       children: [
         // Avatar
@@ -305,9 +616,10 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
           child: CircleAvatar(
             radius: 71, // Back to original size since no nested container
             backgroundColor: const Color(0xFFE6E6FA),
-            backgroundImage: _contactInfo?.hasPhoto == true && _contactInfo?.photo != null
-                ? MemoryImage(_contactInfo!.photo!)
-                : null,
+            backgroundImage:
+                _contactInfo?.hasPhoto == true && _contactInfo?.photo != null
+                    ? MemoryImage(_contactInfo!.photo!)
+                    : null,
             child: _contactInfo?.hasPhoto == true && _contactInfo?.photo != null
                 ? null
                 : const Icon(
@@ -317,9 +629,9 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
                   ),
           ),
         ),
-        
+
         const SizedBox(height: 20),
-        
+
         // Contact name or phone number
         Text(
           displayName,
@@ -332,7 +644,7 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
-        
+
         // Show phone number below name if we have a contact name
         if (widget.contactName != null && widget.contactName!.isNotEmpty) ...[
           const SizedBox(height: 8),
@@ -349,50 +661,55 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
       ],
     );
   }
-  
+
   String _getDisplayName() {
     // Priority: contact service info > widget contactName > currentCallInfo remoteName > phoneNumber
-    if (_contactInfo?.displayName != null && _contactInfo!.displayName.isNotEmpty) {
+    if (_contactInfo?.displayName != null &&
+        _contactInfo!.displayName.isNotEmpty) {
       return _contactInfo!.displayName;
     }
-    
+
     if (widget.contactName != null && widget.contactName!.isNotEmpty) {
       return widget.contactName!;
     }
-    
-    if (_currentCallInfo?.remoteName != null && _currentCallInfo!.remoteName.isNotEmpty) {
+
+    if (_currentCallInfo?.remoteName != null &&
+        _currentCallInfo!.remoteName.isNotEmpty) {
       return _currentCallInfo!.remoteName;
     }
-    
+
     return _getPhoneNumber();
   }
-  
+
   String _getPhoneNumber() {
     // Priority: widget phoneNumber > currentCallInfo remoteNumber > fallback
     if (widget.phoneNumber != null && widget.phoneNumber!.isNotEmpty) {
       return widget.phoneNumber!;
     }
-    
-    if (_currentCallInfo?.remoteNumber != null && _currentCallInfo!.remoteNumber.isNotEmpty) {
+
+    if (_currentCallInfo?.remoteNumber != null &&
+        _currentCallInfo!.remoteNumber.isNotEmpty) {
       return _currentCallInfo!.remoteNumber;
     }
-    
+
     return 'Unknown';
   }
 
   Widget _buildCallDuration() {
     String displayText;
     Color textColor = Colors.white.withValues(alpha: 0.9);
-    
+
     // Show timer once the call is answered
     if (_isCallAnswered) {
       switch (_currentCallState) {
         case AppCallState.held:
-          displayText = 'On Hold - ${_formatCallDuration()}';
+          displayText = 'On Hold';
           break;
         case AppCallState.reconnecting:
           // Show only "Reconnecting" without timer during network issues
-          displayText = _isNetworkConnected ? 'Reconnecting... ${_formatCallDuration()}' : 'Reconnecting...';
+          displayText = _isNetworkConnected
+              ? 'Reconnecting... ${_formatCallDuration()}'
+              : 'Reconnecting...';
           textColor = Colors.orange[600]!;
           break;
         case AppCallState.failed:
@@ -419,7 +736,7 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
           break;
       }
     }
-    
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -457,7 +774,8 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
               icon: _isMuted ? Icons.mic_off : Icons.mic,
               label: 'Mute',
               isActive: _isMuted,
-              onPressed: _isCallAnswered && _isCallActive() ? _toggleMute : null,
+              onPressed:
+                  _isCallAnswered && _isCallActive() ? _toggleMute : null,
             ),
             _buildSpeakerButton(),
             _buildControlButton(
@@ -468,9 +786,9 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
             ),
           ],
         ),
-        
+
         const SizedBox(height: 24),
-        
+
         // Second row of controls
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -478,7 +796,6 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
             _buildControlButton(
               icon: Icons.dialpad,
               label: 'Keypad',
-              isActive: _showKeypad,
               onPressed: _isCallAnswered ? _toggleKeypad : null,
             ),
             _buildControlButton(
@@ -497,7 +814,6 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
     );
   }
 
-
   Widget _buildControlButton({
     required IconData icon,
     required String label,
@@ -505,43 +821,50 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
     VoidCallback? onPressed,
   }) {
     final bool isEnabled = onPressed != null;
-    
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        GestureDetector(
-          onTap: isEnabled ? onPressed : null,
-          child: Container(
-            width: 88,
-            height: 88,
-            decoration: BoxDecoration(
-              color: !isEnabled
-                  ? Colors.grey.shade300
-                  : isActive 
-                      ? const Color(0xFF6B46C1)
-                      : const Color(0xFFE6E6FA),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              icon,
-              size: 32,
-              color: !isEnabled
-                  ? Colors.grey.shade500
-                  : isActive 
-                      ? Colors.white 
-                      : const Color(0xFF6B46C1),
+        Container(
+          width: 80, // Match multi_call_screen
+          height: 80, // Match multi_call_screen
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: !isEnabled
+                ? Colors.grey.withValues(alpha: 0.3)
+                : isActive
+                    ? Colors.white.withValues(alpha: 0.3)
+                    : Colors.white.withValues(alpha: 0.15),
+            border: !isEnabled
+                ? null
+                : isActive
+                    ? Border.all(color: Colors.white.withValues(alpha: 0.5), width: 2)
+                    : null,
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(40),
+              onTap: isEnabled ? onPressed : null,
+              child: Icon(
+                icon,
+                size: 32,
+                color: !isEnabled
+                    ? Colors.grey.withValues(alpha: 0.7)
+                    : Colors.white,
+              ),
             ),
           ),
         ),
-        
         const SizedBox(height: 8),
-        
         Text(
           label,
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.8),
-            fontSize: 12,
-            fontWeight: FontWeight.w400,
+            fontSize: 14, // Match multi_call_screen
+            fontWeight: FontWeight.w500, // Match multi_call_screen
+            color: !isEnabled
+                ? Colors.grey.withValues(alpha: 0.7)
+                : Colors.white.withValues(alpha: 0.9),
           ),
         ),
       ],
@@ -554,7 +877,7 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
   }) {
     final bool isEnabled = onPressed != null;
     final sipService = SipService.instance;
-    
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -562,15 +885,16 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
           listenable: sipService,
           builder: (context, child) {
             final currentDevice = sipService.currentAudioDevice;
-            
+
             IconData dynamicIcon = Icons.volume_up;
             bool dynamicIsActive = false;
-            
+
             if (currentDevice != null) {
               dynamicIcon = currentDevice.icon;
-              dynamicIsActive = currentDevice.category != AudioDeviceCategory.earpiece;
+              dynamicIsActive =
+                  currentDevice.category != AudioDeviceCategory.earpiece;
             }
-            
+
             return GestureDetector(
               onTap: isEnabled ? onPressed : null,
               child: Container(
@@ -579,7 +903,7 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
                 decoration: BoxDecoration(
                   color: !isEnabled
                       ? Colors.grey.shade300
-                      : dynamicIsActive 
+                      : dynamicIsActive
                           ? const Color(0xFF6B46C1)
                           : const Color(0xFFE6E6FA),
                   shape: BoxShape.circle,
@@ -589,17 +913,15 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
                   size: 32,
                   color: !isEnabled
                       ? Colors.grey.shade500
-                      : dynamicIsActive 
-                          ? Colors.white 
+                      : dynamicIsActive
+                          ? Colors.white
                           : const Color(0xFF6B46C1),
                 ),
               ),
             );
           },
         ),
-        
         const SizedBox(height: 8),
-        
         Text(
           label,
           style: TextStyle(
@@ -654,24 +976,24 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
   bool _canControlCall() {
     // Allow mute control for connecting, ringing, and answered calls
     return _currentCallState == AppCallState.connecting ||
-           _currentCallState == AppCallState.ringing ||
-           _currentCallState == AppCallState.answered;
+        _currentCallState == AppCallState.ringing ||
+        _currentCallState == AppCallState.answered;
   }
 
   bool _isCallActive() {
     // Check if the call is still active (not ended or failed)
-    return _currentCallState != AppCallState.ended && 
-           _currentCallState != AppCallState.failed;
+    return _currentCallState != AppCallState.ended &&
+        _currentCallState != AppCallState.failed;
   }
 
   void _toggleMute() async {
     final newMuteState = !_isMuted;
-    
+
     // Optimistically update UI
     setState(() {
       _isMuted = newMuteState;
     });
-    
+
     try {
       await SipService.instance.muteCall(widget.callId, newMuteState);
       debugPrint('InCallScreen: Mute toggled successfully to $newMuteState');
@@ -731,15 +1053,17 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              
+
               // Audio devices list (no title, just devices like in mockup)
               ...availableDevices.map((deviceInfo) {
                 final isSelected = currentDevice?.index == deviceInfo.index;
-                
+
                 return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
                   child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     leading: Icon(
                       deviceInfo.icon,
                       color: Colors.white,
@@ -753,7 +1077,7 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
                         color: Colors.white,
                       ),
                     ),
-                    trailing: isSelected 
+                    trailing: isSelected
                         ? const Icon(
                             Icons.check,
                             color: Colors.white,
@@ -771,7 +1095,7 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
                   ),
                 );
               }),
-              
+
               const SizedBox(height: 40),
             ],
           ),
@@ -792,14 +1116,14 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
 
   Widget _buildSpeakerButton() {
     final sipService = SipService.instance;
-    
+
     return ListenableBuilder(
       listenable: sipService,
       builder: (context, child) {
         final currentCall = sipService.currentCall;
         final isSpeakerOn = currentCall?.isSpeakerOn ?? false;
         final isEnabled = _isCallAnswered;
-        
+
         return _buildControlButton(
           icon: isSpeakerOn ? Icons.volume_up : Icons.volume_down,
           label: isSpeakerOn ? 'Speaker' : 'Earpiece',
@@ -811,24 +1135,67 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
   }
 
   void _toggleKeypad() {
-    setState(() {
-      _showKeypad = !_showKeypad;
-    });
+    if (mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DtmfKeypadScreen(callId: widget.callId),
+        ),
+      );
+    }
   }
 
+  void _addCall() async {
+    try {
+      // Use builtin SDK method directly - simpler approach
+      final callId = int.tryParse(widget.callId) ?? 0;
+      final currentCall = SipService.instance.findCallByCallId(callId.toString());
 
-  void _addCall() {
-    // TODO: Implement add call functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Add call feature coming soon')),
-    );
+      // Put current call on hold using builtin method
+      if (currentCall != null && !_isOnHold) {
+        await currentCall.hold();
+      }
+
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CallActionScreen(
+              actionType: CallActionType.addCall,
+              activeCall: _currentCallInfo,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('InCallScreen: Error: $e');
+      // Still navigate even if hold fails
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CallActionScreen(
+              actionType: CallActionType.addCall,
+              activeCall: _currentCallInfo,
+            ),
+          ),
+        );
+      }
+    }
   }
 
-  void _transferCall() {
-    // TODO: Implement call transfer functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Call transfer feature coming soon')),
-    );
+  void _transferCall() async {
+    if (mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CallActionScreen(
+            actionType: CallActionType.transfer,
+            activeCall: _currentCallInfo,
+          ),
+        ),
+      );
+    }
   }
 
   void _endCall() {
@@ -844,4 +1211,3 @@ class _InCallScreenState extends ConsumerState<InCallScreen> {
     }
   }
 }
-

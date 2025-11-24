@@ -12,6 +12,9 @@ class ApiService {
   final Dio _dio = Dio();
   static const String _baseUrl = 'https://api.ringplus.co.uk/v1';
 
+  // Getter for base URL
+  String get baseUrl => _baseUrl;
+
   Future<void> initialize() async {
     _dio.options.baseUrl = _baseUrl;
     _dio.options.connectTimeout = const Duration(seconds: 30);

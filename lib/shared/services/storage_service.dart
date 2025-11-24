@@ -1,4 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_constants.dart';
@@ -13,6 +16,7 @@ class StorageService {
 
   late SharedPreferences _prefs;
   late FlutterSecureStorage _secureStorage;
+  bool isInitialized = false;
 
   @pragma('vm:entry-point')
   Future<void> initialize() async {
@@ -25,6 +29,7 @@ class StorageService {
         accessibility: KeychainAccessibility.first_unlock_this_device,
       ),
     );
+    isInitialized = true;
   }
 
   // Secure storage methods for sensitive data
@@ -51,8 +56,13 @@ class StorageService {
       value: jsonEncode(credentials),
     );
   }
-
+  Future<void> _ensureInitialized() async {
+    if (!isInitialized) {
+      await initialize();
+    }
+  }
   Future<Map<String, dynamic>?> getCredentials() async {
+    await _ensureInitialized();
     final credentialsJson = await _secureStorage.read(
       key: AppConstants.keyUserCredentials,
     );
@@ -162,19 +172,30 @@ class StorageService {
   // Call history storage
   Future<void> storeCallHistory(List<Map<String, dynamic>> callHistory) async {
     // Limit the number of stored entries
-    final limitedHistory =
-        callHistory.take(AppConstants.maxCallHistoryEntries).toList();
-    await _prefs.setString(
-      AppConstants.keyCallHistory,
-      jsonEncode(limitedHistory),
-    );
+    final limitedHistory = callHistory.take(AppConstants.maxCallHistoryEntries).toList();
+    if (Platform.isIOS) {
+      await _secureStorage.write(key: AppConstants.keyCallHistory, value: jsonEncode(limitedHistory));
+    }else{
+      await _prefs.setString(
+        AppConstants.keyCallHistory,
+        jsonEncode(limitedHistory),
+      );
+    }
   }
 
   Future<List<Map<String, dynamic>>> getCallHistory() async {
-    final historyJson = _prefs.getString(AppConstants.keyCallHistory);
-    if (historyJson != null) {
-      final List<dynamic> historyList = jsonDecode(historyJson);
-      return historyList.cast<Map<String, dynamic>>();
+    if (Platform.isIOS) {
+      final historyJson = await _secureStorage.read(key: AppConstants.keyCallHistory);
+      if (historyJson != null) {
+        final List<dynamic> historyList = jsonDecode(historyJson);
+        return historyList.cast<Map<String, dynamic>>();
+      }
+    }else{
+      final historyJson = _prefs.getString(AppConstants.keyCallHistory);
+      if (historyJson != null) {
+        final List<dynamic> historyList = jsonDecode(historyJson);
+        return historyList.cast<Map<String, dynamic>>();
+      }
     }
     return [];
   }
@@ -277,12 +298,25 @@ class StorageService {
     return _prefs.getBool(key);
   }
 
-  Future<void> setInt(String key, int value) async {
-    await _prefs.setInt(key, value);
+  Future<void> setInt(String key, int strValue) async {
+    if (Platform.isIOS) {
+      await _secureStorage.write(key: key, value: strValue.toString());
+    }else{
+      await _prefs.setInt(key, strValue);
+    }
   }
 
-  Future<int?> getInt(String key) async {
-    return _prefs.getInt(key);
+  Future<int?> getInt(String strKey) async {
+    if (Platform.isIOS) {
+      String? value = await _secureStorage.read(key: strKey);
+      if (value == null) {
+        debugPrint('🔔 LIFECYCLE: getInt null');
+        return 1;
+      }
+      return int.tryParse(value);
+    }else{
+      return await _prefs.getInt(strKey);
+    }
   }
 
   Future<void> setDouble(String key, double value) async {
@@ -306,15 +340,28 @@ class StorageService {
 
   // Clear call history
   Future<void> clearCallHistory() async {
-    await _prefs.remove('call_history');
+    if (Platform.isIOS) {
+      await _secureStorage.delete(key: 'call_history');
+    }else{
+      await _prefs.remove('call_history');
+    }
+
   }
 
   // Siprix CdrsModel call history storage (JSON string format)
   Future<void> saveCdrCallHistory(String jsonData) async {
-    await _prefs.setString(AppConstants.keyCdrCallHistory, jsonData);
+    if (Platform.isIOS) {
+      await _secureStorage.write(key: AppConstants.keyCdrCallHistory, value: jsonData);
+    }else{
+      await _prefs.setString(AppConstants.keyCdrCallHistory, jsonData);
+    }
   }
 
   Future<String?> getCdrCallHistory() async {
-    return _prefs.getString(AppConstants.keyCdrCallHistory);
+    if (Platform.isIOS) {
+      return _secureStorage.read(key: AppConstants.keyCdrCallHistory);
+    }else{
+      return _prefs.getString(AppConstants.keyCdrCallHistory);
+    }
   }
 }
