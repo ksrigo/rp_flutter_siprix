@@ -1,7 +1,7 @@
 name: Ringplus
 description: A Cloud Pbx
 publish_to: "none"
-version: 1.0.1+1
+version: 1.0.2+3
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
@@ -13,6 +13,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
 
+  flutter_dotenv: ^6.0.0
   # Core SIP VoIP SDK
   siprix_voip_sdk: 1.0.25 # Pinned to avoid Android compilation issues with 1.0.26
 
@@ -86,6 +87,7 @@ flutter:
 
   assets:
     - assets/images/
+    - .env
 #    - assets/icons/
 #    - assets/sounds/
 

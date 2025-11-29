@@ -43,6 +43,12 @@
 			</dict>
 		</dict>
 	</dict>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>NSCameraUsageDescription</key>
+	<string>This app requires access to your camera to make video calls</string>
+	<key>NSContactsUsageDescription</key>
+	<string>This app requires access to your contacts so you can call, sync, and manage your contacts within Ringplus.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>This app needs access to microphone for making voice calls.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>

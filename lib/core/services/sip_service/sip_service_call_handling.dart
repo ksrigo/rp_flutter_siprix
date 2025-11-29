@@ -12,7 +12,7 @@ mixin _SipServiceCallHandling on _SipServiceBase {
 
       // Initialize Siprix SDK
       InitData initData = InitData();
-      initData.license = ""; // TODO: Add license key here or use trial mode
+      initData.license = dotenv.env['SIPRIX_LICENCE'] ?? '';
       initData.singleCallMode = false; // Allow multiple calls
 
       // Share UDP transport for efficiency
@@ -45,10 +45,13 @@ mixin _SipServiceCallHandling on _SipServiceBase {
       final globalCdrsModel = getGlobalCdrsModel();
       if (globalCdrsModel != null) {
         _cdrsModel = globalCdrsModel;
-        debugPrint('SIP Service: ✅ Reusing CdrsModel from early initialization (iOS push)');
-        debugPrint('SIP Service: CdrsModel has ${_cdrsModel!.length} existing entries');
+        debugPrint(
+            'SIP Service: ✅ Reusing CdrsModel from early initialization (iOS push)');
+        debugPrint(
+            'SIP Service: CdrsModel has ${_cdrsModel!.length} existing entries');
       } else {
-        _cdrsModel = CdrsModel(maxItems: 100); // Create CDRs model with max 100 items
+        _cdrsModel =
+            CdrsModel(maxItems: 100); // Create CDRs model with max 100 items
 
         // Set up CDR persistence - save changes to storage
         _cdrsModel!.onSaveChanges = (String jsonStr) async {
@@ -60,7 +63,8 @@ mixin _SipServiceCallHandling on _SipServiceBase {
         final savedCdrs = await StorageService.instance.getCdrCallHistory();
         if (savedCdrs != null && savedCdrs.isNotEmpty) {
           final loaded = _cdrsModel!.loadFromJson(savedCdrs);
-          debugPrint('SIP Service: Loaded ${_cdrsModel!.length} CDR entries from storage');
+          debugPrint(
+              'SIP Service: Loaded ${_cdrsModel!.length} CDR entries from storage');
         } else {
           debugPrint('SIP Service: No saved CDR history found');
         }
@@ -71,11 +75,13 @@ mixin _SipServiceCallHandling on _SipServiceBase {
       final globalCallsModel = getGlobalCallsModel();
       if (globalCallsModel != null) {
         _callsModel = globalCallsModel;
-        debugPrint('SIP Service: ✅ Reusing AppCallsModel from early initialization (iOS push)');
-        debugPrint('SIP Service: AppCallsModel already has CdrsModel connected');
+        debugPrint(
+            'SIP Service: ✅ Reusing AppCallsModel from early initialization (iOS push)');
+        debugPrint(
+            'SIP Service: AppCallsModel already has CdrsModel connected');
       } else {
-        _callsModel = AppCallsModel(
-            _accountsModel!, null, _cdrsModel); // Use our extended AppCallsModel
+        _callsModel = AppCallsModel(_accountsModel!, null,
+            _cdrsModel); // Use our extended AppCallsModel
         debugPrint('SIP Service: Created new AppCallsModel with CdrsModel');
       }
 
@@ -238,7 +244,8 @@ mixin _SipServiceCallHandling on _SipServiceBase {
       Future.delayed(const Duration(milliseconds: 100)).then((_) async {
         try {
           await answerCall(callId.toString());
-          debugPrint('SIP Service: Auto-answer successful, navigating to in-call screen');
+          debugPrint(
+              'SIP Service: Auto-answer successful, navigating to in-call screen');
 
           // Navigate to in-call screen after successful answer
           NavigationService.goToInCall(
@@ -433,7 +440,8 @@ mixin _SipServiceCallHandling on _SipServiceBase {
       Future.delayed(const Duration(milliseconds: 50)).then((_) async {
         try {
           await answerCall(callId.toString());
-          debugPrint('SIP Service: Call answered from notification, navigating to in-call screen');
+          debugPrint(
+              'SIP Service: Call answered from notification, navigating to in-call screen');
 
           // Navigate directly to in-call screen
           NavigationService.goToInCall(

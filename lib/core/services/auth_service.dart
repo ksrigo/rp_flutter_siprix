@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../../shared/services/storage_service.dart';
 import '../models/extension_details.dart';
@@ -14,7 +15,8 @@ class AuthService extends ChangeNotifier {
   AuthService._internal();
 
   final Dio _dio = Dio();
-  static const String _baseUrl = 'https://api.ringplus.co.uk/v1';
+  static final String _baseUrl =
+      dotenv.env['API_URL'] ?? 'https://api.ringplus.co.uk/v1';
 
   String? _accessToken;
   String? _refreshToken;
@@ -25,18 +27,18 @@ class AuthService extends ChangeNotifier {
   bool get isAuthenticated => _isAuthenticated;
   String? get accessToken => _accessToken;
   ExtensionDetails? get extensionDetails => _extensionDetails;
-  
+
   /// Check if user has valid authentication without triggering token refresh
   /// This is useful for UI components that need to check auth status
   bool get hasValidAuthentication {
     return _accessToken != null && _isTokenValid() && _isAuthenticated;
   }
-  
+
   /// Check if user has any tokens available (access or refresh)
   bool get hasAnyTokens {
     return _accessToken != null || _refreshToken != null;
   }
-  
+
   /// Execute a function that requires authentication
   /// This method ensures the user is authenticated before executing the operation
   /// Returns null if authentication fails, otherwise returns the result of the operation
@@ -44,10 +46,11 @@ class AuthService extends ChangeNotifier {
     try {
       final token = await getValidAccessToken();
       if (token == null) {
-        debugPrint('Auth: Cannot execute authenticated operation - no valid token');
+        debugPrint(
+            'Auth: Cannot execute authenticated operation - no valid token');
         return null;
       }
-      
+
       debugPrint('Auth: Executing authenticated operation');
       return await operation();
     } catch (e) {
@@ -55,7 +58,7 @@ class AuthService extends ChangeNotifier {
       return null;
     }
   }
-  
+
   /// Ensure the user is authenticated, redirect to login if not
   /// Returns true if authenticated, false if redirected to login
   Future<bool> ensureAuthenticated() async {
@@ -73,16 +76,18 @@ class AuthService extends ChangeNotifier {
     try {
       debugPrint('Auth: Initializing authentication service...');
       await _loadTokensFromStorage();
-      debugPrint('Auth: Tokens loaded from storage - accessToken: ${_accessToken != null ? 'present' : 'null'}, refreshToken: ${_refreshToken != null ? 'present' : 'null'}');
-      
+      debugPrint(
+          'Auth: Tokens loaded from storage - accessToken: ${_accessToken != null ? 'present' : 'null'}, refreshToken: ${_refreshToken != null ? 'present' : 'null'}');
+
       if (_isTokenValid()) {
         _isAuthenticated = true;
         debugPrint('Auth: Token is valid, user authenticated');
         notifyListeners();
-        
+
         // Fetch extension details if we don't have them
         if (_extensionDetails == null) {
-          debugPrint('Auth: Valid token found but no extension details, fetching...');
+          debugPrint(
+              'Auth: Valid token found but no extension details, fetching...');
           await _fetchExtensionDetailsAndInitializeSIP();
         }
       } else {
@@ -104,7 +109,8 @@ class AuthService extends ChangeNotifier {
       });
 
       debugPrint('Auth: Sending signin request with FormData');
-      debugPrint('Auth: Content-Type will be: ${Headers.formUrlEncodedContentType}');
+      debugPrint(
+          'Auth: Content-Type will be: ${Headers.formUrlEncodedContentType}');
       debugPrint('Auth: Data: username=$email&password=***');
 
       final response = await _dio.post(
@@ -163,25 +169,27 @@ class AuthService extends ChangeNotifier {
 
   Future<String?> getValidAccessToken() async {
     debugPrint('Auth: getValidAccessToken called - checking token validity');
-    
+
     // First, check if we have any access token at all
     if (_accessToken == null) {
       debugPrint('Auth: No access token available');
-      
+
       // If no access token but we have a refresh token, try to refresh
       if (_refreshToken != null) {
-        debugPrint('Auth: No access token but refresh token exists, attempting token refresh');
+        debugPrint(
+            'Auth: No access token but refresh token exists, attempting token refresh');
         final refreshed = await _refreshAccessToken();
         if (refreshed) {
-          debugPrint('Auth: Successfully recovered access token using refresh token');
+          debugPrint(
+              'Auth: Successfully recovered access token using refresh token');
           _isAuthenticated = true;
           notifyListeners();
-          
+
           // Fetch extension details if we don't have them
           if (_extensionDetails == null) {
             await _fetchExtensionDetailsAndInitializeSIP();
           }
-          
+
           return _accessToken;
         } else {
           debugPrint('Auth: Failed to recover access token, clearing session');
@@ -203,7 +211,7 @@ class AuthService extends ChangeNotifier {
       debugPrint('Auth: Access token is expired or expiring soon');
       debugPrint('Auth: Current token expiry: $_tokenExpiresAt');
       debugPrint('Auth: Current time: ${DateTime.now()}');
-      
+
       // Token is expired/expiring - try to refresh if we have a refresh token
       if (_refreshToken != null) {
         debugPrint('Auth: Attempting to refresh expired access token');
@@ -212,12 +220,12 @@ class AuthService extends ChangeNotifier {
           debugPrint('Auth: Token successfully refreshed');
           _isAuthenticated = true;
           notifyListeners();
-          
+
           // Fetch extension details if we don't have them
           if (_extensionDetails == null) {
             await _fetchExtensionDetailsAndInitializeSIP();
           }
-          
+
           return _accessToken;
         } else {
           debugPrint('Auth: Token refresh failed - clearing session');
@@ -230,7 +238,7 @@ class AuthService extends ChangeNotifier {
         return null;
       }
     }
-    
+
     // Token is valid
     debugPrint('Auth: Access token is valid - returning token');
     return _accessToken;
@@ -239,26 +247,28 @@ class AuthService extends ChangeNotifier {
   /// Handle authentication failure by clearing tokens and redirecting to login
   Future<void> handleAuthenticationFailure() async {
     try {
-      debugPrint('Auth: Handling authentication failure - clearing tokens and redirecting to login');
-      
+      debugPrint(
+          'Auth: Handling authentication failure - clearing tokens and redirecting to login');
+
       // Clear all authentication state
       _accessToken = null;
       _refreshToken = null;
       _tokenExpiresAt = null;
       _extensionDetails = null;
       _isAuthenticated = false;
-      
+
       // Clear stored tokens
       await StorageService.instance.clearTokens();
       await StorageService.instance.clearCredentials();
-      
+
       // Notify listeners of state change
       notifyListeners();
-      
+
       // Redirect to login page
       NavigationService.goToLogin();
-      
-      debugPrint('Auth: Successfully cleared authentication state and redirected to login');
+
+      debugPrint(
+          'Auth: Successfully cleared authentication state and redirected to login');
     } catch (e) {
       debugPrint('Auth: Error handling authentication failure: $e');
       // Even if there's an error, still try to redirect to login
@@ -286,7 +296,8 @@ class AuthService extends ChangeNotifier {
         'refresh_token': _refreshToken!,
       };
 
-      debugPrint('Auth: Refreshing token with refresh_token: ${_refreshToken!.substring(0, 20)}...');
+      debugPrint(
+          'Auth: Refreshing token with refresh_token: ${_refreshToken!.substring(0, 20)}...');
       debugPrint('Auth: Making PUT request to: $_baseUrl/refresh');
 
       final response = await refreshDio.put(
@@ -304,29 +315,34 @@ class AuthService extends ChangeNotifier {
       if (response.statusCode == 200) {
         final data = response.data;
         debugPrint('Auth: Token refresh successful, response received');
-        
+
         _accessToken = data['access_token'];
-        debugPrint('Auth: New access token received: ${_accessToken!.substring(0, 20)}...');
+        debugPrint(
+            'Auth: New access token received: ${_accessToken!.substring(0, 20)}...');
 
         // Update refresh token if provided
         if (data['refresh_token'] != null) {
           _refreshToken = data['refresh_token'];
-          debugPrint('Auth: New refresh token received: ${_refreshToken!.substring(0, 20)}...');
+          debugPrint(
+              'Auth: New refresh token received: ${_refreshToken!.substring(0, 20)}...');
         }
 
         _updateTokenExpiry(_accessToken!);
         await _saveTokensToStorage();
 
-        debugPrint('Auth: Token refresh completed successfully, new expiry: $_tokenExpiresAt');
+        debugPrint(
+            'Auth: Token refresh completed successfully, new expiry: $_tokenExpiresAt');
         return true;
       } else {
-        debugPrint('Auth: Token refresh failed with status code: ${response.statusCode}');
+        debugPrint(
+            'Auth: Token refresh failed with status code: ${response.statusCode}');
         debugPrint('Auth: Response data: ${response.data}');
       }
     } catch (e) {
       debugPrint('Auth: Token refresh error: $e');
       if (e is DioException) {
-        debugPrint('Auth: Token refresh - Status code: ${e.response?.statusCode}');
+        debugPrint(
+            'Auth: Token refresh - Status code: ${e.response?.statusCode}');
         debugPrint('Auth: Token refresh - Response data: ${e.response?.data}');
         debugPrint('Auth: Token refresh - Error type: ${e.type}');
         debugPrint('Auth: Token refresh - Error message: ${e.message}');
@@ -343,8 +359,10 @@ class AuthService extends ChangeNotifier {
       final exp = jwt.payload['exp'];
       if (exp != null) {
         _tokenExpiresAt = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
-        debugPrint('Auth: JWT decoded successfully, expires at: $_tokenExpiresAt');
-        debugPrint('Auth: Token valid for: ${_tokenExpiresAt!.difference(DateTime.now())}');
+        debugPrint(
+            'Auth: JWT decoded successfully, expires at: $_tokenExpiresAt');
+        debugPrint(
+            'Auth: Token valid for: ${_tokenExpiresAt!.difference(DateTime.now())}');
       } else {
         debugPrint('Auth: No expiry found in JWT payload, using fallback');
         _tokenExpiresAt = DateTime.now().add(const Duration(hours: 1));
@@ -372,16 +390,19 @@ class AuthService extends ChangeNotifier {
   Future<void> _loadTokensFromStorage() async {
     debugPrint('Auth: Loading tokens from storage...');
     final storage = StorageService.instance;
-    
+
     debugPrint('Auth: Getting access token from storage...');
     _accessToken = await storage.getAccessToken();
-    debugPrint('Auth: Access token retrieved: ${_accessToken != null ? 'present' : 'null'}');
-    
+    debugPrint(
+        'Auth: Access token retrieved: ${_accessToken != null ? 'present' : 'null'}');
+
     debugPrint('Auth: Getting refresh token from storage...');
     _refreshToken = await storage.getRefreshToken();
-    debugPrint('Auth: Refresh token retrieved: ${_refreshToken != null ? 'present' : 'null'}');
+    debugPrint(
+        'Auth: Refresh token retrieved: ${_refreshToken != null ? 'present' : 'null'}');
 
-    debugPrint('Auth: Loaded from storage - accessToken: ${_accessToken?.substring(0, 20) ?? 'null'}..., refreshToken: ${_refreshToken?.substring(0, 20) ?? 'null'}...');
+    debugPrint(
+        'Auth: Loaded from storage - accessToken: ${_accessToken?.substring(0, 20) ?? 'null'}..., refreshToken: ${_refreshToken?.substring(0, 20) ?? 'null'}...');
 
     if (_accessToken != null) {
       debugPrint('Auth: Updating token expiry...');
@@ -409,13 +430,14 @@ class AuthService extends ChangeNotifier {
   Future<void> _fetchExtensionDetailsAndInitializeSIP() async {
     try {
       debugPrint('Auth: Fetching extension details...');
-      
+
       // Make direct API call to avoid circular dependency with API service interceptor
       final dio = Dio();
-      dio.options.baseUrl = 'https://api.ringplus.co.uk/v1';
+      dio.options.baseUrl =
+          dotenv.env['API_URL'] ?? 'https://api.ringplus.co.uk/v1';
       dio.options.connectTimeout = const Duration(seconds: 30);
       dio.options.receiveTimeout = const Duration(seconds: 30);
-      
+
       final response = await dio.get(
         '/extensions/mobile',
         options: Options(
@@ -426,7 +448,8 @@ class AuthService extends ChangeNotifier {
         ),
       );
 
-      debugPrint('Auth: Extension details API response - Status: ${response.statusCode}');
+      debugPrint(
+          'Auth: Extension details API response - Status: ${response.statusCode}');
 
       if (response.statusCode == 200 && response.data != null) {
         final List<dynamic> extensions = response.data;
@@ -441,13 +464,16 @@ class AuthService extends ChangeNotifier {
           debugPrint('Auth: Extension details response is empty');
         }
       } else {
-        debugPrint('Auth: Extension details API failed - Status: ${response.statusCode}, Data: ${response.data}');
+        debugPrint(
+            'Auth: Extension details API failed - Status: ${response.statusCode}, Data: ${response.data}');
       }
     } catch (e) {
       debugPrint('Auth: Error fetching extension details: $e');
       if (e is DioException) {
-        debugPrint('Auth: Extension details - Status code: ${e.response?.statusCode}');
-        debugPrint('Auth: Extension details - Response data: ${e.response?.data}');
+        debugPrint(
+            'Auth: Extension details - Status code: ${e.response?.statusCode}');
+        debugPrint(
+            'Auth: Extension details - Response data: ${e.response?.data}');
       }
     }
   }
