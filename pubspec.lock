@@ -1073,42 +1073,42 @@ packages:
     dependency: "direct main"
     description:
       name: siprix_voip_sdk
-      sha256: "94b1c4dd8d048488bced0765624dd334ba75139d9e6f6998e4961a2cf3b97216"
+      sha256: b7fe49548b7e70ce9070473b5db9c9303f25873e4db96506ed01589b580e3c4a
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.31"
+    version: "1.0.32"
   siprix_voip_sdk_android:
     dependency: transitive
     description:
       name: siprix_voip_sdk_android
-      sha256: ee2aae655c78af72fd0837efc7157ac920e9fe205604af9fd25f132b69eaaaa8
+      sha256: "58ad5592c56f8e8d56695fe827f65dd7a4c6a5289cc1744eaac84bcdad4326d7"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.24"
+    version: "1.0.25"
   siprix_voip_sdk_ios:
     dependency: transitive
     description:
       name: siprix_voip_sdk_ios
-      sha256: d6277100b52f84785d975c1cacfc8515fbcebf930aad7742f9e1ff3c27efc732
+      sha256: d69b60b33c8f9cd02d031d13142f80532b7ef3b2c1ff9943831fa8c380c1b8d0
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.28"
+    version: "1.0.29"
   siprix_voip_sdk_linux:
     dependency: transitive
     description:
       name: siprix_voip_sdk_linux
-      sha256: "41f2ce713e52347fb9bce7c7c9781167b4e5c05ac01c04b32b4400ccde4bc8d1"
+      sha256: "0de9f4beee6c1e1c4e9d136dad54a7445ff0439562bcb5e51f18846db3d9a3ba"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.18"
+    version: "1.0.19"
   siprix_voip_sdk_macos:
     dependency: transitive
     description:
       name: siprix_voip_sdk_macos
-      sha256: "065ea754377b3231f43ef546cd807647052a9ff89301790ef8e8ef72f8bbef77"
+      sha256: "97a743fcf7b605ab12787c0b4586dac85c6bed0aec806ef2000fd72c0c0fc9d6"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.18"
+    version: "1.0.19"
   siprix_voip_sdk_platform_interface:
     dependency: transitive
     description:
@@ -1121,10 +1121,10 @@ packages:
     dependency: transitive
     description:
       name: siprix_voip_sdk_windows
-      sha256: "041a9a6f6d21baff63eecc8c74e28f031d291ec8bdbba8fb03b1dc54190e4859"
+      sha256: "80cc9cbcc8f64a988cedcb2995397649dd4e70e121dda70710211e75acffab16"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.19"
+    version: "1.0.20"
   sky_engine:
     dependency: transitive
     description: flutter

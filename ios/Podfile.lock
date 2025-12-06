@@ -94,7 +94,7 @@ PODS:
   - shared_preferences_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
-  - siprix_voip_sdk_ios (1.0.28):
+  - siprix_voip_sdk_ios (1.0.29):
     - Flutter
   - sqflite_darwin (0.0.4):
     - Flutter
@@ -199,7 +199,7 @@ SPEC CHECKSUMS:
   permission_handler_apple: 4ed2196e43d0651e8ff7ca3483a069d469701f2d
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
   shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
-  siprix_voip_sdk_ios: 90fdc099301c639506a033eff8b3b2465d9e1568
+  siprix_voip_sdk_ios: a151d26086727bec771a568fbbcc9331dcd8b80b
   sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0
   url_launcher_ios: 7a95fa5b60cc718a708b8f2966718e93db0cef1b
 
