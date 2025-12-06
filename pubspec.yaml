@@ -14,7 +14,7 @@ dependencies:
     sdk: flutter
 
   # Core SIP VoIP SDK
-  siprix_voip_sdk: 1.0.31 # Pinned to avoid Android compilation issues with 1.0.26
+  siprix_voip_sdk: 1.0.32 # Pinned to avoid Android compilation issues with 1.0.26
 
   # Push notifications for Android incoming calls --- this one
   firebase_core: ^4.2.1

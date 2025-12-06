@@ -435,23 +435,23 @@ class _ContactFormState extends State<ContactForm> {
               color: Theme.of(context).colorScheme.primary,
             ),
           ),
-          Positioned(
-            bottom: 0,
-            right: 0,
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.edit,
-                color: Colors.white,
-                size: 20,
-              ),
-            ),
-          ),
+          // Positioned(
+          //   bottom: 0,
+          //   right: 0,
+          //   child: Container(
+          //     width: 36,
+          //     height: 36,
+          //     decoration: BoxDecoration(
+          //       color: Theme.of(context).colorScheme.primary,
+          //       shape: BoxShape.circle,
+          //     ),
+          //     child: const Icon(
+          //       Icons.edit,
+          //       color: Colors.white,
+          //       size: 20,
+          //     ),
+          //   ),
+          // ),
         ],
       ),
     );
