@@ -3,6 +3,7 @@ library sip_service_base;
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -19,7 +20,8 @@ import '../../../shared/services/storage_service.dart';
 import '../../models/app_calls_model.dart';
 import '../auth_service.dart';
 import '../navigation_service.dart';
-import '../../../main.dart' show getGlobalCallsModel, getGlobalAccountsModel, getGlobalCdrsModel;
+import '../../../main.dart'
+    show getGlobalCallsModel, getGlobalAccountsModel, getGlobalCdrsModel;
 
 part 'sip_service_authentication.dart';
 part 'sip_service_call_handling.dart';
@@ -179,7 +181,8 @@ abstract class _SipServiceBase extends ChangeNotifier
       final savedCdrs = await StorageService.instance.getCdrCallHistory();
       if (savedCdrs != null && savedCdrs.isNotEmpty) {
         _cdrsModel?.loadFromJson(savedCdrs);
-        debugPrint('✅ iOS CDR REFRESH: Reloaded ${_cdrsModel?.length ?? 0} records');
+        debugPrint(
+            '✅ iOS CDR REFRESH: Reloaded ${_cdrsModel?.length ?? 0} records');
       } else {
         debugPrint('⚠️ iOS CDR REFRESH: No CDR data in storage');
       }
@@ -188,7 +191,6 @@ abstract class _SipServiceBase extends ChangeNotifier
       if (!_isDisposed) {
         notifyListeners();
       }
-
     } catch (e) {
       debugPrint('❌ iOS CDR REFRESH ERROR: $e');
     }
@@ -207,7 +209,8 @@ abstract class _SipServiceBase extends ChangeNotifier
 
       // iOS-specific: Verify we have actual data
       if (Platform.isIOS && cdrs.length == 0) {
-        debugPrint('⚠️ SAFE CDR: iOS has 0 CDR records - this might indicate a problem');
+        debugPrint(
+            '⚠️ SAFE CDR: iOS has 0 CDR records - this might indicate a problem');
 
         // Try to force reload from storage as fallback
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -216,7 +219,6 @@ abstract class _SipServiceBase extends ChangeNotifier
       }
 
       return List<CdrModel>.generate(cdrs.length, (i) => cdrs[i]);
-
     } catch (e) {
       debugPrint('❌ SAFE CDR ERROR: $e');
       return null;

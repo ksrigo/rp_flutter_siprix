@@ -18,7 +18,7 @@ mixin SipServiceCallHandling on _SipServiceBase {
 
       // Initialize Siprix SDK
       InitData initData = InitData();
-      initData.license = "";
+      initData.license = dotenv.env['SIPRIX_LICENCE'] ?? '';
       initData.singleCallMode = false; // Allow multiple calls
 
       // Share UDP transport for efficiency
@@ -32,9 +32,11 @@ mixin SipServiceCallHandling on _SipServiceBase {
         initData.enablePushKit = true;
         initData.unregOnDestroy = false;
 
-        debugPrint('SIP Service: Enabled enhanced CallKit and PushKit for killed/locked state');
+        debugPrint(
+            'SIP Service: Enabled enhanced CallKit and PushKit for killed/locked state');
       } else if (Platform.isAndroid) {
-        debugPrint('SIP Service: Configured Siprix for Android (video disabled)');
+        debugPrint(
+            'SIP Service: Configured Siprix for Android (video disabled)');
       }
 
       _siprixSdk = SiprixVoipSdk();
@@ -43,11 +45,14 @@ mixin SipServiceCallHandling on _SipServiceBase {
       final globalCdrsModel = getGlobalCdrsModel();
       if (globalCdrsModel != null) {
         _cdrsModel = globalCdrsModel;
-        debugPrint('SIP Service: ✅ Reusing CdrsModel from early initialization (iOS push)');
-        debugPrint('SIP Service: CdrsModel has ${_cdrsModel!.length} existing entries');
+        debugPrint(
+            'SIP Service: ✅ Reusing CdrsModel from early initialization (iOS push)');
+        debugPrint(
+            'SIP Service: CdrsModel has ${_cdrsModel!.length} existing entries');
       } else {
         debugPrint('SIP Service: No saved CDR history found');
-        _cdrsModel = CdrsModel(maxItems: 100); // Create CDRs model with max 100 items
+        _cdrsModel =
+            CdrsModel(maxItems: 100); // Create CDRs model with max 100 items
       }
 
       // Set up CDR persistence - save changes to storage
@@ -60,7 +65,8 @@ mixin SipServiceCallHandling on _SipServiceBase {
       final savedCdrs = await StorageService.instance.getCdrCallHistory();
       if (savedCdrs != null && savedCdrs.isNotEmpty) {
         final loaded = _cdrsModel!.loadFromJson(savedCdrs);
-        debugPrint('SIP Service: Loaded ${_cdrsModel!.length} CDR entries from storage');
+        debugPrint(
+            'SIP Service: Loaded ${_cdrsModel!.length} CDR entries from storage');
       } else {
         debugPrint('SIP Service: No saved CDR history found');
       }
@@ -69,7 +75,8 @@ mixin SipServiceCallHandling on _SipServiceBase {
       final globalCallsModel = getGlobalCallsModel();
       if (globalCallsModel != null) {
         _callsModel = globalCallsModel;
-        debugPrint('SIP Service: ✅ Reusing AppCallsModel from early initialization');
+        debugPrint(
+            'SIP Service: ✅ Reusing AppCallsModel from early initialization');
       } else {
         _callsModel = AppCallsModel(_accountsModel!, null, _cdrsModel);
         debugPrint('SIP Service: Created new AppCallsModel with CdrsModel');
@@ -85,7 +92,8 @@ mixin SipServiceCallHandling on _SipServiceBase {
 
       // CRITICAL: Load audio devices immediately
       _devicesModel?.load();
-      debugPrint('SIP Service: Audio devices pre-loaded for killed/locked state');
+      debugPrint(
+          'SIP Service: Audio devices pre-loaded for killed/locked state');
 
       // Set up AppCallsModel callbacks
       _callsModel!.onIncomingCallCallback = _handleIncomingCall;
@@ -124,7 +132,8 @@ mixin SipServiceCallHandling on _SipServiceBase {
         _scheduleDelayedTokenRetry();
       }
 
-      debugPrint('SIP Service: ✅ Initialization complete - ready for killed/locked state');
+      debugPrint(
+          'SIP Service: ✅ Initialization complete - ready for killed/locked state');
     } catch (e) {
       debugPrint('❌ Error initializing SIP service: $e');
       rethrow;
@@ -143,7 +152,8 @@ mixin SipServiceCallHandling on _SipServiceBase {
       final savedCdrs = await StorageService.instance.getCdrCallHistory();
       if (savedCdrs != null && savedCdrs.isNotEmpty) {
         _cdrsModel?.loadFromJson(savedCdrs);
-        debugPrint('✅ iOS CDR REFRESH: Reloaded ${_cdrsModel?.length ?? 0} records');
+        debugPrint(
+            '✅ iOS CDR REFRESH: Reloaded ${_cdrsModel?.length ?? 0} records');
       } else {
         debugPrint('⚠️ iOS CDR REFRESH: No CDR data in storage');
       }
@@ -152,7 +162,6 @@ mixin SipServiceCallHandling on _SipServiceBase {
       if (!_isDisposed) {
         notifyListeners();
       }
-
     } catch (e) {
       debugPrint('❌ iOS CDR REFRESH ERROR: $e');
     }
@@ -161,7 +170,8 @@ mixin SipServiceCallHandling on _SipServiceBase {
   void _scheduleDelayedTokenRetry() {
     // Wait 10 seconds for SIP registration to complete
     Timer(const Duration(seconds: 10), () {
-      debugPrint('🔄 Starting DELAYED push token retries after SIP registration');
+      debugPrint(
+          '🔄 Starting DELAYED push token retries after SIP registration');
       _scheduleTokenRetry();
     });
   }
@@ -178,22 +188,24 @@ mixin SipServiceCallHandling on _SipServiceBase {
       }
 
       // Additional configuration for killed state
-      debugPrint('🔒 KILLED/LOCKED: PushKit + CallKit configured for killed state');
-
+      debugPrint(
+          '🔒 KILLED/LOCKED: PushKit + CallKit configured for killed state');
     } catch (e) {
       debugPrint('🔒 KILLED/LOCKED: Error in configuration: $e');
     }
   }
 
   /// UNIVERSAL INCOMING CALL HANDLER with killed/locked state fixes
-  void _handleIncomingCall(int callId, String from, String to, bool withVideo) async {
+  void _handleIncomingCall(
+      int callId, String from, String to, bool withVideo) async {
     debugPrint('🔔 UNIVERSAL INCOMING CALL: callId: $callId');
     debugPrint('🔔 APP STATE: ${WidgetsBinding.instance.lifecycleState}');
 
     // Check if Do Not Disturb is enabled
     final isDndEnabled = await isDoNotDisturbEnabled();
     if (isDndEnabled) {
-      debugPrint('SIP Service: Do Not Disturb enabled, auto-rejecting call $callId');
+      debugPrint(
+          'SIP Service: Do Not Disturb enabled, auto-rejecting call $callId');
       try {
         await SiprixVoipSdk().reject(callId, 480);
         return;
@@ -235,7 +247,8 @@ mixin SipServiceCallHandling on _SipServiceBase {
   }
 
   /// iOS UNIVERSAL incoming call handler with killed/locked state fixes
-  void _handleIOSIncomingCallUniversal(int callId, String callerName, String callerNumber) {
+  void _handleIOSIncomingCallUniversal(
+      int callId, String callerName, String callerNumber) {
     final lifecycleState = WidgetsBinding.instance.lifecycleState;
 
     debugPrint('🔔 iOS UNIVERSAL HANDLER:');
@@ -256,13 +269,14 @@ mixin SipServiceCallHandling on _SipServiceBase {
   }
 
   /// Enhanced CallKit reporting for killed/locked state
-  void _reportCallToCallKitUniversal(int callId, String callerName, String callerNumber) {
+  void _reportCallToCallKitUniversal(
+      int callId, String callerName, String callerNumber) {
     try {
       final callkitUuid = _generateCallKitUuid(callId);
 
-      debugPrint('🔔 CALLKIT UNIVERSAL: Reporting call $callId for killed/locked state');
+      debugPrint(
+          '🔔 CALLKIT UNIVERSAL: Reporting call $callId for killed/locked state');
       debugPrint('🔔 CALLKIT UNIVERSAL: Generated UUID $callkitUuid');
-
 
       SiprixVoipSdk().updateCallKitCallDetails(
         callkitUuid,
@@ -277,7 +291,6 @@ mixin SipServiceCallHandling on _SipServiceBase {
       _callStartTimeMap[callId] = DateTime.now();
 
       debugPrint('🔔 CALLKIT UNIVERSAL: ✅ Call reported successfully');
-
     } catch (e) {
       debugPrint('🔔 CALLKIT UNIVERSAL: ❌ Error: $e');
     }
@@ -291,7 +304,8 @@ mixin SipServiceCallHandling on _SipServiceBase {
       final call = _findCallByCallId(intCallId);
       if (call == null) throw Exception('Call not found');
 
-      final isAppInForeground = WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+      final isAppInForeground =
+          WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
 
       // CRITICAL FOR KILLED/LOCKED STATE: Enhanced audio preparation
       await _ensureAudioReadyForKilledLockedState();
@@ -313,7 +327,6 @@ mixin SipServiceCallHandling on _SipServiceBase {
       if (Platform.isIOS) {
         _cleanupCallKitMappings(intCallId);
       }
-
     } catch (e) {
       debugPrint('🔔 ANSWER: ❌ Failed to answer call: $e');
       rethrow;
@@ -366,12 +379,12 @@ mixin SipServiceCallHandling on _SipServiceBase {
 
     while (retryCount < maxRetries) {
       try {
-        debugPrint('🔔 ANSWER ATTEMPT ${retryCount + 1}/$maxRetries for call $callId');
+        debugPrint(
+            '🔔 ANSWER ATTEMPT ${retryCount + 1}/$maxRetries for call $callId');
 
         await call.accept(false);
         debugPrint('🔔 ANSWER: ✅ Call answered successfully');
         return; // Success, exit retry loop
-
       } catch (e) {
         retryCount++;
         debugPrint('🔔 ANSWER: ❌ Attempt $retryCount failed: $e');
@@ -411,10 +424,13 @@ mixin SipServiceCallHandling on _SipServiceBase {
       if (call.state == CallState.connected) {
         _navigateToInCallScreen(callId, call);
       } else if (timeWaited < maxWaitTime) {
-        debugPrint('🔒 KILLED/LOCKED: Call not connected (${timeWaited}ms), state: ${call.state}');
-        Future.delayed(const Duration(milliseconds: checkInterval), checkCallState);
+        debugPrint(
+            '🔒 KILLED/LOCKED: Call not connected (${timeWaited}ms), state: ${call.state}');
+        Future.delayed(
+            const Duration(milliseconds: checkInterval), checkCallState);
       } else {
-        debugPrint('🔒 KILLED/LOCKED: ❌ Call failed to connect within $maxWaitTime ms');
+        debugPrint(
+            '🔒 KILLED/LOCKED: ❌ Call failed to connect within $maxWaitTime ms');
         _navigateToInCallScreen(callId, call); // Navigate anyway
       }
     }
@@ -425,7 +441,8 @@ mixin SipServiceCallHandling on _SipServiceBase {
 
   /// Navigate to in-call screen
   void _navigateToInCallScreen(int callId, CallModel call) {
-    final callerName = call.displName.isNotEmpty ? call.displName : call.remoteExt;
+    final callerName =
+        call.displName.isNotEmpty ? call.displName : call.remoteExt;
     final callerNumber = call.remoteExt;
 
     debugPrint('🔒 KILLED/LOCKED: Navigating to in-call screen');
@@ -558,7 +575,8 @@ mixin SipServiceCallHandling on _SipServiceBase {
     });
   }
 
-  void _showIncomingCallScreen(String callId, String callerName, String callerNumber) {
+  void _showIncomingCallScreen(
+      String callId, String callerName, String callerNumber) {
     try {
       NavigationService.goToIncomingCall(
         callId: callId,
@@ -571,7 +589,8 @@ mixin SipServiceCallHandling on _SipServiceBase {
   }
 
   /// Set auto-answer flag for notification acceptance
-  void setAutoAnswerCall(String callId, String callerName, String callerNumber) {
+  void setAutoAnswerCall(
+      String callId, String callerName, String callerNumber) {
     debugPrint('SIP Service: Setting auto-answer for callId: $callId');
     _autoAnswerCallId = callId;
     _autoAnswerCallerName = callerName;
@@ -634,7 +653,6 @@ mixin SipServiceCallHandling on _SipServiceBase {
       if (Platform.isIOS) {
         _cleanupCallKitMappings(intCallId);
       }
-
     } catch (e) {
       debugPrint('Hangup call failed: $e');
       rethrow;
@@ -656,7 +674,6 @@ mixin SipServiceCallHandling on _SipServiceBase {
       if (Platform.isIOS) {
         _cleanupCallKitMappings(intCallId);
       }
-
     } catch (e) {
       debugPrint('Reject call failed: $e');
       rethrow;
@@ -690,7 +707,8 @@ mixin SipServiceCallHandling on _SipServiceBase {
       final intCallId = int.tryParse(callId);
       if (intCallId == null) throw Exception('Invalid call ID format');
 
-      final targetCall = _findCallByCallId(intCallId) ?? _callsModel?.switchedCall();
+      final targetCall =
+          _findCallByCallId(intCallId) ?? _callsModel?.switchedCall();
       if (targetCall == null)
         throw Exception('No active call available for muting');
 
@@ -919,14 +937,16 @@ mixin SipServiceCallHandling on _SipServiceBase {
 
   @override
   void _onNetworkChanged() {
-    debugPrint('SIP Service: Network model changed - checking network state...');
+    debugPrint(
+        'SIP Service: Network model changed - checking network state...');
     if (_networkModel != null) {
       final isNetworkLost = _networkModel!.networkLost;
       debugPrint('SIP Service: Network lost: $isNetworkLost');
 
       // If we have an active call and network issues, track the network state
       if (hasActiveCall && isNetworkLost) {
-        debugPrint('SIP Service: Network lost during active call - call may need recovery');
+        debugPrint(
+            'SIP Service: Network lost during active call - call may need recovery');
       }
     }
   }
@@ -957,7 +977,8 @@ mixin SipServiceCallHandling on _SipServiceBase {
       case CallState.dialing:
         return AppCallState.connecting;
       case CallState.proceeding:
-        return AppCallState.connecting; // Will be updated to ringing based on SIP response
+        return AppCallState
+            .connecting; // Will be updated to ringing based on SIP response
       case CallState.ringing:
         return AppCallState.ringing;
       case CallState.rejecting:
@@ -1014,15 +1035,19 @@ mixin SipServiceCallHandling on _SipServiceBase {
         break;
     }
   }
+
   void _handleAppResume() {
     debugPrint('🔔 APP RESUME: Checking for active calls...');
 
     Future.delayed(const Duration(milliseconds: 500), () {
       final activeCall = _callsModel?.switchedCall();
       if (activeCall != null && activeCall.state == CallState.connected) {
-        debugPrint('🔔 APP RESUME: Active connected call found, ensuring UI is correct');
+        debugPrint(
+            '🔔 APP RESUME: Active connected call found, ensuring UI is correct');
 
-        final callerName = activeCall.displName.isNotEmpty ? activeCall.displName : activeCall.remoteExt;
+        final callerName = activeCall.displName.isNotEmpty
+            ? activeCall.displName
+            : activeCall.remoteExt;
         final callerNumber = activeCall.remoteExt;
 
         NavigationService.goToInCall(
@@ -1074,5 +1099,4 @@ mixin SipServiceCallHandling on _SipServiceBase {
   static bool get isAppTerminated {
     return WidgetsBinding.instance.lifecycleState == AppLifecycleState.detached;
   }
-
 }

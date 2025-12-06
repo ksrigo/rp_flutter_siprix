@@ -62,19 +62,19 @@ mixin _SipServiceAuthentication on _SipServiceBase {
       account.forceSipProxy = true; // Force using proxy for all requests
       //account.rewriteContactIp = true; // Enable IP rewrite for NAT handling
       account.rewriteContactIp =
-      false; // Disable IP rewrite to prevent second REGISTER
+          false; // Disable IP rewrite to prevent second REGISTER
       account.keepAliveTime = 30; // Keep alive packets every 30 seconds
 
       // Transport configuration - load from saved setting
       final savedTransport = await _loadTransportSetting();
       account.transport =
-      savedTransport == 'TCP' ? SipTransport.tcp : SipTransport.udp;
+          savedTransport == 'TCP' ? SipTransport.tcp : SipTransport.udp;
       debugPrint(
           'Register: Using saved transport setting: $savedTransport (${account.transport})');
 
       // Disable all WebRTC-specific features for traditional SIP compatibility
       account.iceEnabled =
-      false; // Disable ICE - prevents WebRTC SDP attributes
+          false; // Disable ICE - prevents WebRTC SDP attributes
       account.rtcpMuxEnabled = false; // Disable RTCP-Mux - prevents a=rtcp-mux
 
       // Ensure no STUN/TURN servers are set to prevent WebRTC behavior
@@ -209,7 +209,8 @@ mixin _SipServiceAuthentication on _SipServiceBase {
         await StorageService.instance.clearCredentials();
         debugPrint('SIP Service: Credentials cleared from storage');
       } else {
-        debugPrint('SIP Service: Credentials preserved in storage (soft unregister)');
+        debugPrint(
+            'SIP Service: Credentials preserved in storage (soft unregister)');
       }
 
       _updateRegistrationState(SipRegistrationState.unregistered);
@@ -312,7 +313,7 @@ mixin _SipServiceAuthentication on _SipServiceBase {
   Future<String> _loadTransportSetting() async {
     try {
       final savedTransport =
-      await StorageService.instance.getString('sip_transport');
+          await StorageService.instance.getString('sip_transport');
       debugPrint('SIP Service: Loaded transport setting: $savedTransport');
       return savedTransport ?? 'UDP'; // Default to UDP if not set
     } catch (e) {
@@ -402,7 +403,8 @@ mixin _SipServiceAuthentication on _SipServiceBase {
       // Re-register the account
       await _accountsModel!.registerAccount(accountIndex);
       // _accountsModel!.registerAccount(accountIndex);
-      debugPrint('SIP Service: Re-registered account at index $accountIndex ${_accountsModel!.length}');
+      debugPrint(
+          'SIP Service: Re-registered account at index $accountIndex ${_accountsModel!.length}');
 
       _updateRegistrationState(SipRegistrationState.registered);
       debugPrint('SIP Service: Re-registration completed successfully');
@@ -420,12 +422,14 @@ mixin _SipServiceAuthentication on _SipServiceBase {
   Future<bool> attemptBackgroundReregistration() async {
     try {
       if (_isBackgroundRegistrationInProgress) {
-        debugPrint('🔥 SIP Service: Background registration already in progress, skipping');
+        debugPrint(
+            '🔥 SIP Service: Background registration already in progress, skipping');
         return false;
       }
 
       _isBackgroundRegistrationInProgress = true;
-      debugPrint('🔥 SIP Service: Attempting background re-registration with network check');
+      debugPrint(
+          '🔥 SIP Service: Attempting background re-registration with network check');
 
       // First check network connectivity
       final connectivity = Connectivity();
@@ -450,7 +454,8 @@ mixin _SipServiceAuthentication on _SipServiceBase {
 
       // Ensure we're properly initialized
       if (_siprixSdk == null || _accountsModel == null) {
-        debugPrint('🔥 SIP Service: SDK not initialized, attempting quick initialization...');
+        debugPrint(
+            '🔥 SIP Service: SDK not initialized, attempting quick initialization...');
         await _quickInitializeForBackground();
       }
 
@@ -460,7 +465,8 @@ mixin _SipServiceAuthentication on _SipServiceBase {
         // Check current registration state
         for (int i = 0; i < _accountsModel!.length; i++) {
           final account = _accountsModel![i];
-          debugPrint('🔥 SIP Service: Account $i - Extension: ${account.sipExtension}, State: ${account.regState}, Text: ${account.regText}');
+          debugPrint(
+              '🔥 SIP Service: Account $i - Extension: ${account.sipExtension}, State: ${account.regState}, Text: ${account.regText}');
         }
 
         // Use aggressive re-registration strategy for background
@@ -468,7 +474,8 @@ mixin _SipServiceAuthentication on _SipServiceBase {
         _isBackgroundRegistrationInProgress = false;
         return result;
       } else {
-        debugPrint('🔥 SIP Service: No existing accounts for background registration - creating new account');
+        debugPrint(
+            '🔥 SIP Service: No existing accounts for background registration - creating new account');
 
         // CRITICAL: If no accounts exist, create a new one with stored credentials
         final result = await _createNewAccountFromStoredCredentials();
@@ -485,11 +492,13 @@ mixin _SipServiceAuthentication on _SipServiceBase {
   /// Create new account from stored credentials when no accounts exist
   Future<bool> _createNewAccountFromStoredCredentials() async {
     try {
-      debugPrint('🆕 SIP Service: Creating new account from stored credentials');
+      debugPrint(
+          '🆕 SIP Service: Creating new account from stored credentials');
 
       final credentials = await StorageService.instance.getCredentials();
       if (credentials == null) {
-        debugPrint('❌ SIP Service: No credentials available to create new account');
+        debugPrint(
+            '❌ SIP Service: No credentials available to create new account');
         return false;
       }
 
@@ -505,10 +514,12 @@ mixin _SipServiceAuthentication on _SipServiceBase {
       );
 
       if (success) {
-        debugPrint('✅ SIP Service: New account created successfully from stored credentials');
+        debugPrint(
+            '✅ SIP Service: New account created successfully from stored credentials');
         return true;
       } else {
-        debugPrint('❌ SIP Service: Failed to create new account from stored credentials');
+        debugPrint(
+            '❌ SIP Service: Failed to create new account from stored credentials');
         return false;
       }
     } catch (e) {
@@ -516,7 +527,6 @@ mixin _SipServiceAuthentication on _SipServiceBase {
       return false;
     }
   }
-
 
   /// Manual re-register method that can be called externally
   Future<bool> manualReregister() async {
@@ -558,9 +568,9 @@ mixin _SipServiceAuthentication on _SipServiceBase {
 
       debugPrint('❌ MANUAL REREGISTER: Registration verification failed');
       return false;
-
     } catch (e) {
-      debugPrint('❌ MANUAL REREGISTER: Error during manual re-registration: $e');
+      debugPrint(
+          '❌ MANUAL REREGISTER: Error during manual re-registration: $e');
       return false;
     }
   }
@@ -568,14 +578,16 @@ mixin _SipServiceAuthentication on _SipServiceBase {
   /// Enhanced aggressive re-registration strategy for background state
   Future<bool> _aggressiveBackgroundReregister() async {
     try {
-      debugPrint('🔥 SIP Service: Starting aggressive background re-registration');
+      debugPrint(
+          '🔥 SIP Service: Starting aggressive background re-registration');
 
       // First, check if we're already registered
       if (_accountsModel!.length > 0) {
         final account = _accountsModel![0];
         final isCurrentlyRegistered = await _checkRegistrationStatus(account);
         if (isCurrentlyRegistered) {
-          debugPrint('✅ SIP Service: Already registered, no need to re-register');
+          debugPrint(
+              '✅ SIP Service: Already registered, no need to re-register');
           return true;
         }
       }
@@ -588,7 +600,8 @@ mixin _SipServiceAuthentication on _SipServiceBase {
         debugPrint('🔥 SIP Service: Account unregistered');
         await Future.delayed(const Duration(milliseconds: 1000));
       } catch (e) {
-        debugPrint('🔥 SIP Service: Unregister failed (may be already unregistered): $e');
+        debugPrint(
+            '🔥 SIP Service: Unregister failed (may be already unregistered): $e');
       }
 
       // Now register with retry logic
@@ -596,15 +609,18 @@ mixin _SipServiceAuthentication on _SipServiceBase {
 
       for (int attempt = 1; attempt <= maxRegisterAttempts; attempt++) {
         try {
-          debugPrint('🔥 SIP Service: Register attempt $attempt/$maxRegisterAttempts');
+          debugPrint(
+              '🔥 SIP Service: Register attempt $attempt/$maxRegisterAttempts');
 
           // Clear any previous registration state
           _updateRegistrationState(SipRegistrationState.registering);
 
-          await _accountsModel!.registerAccount(0)
+          await _accountsModel!
+              .registerAccount(0)
               .timeout(const Duration(seconds: 10));
 
-          debugPrint('🔥 SIP Service: ✅ Registration attempt $attempt completed');
+          debugPrint(
+              '🔥 SIP Service: ✅ Registration attempt $attempt completed');
 
           // Wait for registration to propagate
           await Future.delayed(const Duration(seconds: 2));
@@ -614,25 +630,30 @@ mixin _SipServiceAuthentication on _SipServiceBase {
           bool isRegistered = await _checkRegistrationStatus(account);
 
           if (isRegistered) {
-            debugPrint('🔥 SIP Service: ✅ Background registration successful on attempt $attempt');
+            debugPrint(
+                '🔥 SIP Service: ✅ Background registration successful on attempt $attempt');
             _updateRegistrationState(SipRegistrationState.registered);
             return true;
           } else {
-            debugPrint('🔥 SIP Service: ❌ Registration not successful, state: ${account.regState}, text: ${account.regText}');
+            debugPrint(
+                '🔥 SIP Service: ❌ Registration not successful, state: ${account.regState}, text: ${account.regText}');
 
             // If we get 503 error, try different strategy
-            if (account.regText.contains('503') == true && attempt < maxRegisterAttempts) {
-              debugPrint('🔥 SIP Service: 503 error detected, trying alternative approach...');
+            if (account.regText.contains('503') == true &&
+                attempt < maxRegisterAttempts) {
+              debugPrint(
+                  '🔥 SIP Service: 503 error detected, trying alternative approach...');
               await _handle503Error(attempt);
             }
           }
-
         } catch (e) {
-          debugPrint('🔥 SIP Service: ❌ Registration attempt $attempt failed: $e');
+          debugPrint(
+              '🔥 SIP Service: ❌ Registration attempt $attempt failed: $e');
 
           // If it's a 503 error, we should retry with different strategy
           if (e.toString().contains('503') && attempt < maxRegisterAttempts) {
-            debugPrint('🔥 SIP Service: 503 error detected, trying alternative approach...');
+            debugPrint(
+                '🔥 SIP Service: 503 error detected, trying alternative approach...');
             await _handle503Error(attempt);
             continue;
           }
@@ -652,7 +673,6 @@ mixin _SipServiceAuthentication on _SipServiceBase {
       debugPrint('🔥 SIP Service: ❌ All registration attempts failed');
       _updateRegistrationState(SipRegistrationState.registrationFailed);
       return false;
-
     } catch (e) {
       debugPrint('🔥 SIP Service: ❌ Aggressive re-registration failed: $e');
       _updateRegistrationState(SipRegistrationState.registrationFailed);
@@ -679,7 +699,6 @@ mixin _SipServiceAuthentication on _SipServiceBase {
     }
   }
 
-
   /// Schedule delayed registration retry
   void _scheduleDelayedRegistrationRetry() {
     if (_registrationRetryCount >= 3) {
@@ -690,10 +709,12 @@ mixin _SipServiceAuthentication on _SipServiceBase {
     _registrationRetryCount++;
     final delaySeconds = _registrationRetryCount * 10; // 10, 20, 30 seconds
 
-    debugPrint('🔥 SIP Service: Scheduling registration retry #$_registrationRetryCount in $delaySeconds seconds');
+    debugPrint(
+        '🔥 SIP Service: Scheduling registration retry #$_registrationRetryCount in $delaySeconds seconds');
 
     _registrationRetryTimer = Timer(Duration(seconds: delaySeconds), () async {
-      debugPrint('🔥 SIP Service: Executing delayed registration retry #$_registrationRetryCount');
+      debugPrint(
+          '🔥 SIP Service: Executing delayed registration retry #$_registrationRetryCount');
       await attemptBackgroundReregistration();
     });
   }
@@ -701,7 +722,8 @@ mixin _SipServiceAuthentication on _SipServiceBase {
   /// Check registration status using the correct Siprix SDK method
   Future<bool> _checkRegistrationStatus(AccountModel account) async {
     try {
-      debugPrint('🔍 Checking registration status for account: ${account.sipExtension}');
+      debugPrint(
+          '🔍 Checking registration status for account: ${account.sipExtension}');
       debugPrint('🔍 Account registration state: ${account.regState}');
       debugPrint('🔍 Account registration text: ${account.regText}');
 
@@ -740,9 +762,9 @@ mixin _SipServiceAuthentication on _SipServiceBase {
 
       // If we don't have explicit failures, assume registration might be working
       // The actual call attempt will determine if it's really working
-      debugPrint('⚠️ Registration status unclear, but no explicit failure detected');
+      debugPrint(
+          '⚠️ Registration status unclear, but no explicit failure detected');
       return true;
-
     } catch (e) {
       debugPrint('❌ Error checking registration status: $e');
       // In case of error, be optimistic and let the call attempt determine success
@@ -753,14 +775,15 @@ mixin _SipServiceAuthentication on _SipServiceBase {
   /// Quick initialization for background state
   Future<void> _quickInitializeForBackground() async {
     try {
-      debugPrint('🔥 QUICK INIT: Starting quick initialization for background...');
+      debugPrint(
+          '🔥 QUICK INIT: Starting quick initialization for background...');
 
       if (_siprixSdk == null) {
         _siprixSdk = SiprixVoipSdk();
 
         // Minimal initialization for background
         final initData = InitData();
-        initData.license = "";
+        initData.license = dotenv.env['SIPRIX_LICENCE'] ?? '';
         initData.singleCallMode = false;
         initData.shareUdpTransport = true;
         initData.enableVideoCall = false;
@@ -773,10 +796,10 @@ mixin _SipServiceAuthentication on _SipServiceBase {
 
       _accountsModel ??= getGlobalAccountsModel() ?? AccountsModel();
 
-      _callsModel ??= getGlobalCallsModel() ?? AppCallsModel(_accountsModel!, null, null);
+      _callsModel ??=
+          getGlobalCallsModel() ?? AppCallsModel(_accountsModel!, null, null);
 
       debugPrint('🔥 QUICK INIT: Quick initialization completed');
-
     } catch (e) {
       debugPrint('🔥 QUICK INIT: Error during quick initialization: $e');
       throw e;
@@ -827,7 +850,7 @@ mixin _SipServiceAuthentication on _SipServiceBase {
       Timer(Duration(seconds: delays[i]), () async {
         debugPrint(
             'SIP Service: PushKit token retry attempt ${i + 1}/${delays.length}');
-        await _attemptGetPushKitToken(isRetry: true, attempt:  i+1);
+        await _attemptGetPushKitToken(isRetry: true, attempt: i + 1);
       });
     }
   }
@@ -867,11 +890,11 @@ mixin _SipServiceAuthentication on _SipServiceBase {
         } else {
           debugPrint(
               'SIP Service: ⚠️ [$prefix] No PushKit token available yet - will retry in ${attempt < 3 ? [
-                2,
-                5,
-                10,
-                20
-              ][attempt] : 20}s');
+                  2,
+                  5,
+                  10,
+                  20
+                ][attempt] : 20}s');
         }
       }
     } catch (e) {

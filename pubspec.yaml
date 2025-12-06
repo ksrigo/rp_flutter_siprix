@@ -72,6 +72,8 @@ dependencies:
 
   is_lock_screen2: ^2.0.4
 
+  flutter_dotenv: ^6.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

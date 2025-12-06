@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'auth_service.dart';
 
@@ -10,7 +11,8 @@ class ApiService {
   ApiService._internal();
 
   final Dio _dio = Dio();
-  static const String _baseUrl = 'https://api.ringplus.co.uk/v1';
+  static final String _baseUrl =
+      dotenv.env['API_URL'] ?? 'https://api.ringplus.co.uk/v1';
 
   // Getter for base URL
   String get baseUrl => _baseUrl;
@@ -25,27 +27,30 @@ class ApiService {
       InterceptorsWrapper(
         onRequest: (options, handler) async {
           final path = options.path;
-          
+
           // Exclude Authorization header for signin and refresh endpoints
           final isSigninEndpoint = path.contains('/signin');
           final isRefreshEndpoint = path.contains('/refresh');
-          
-          debugPrint('API: Request to $path, isSignin: $isSigninEndpoint, isRefresh: $isRefreshEndpoint');
-          
+
+          debugPrint(
+              'API: Request to $path, isSignin: $isSigninEndpoint, isRefresh: $isRefreshEndpoint');
+
           if (!isSigninEndpoint && !isRefreshEndpoint) {
             // Get valid access token from AuthService for all other endpoints
             final token = await AuthService.instance.getValidAccessToken();
-            
+
             if (token != null) {
               options.headers['Authorization'] = 'Bearer $token';
               debugPrint('API: Added Authorization header for $path');
             } else {
-              debugPrint('API: No valid token available for $path - blocking request');
+              debugPrint(
+                  'API: No valid token available for $path - blocking request');
               // Block the request immediately if no valid token
               handler.reject(DioException(
                 requestOptions: options,
                 type: DioExceptionType.cancel,
-                error: 'Authentication required: No valid access token available',
+                error:
+                    'Authentication required: No valid access token available',
                 message: 'Request blocked due to missing authentication token',
               ));
               return;
@@ -55,31 +60,34 @@ class ApiService {
             // Ensure Authorization header is not set for these endpoints
             options.headers.remove('Authorization');
           }
-          
+
           // Set default content type to JSON if not already set
           if (options.headers['Content-Type'] == null) {
             options.headers['Content-Type'] = 'application/json';
           }
-          
+
           handler.next(options);
         },
         onError: (error, handler) async {
           // Handle 401 unauthorized responses
           if (error.response?.statusCode == 401) {
-            debugPrint('API: Received 401 Unauthorized - authentication failed');
+            debugPrint(
+                'API: Received 401 Unauthorized - authentication failed');
             debugPrint('API: Request path: ${error.requestOptions.path}');
-            
+
             // Don't handle 401s for signin and refresh endpoints - let them through
             final path = error.requestOptions.path;
             final isSigninEndpoint = path.contains('/signin');
             final isRefreshEndpoint = path.contains('/refresh');
-            
+
             if (!isSigninEndpoint && !isRefreshEndpoint) {
-              debugPrint('API: 401 on protected endpoint, triggering authentication failure flow');
+              debugPrint(
+                  'API: 401 on protected endpoint, triggering authentication failure flow');
               // Trigger authentication failure which will clear tokens and redirect to login
               await AuthService.instance.handleAuthenticationFailure();
             } else {
-              debugPrint('API: 401 on auth endpoint ($path), passing through for normal handling');
+              debugPrint(
+                  'API: 401 on auth endpoint ($path), passing through for normal handling');
             }
           }
           handler.next(error);
@@ -115,7 +123,7 @@ class ApiService {
       rethrow;
     }
   }
-  
+
   // Safe GET request that ensures authentication
   Future<Response<T>?> getAuthenticated<T>(
     String path, {
@@ -147,7 +155,7 @@ class ApiService {
       rethrow;
     }
   }
-  
+
   // Safe POST request that ensures authentication
   Future<Response<T>?> postAuthenticated<T>(
     String path, {
@@ -156,7 +164,8 @@ class ApiService {
     Options? options,
   }) async {
     return await AuthService.instance.executeAuthenticated<Response<T>>(
-      () => post<T>(path, data: data, queryParameters: queryParameters, options: options),
+      () => post<T>(path,
+          data: data, queryParameters: queryParameters, options: options),
     );
   }
 
@@ -220,7 +229,7 @@ class ApiService {
       rethrow;
     }
   }
-  
+
   // Safe PATCH request that ensures authentication
   Future<Response<T>?> patchAuthenticated<T>(
     String path, {
@@ -229,7 +238,8 @@ class ApiService {
     Options? options,
   }) async {
     return await AuthService.instance.executeAuthenticated<Response<T>>(
-      () => patch<T>(path, data: data, queryParameters: queryParameters, options: options),
+      () => patch<T>(path,
+          data: data, queryParameters: queryParameters, options: options),
     );
   }
 
@@ -241,7 +251,8 @@ class ApiService {
     Options? options,
   }) async {
     return await AuthService.instance.executeAuthenticated<Response<T>>(
-      () => delete<T>(path, data: data, queryParameters: queryParameters, options: options),
+      () => delete<T>(path,
+          data: data, queryParameters: queryParameters, options: options),
     );
   }
 
@@ -272,7 +283,7 @@ class ApiService {
   }
 
   // Specific API methods can be added here
-  
+
   // Example: Get user profile
   Future<Response> getUserProfile() async {
     return await get('/user/profile');
@@ -300,7 +311,8 @@ class ApiService {
   }
 
   // Example: Update contact
-  Future<Response> updateContact(String contactId, Map<String, dynamic> contactData) async {
+  Future<Response> updateContact(
+      String contactId, Map<String, dynamic> contactData) async {
     return await put('/contacts/$contactId', data: contactData);
   }
 

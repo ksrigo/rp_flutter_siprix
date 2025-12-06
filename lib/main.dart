@@ -1,3 +1,4 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -38,6 +39,7 @@ CdrsModel? getGlobalCdrsModel() => _globalCdrsModel;
 
 void main() async {
   try {
+    await dotenv.load(fileName: ".env");
     WidgetsFlutterBinding.ensureInitialized();
 
     debugPrint('🚀 MAIN: Application starting...');
@@ -46,27 +48,32 @@ void main() async {
     // This must happen BEFORE runApp() so the CallStateListener is ready
     // when iOS delivers the pending push notification
     if (Platform.isIOS) {
-      debugPrint('🚀 MAIN: iOS detected - initializing Siprix SDK for VoIP push handling');
+      debugPrint(
+          '🚀 MAIN: iOS detected - initializing Siprix SDK for VoIP push handling');
       // Enhanced initialization for all states
       await _initializeSiprixForPush();
-      debugPrint('🚀 MAIN: ✅ Siprix SDK early initialization complete for all states');
+      debugPrint(
+          '🚀 MAIN: ✅ Siprix SDK early initialization complete for all states');
     }
 
     // Register Firebase background message handler for Android push notifications
     if (Platform.isAndroid) {
-      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      FirebaseMessaging.onBackgroundMessage(
+          _firebaseMessagingBackgroundHandler);
     }
 
     // Check if app was launched from notification (fast-start mode)
     if (Platform.isAndroid) {
       try {
-        final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+        final initialMessage =
+            await FirebaseMessaging.instance.getInitialMessage();
         if (initialMessage != null &&
             (initialMessage.data['type'] == 'INCOMING_CALL' ||
                 initialMessage.data['type'] == 'incoming_call') &&
             initialMessage.data['action'] == 'accept') {
           _isFastStartMode = true;
-          debugPrint('🚀 MAIN: Fast-start mode enabled - launched from notification acceptance');
+          debugPrint(
+              '🚀 MAIN: Fast-start mode enabled - launched from notification acceptance');
         }
       } catch (e) {
         debugPrint('🚀 MAIN: Error checking initial message: $e');
@@ -77,7 +84,6 @@ void main() async {
     // Initialize core services
     await _initializeServices();
     debugPrint('🚀 MAIN: Services initialized successfully');
-
 
     // Set preferred orientations
     await SystemChrome.setPreferredOrientations([
@@ -93,7 +99,6 @@ void main() async {
       ),
     );
     debugPrint('🚀 Main: runApp called successfully');
-
   } catch (e, stackTrace) {
     debugPrint('🚀 MAIN: FATAL ERROR: $e');
     debugPrint('🚀 MAIN: STACK TRACE: $stackTrace');
@@ -101,7 +106,6 @@ void main() async {
     print('🚀 MAIN: STACK TRACE: $stackTrace');
   }
 }
-
 
 /// Enhanced Siprix initialization for all states (killed/background/foreground)
 Future<void> _initializeSiprixForPush() async {
@@ -112,7 +116,7 @@ Future<void> _initializeSiprixForPush() async {
     final siprixSdk = SiprixVoipSdk();
 
     final initData = InitData();
-    initData.license = "";
+    initData.license = dotenv.env['SIPRIX_LICENCE'] ?? '';
     initData.singleCallMode = false;
     initData.shareUdpTransport = true;
     initData.enableVideoCall = false;
@@ -141,8 +145,10 @@ Future<void> _initializeSiprixForPush() async {
       final savedCdrs = await StorageService.instance.getCdrCallHistory();
       if (savedCdrs != null && savedCdrs.isNotEmpty) {
         final loaded = _globalCdrsModel!.loadFromJson(savedCdrs);
-        debugPrint('🚀 MAIN: Loaded ${_globalCdrsModel!.length} CDR entries from storage');
-        print('🚀 MAIN: Loaded ${_globalCdrsModel!.length} CDR entries from storage (print)');
+        debugPrint(
+            '🚀 MAIN: Loaded ${_globalCdrsModel!.length} CDR entries from storage');
+        print(
+            '🚀 MAIN: Loaded ${_globalCdrsModel!.length} CDR entries from storage (print)');
       } else {
         debugPrint('🚀 MAIN: No saved CDR history found');
         print('🚀 MAIN: No saved CDR history found (print)');
@@ -153,9 +159,12 @@ Future<void> _initializeSiprixForPush() async {
     }
 
     // Create AppCallsModel - this sets up the CallStateListener
-    _globalCallsModel = AppCallsModel(_globalAccountsModel!, null, _globalCdrsModel);
-    debugPrint('🚀 MAIN: AppCallsModel created with CdrsModel - CallStateListener is now configured');
-    print('🚀 MAIN: AppCallsModel created with CdrsModel - CallStateListener is now configured (print)');
+    _globalCallsModel =
+        AppCallsModel(_globalAccountsModel!, null, _globalCdrsModel);
+    debugPrint(
+        '🚀 MAIN: AppCallsModel created with CdrsModel - CallStateListener is now configured');
+    print(
+        '🚀 MAIN: AppCallsModel created with CdrsModel - CallStateListener is now configured (print)');
 
     // Initialize SDK
     await siprixSdk.initialize(initData);
@@ -183,10 +192,12 @@ Future<void> _initializeServices() async {
     debugPrint('🚀 MAIN: Initializing NotificationService...');
     try {
       await NotificationService.instance.initialize().timeout(
-        Duration(seconds: _isFastStartMode ? 3 : 10), // Shorter timeout in fast mode
+        Duration(
+            seconds: _isFastStartMode ? 3 : 10), // Shorter timeout in fast mode
         onTimeout: () {
           debugPrint('🚀 MAIN: NotificationService initialization timed out');
-          throw TimeoutException('NotificationService initialization timed out');
+          throw TimeoutException(
+              'NotificationService initialization timed out');
         },
       );
       debugPrint('🚀 MAIN: NotificationService initialized');
@@ -201,7 +212,8 @@ Future<void> _initializeServices() async {
 
     // In fast-start mode, defer non-critical services to background
     if (_isFastStartMode) {
-      debugPrint('🚀 MAIN: Fast-start mode - deferring ContactsService initialization');
+      debugPrint(
+          '🚀 MAIN: Fast-start mode - deferring ContactsService initialization');
       // Initialize contacts in background after app is shown
       Future.microtask(() async {
         debugPrint('🚀 MAIN: Background: Initializing ContactsService...');
@@ -209,7 +221,8 @@ Future<void> _initializeServices() async {
           await ContactsService.instance.initializeWithoutApiCall();
           debugPrint('🚀 MAIN: Background: ContactsService initialized');
         } catch (e) {
-          debugPrint('🚀 MAIN: Background: ContactsService initialization failed: $e');
+          debugPrint(
+              '🚀 MAIN: Background: ContactsService initialization failed: $e');
         }
       });
     } else {
@@ -230,7 +243,6 @@ Future<void> _initializeServices() async {
     }
 
     // SIP service will be initialized after successful authentication
-
   } catch (e, stackTrace) {
     debugPrint('🚀 MAIN: Error initializing services: $e');
     debugPrint('🚀 MAIN: Service initialization stack trace: $stackTrace');
@@ -238,7 +250,7 @@ Future<void> _initializeServices() async {
   }
 }
 
-class RingplusApp extends ConsumerWidget  {
+class RingplusApp extends ConsumerWidget {
   const RingplusApp({super.key});
 
   @override
@@ -296,21 +308,17 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     debugPrint('🚀 Android: Type: ${message.data['type']}');
     debugPrint('🚀 Android: =================================');
 
-    if (message.data['type'] == 'INCOMING_CALL' || message.data['type'] == 'incoming_call') {
+    if (message.data['type'] == 'INCOMING_CALL' ||
+        message.data['type'] == 'incoming_call') {
       debugPrint('🚀 Android: ✅ Recognized as incoming call notification');
       // Call the notification service handler
       await NotificationService.wakeUpAndRegisterForIncomingCall(message.data);
     } else {
-      debugPrint('🚀 Android: ❌ Ignoring push notification with type: ${message.data['type']}');
+      debugPrint(
+          '🚀 Android: ❌ Ignoring push notification with type: ${message.data['type']}');
     }
   } catch (e) {
     debugPrint('🚀 Android: ❌ ERROR in background message handler: $e');
     debugPrint('🚀 Android: Stack trace: ${StackTrace.current}');
   }
-
 }
-
-
-
-
-
