@@ -64,3 +64,11 @@ That is the file you’ll upload to the Google Play Console.
 Preview scrren:
 
 https://theapplaunchpad.com/
+
+## IOS Release preparation
+
+flutter clean
+flutter get pub
+flutter build ios --release
+
+open ios/Runner.xcworkspace
