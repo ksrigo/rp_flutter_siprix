@@ -60,3 +60,7 @@ This produces:
 build/app/outputs/bundle/release/app-release.aab
 
 That is the file you’ll upload to the Google Play Console.
+
+Preview scrren:
+
+https://theapplaunchpad.com/
