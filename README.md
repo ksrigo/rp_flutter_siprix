@@ -68,7 +68,7 @@ https://theapplaunchpad.com/
 ## IOS Release preparation
 
 flutter clean
-flutter get pub
+flutter pub get
 flutter build ios --release
 
 open ios/Runner.xcworkspace

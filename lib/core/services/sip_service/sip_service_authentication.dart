@@ -82,6 +82,7 @@ mixin _SipServiceAuthentication on _SipServiceBase {
       account.turnServer = null;
 
       // Configure audio codecs to match server capabilities
+      // Support PCMU (0), PCMA (8), and DTMF (101) as seen in server SDP
       account.aCodecs = [
         SiprixVoipSdk.kAudioCodecPCMU,
         SiprixVoipSdk.kAudioCodecDTMF
@@ -98,7 +99,31 @@ mixin _SipServiceAuthentication on _SipServiceBase {
       debugPrint(
           'Register: Account configured - server: ${account.sipServer}, ext: ${account.sipExtension}');
 
-      // Get push token for iOS CallKit integration
+      // ==================== ANDROID FCM PUSH NOTIFICATIONS ====================
+      if (Platform.isAndroid) {
+        try {
+          debugPrint('Register: Checking for Android FCM token...');
+          final fcmToken = await FirebaseMessaging.instance.getToken();
+          if (fcmToken != null && fcmToken.isNotEmpty) {
+            // Add RFC 8599 push notification parameters to Contact URI
+            account.xContactUriParams ??= <String, String>{};
+            account.xContactUriParams!['pn-provider'] = 'fcm';
+            account.xContactUriParams!['pn-param'] = 'none';
+            account.xContactUriParams!['pn-prid'] = fcmToken;
+
+            debugPrint(
+                'Register: ✅ Added RFC 8599 FCM push notification parameters to Contact URI');
+            debugPrint('Register: FCM token length: ${fcmToken.length}');
+          } else {
+            debugPrint(
+                'Register: ⚠️ No FCM token available yet - Android push notifications may not work');
+          }
+        } catch (e) {
+          debugPrint('Register: Error getting FCM token: $e');
+        }
+      }
+
+      // ==================== iOS PUSHKIT NOTIFICATIONS ====================
       if (Platform.isIOS) {
         try {
           debugPrint('SIP Service: Requesting PushKit token...');
@@ -106,6 +131,10 @@ mixin _SipServiceAuthentication on _SipServiceBase {
           debugPrint('SIP Service: PushKit token response: $pushToken');
 
           if (pushToken != null && pushToken.isNotEmpty) {
+            // Add push token to SIP headers for backward compatibility
+            account.xheaders ??= <String, String>{};
+            account.xheaders!['X-Push-Token'] = pushToken;
+
             // Add RFC 8599 push notification parameters to Contact URI for iOS
             account.xContactUriParams ??= <String, String>{};
             account.xContactUriParams!['pn-provider'] = 'apns';
@@ -224,6 +253,14 @@ mixin _SipServiceAuthentication on _SipServiceBase {
   Future<bool> updateTransport(String transport) async {
     try {
       debugPrint('SIP Service: Updating transport to $transport');
+
+      // Enhanced debugging
+      debugPrint('SIP Service: Accounts model null: ${_accountsModel == null}');
+      debugPrint('SIP Service: Registration state: $_registrationState');
+      if (_accountsModel != null) {
+        debugPrint(
+            'SIP Service: Accounts model length: ${_accountsModel!.length}');
+      }
 
       if (_accountsModel == null) {
         debugPrint('Cannot update transport: Accounts model not initialized');
@@ -394,17 +431,15 @@ mixin _SipServiceAuthentication on _SipServiceBase {
           'SIP Service: Re-registering account - Extension: ${account.sipExtension}, Current state: ${account.regState}');
 
       // First unregister the current account
-      // await _accountsModel!.unregisterAccount(accountIndex);
-      // debugPrint('SIP Service: Unregistered account at index $accountIndex');
+      await _accountsModel!.unregisterAccount(accountIndex);
+      debugPrint('SIP Service: Unregistered account at index $accountIndex');
 
       // Wait a moment for unregistration to complete
-      // await Future.delayed(const Duration(milliseconds: 1000));
+      await Future.delayed(const Duration(milliseconds: 1000));
 
       // Re-register the account
       await _accountsModel!.registerAccount(accountIndex);
-      // _accountsModel!.registerAccount(accountIndex);
-      debugPrint(
-          'SIP Service: Re-registered account at index $accountIndex ${_accountsModel!.length}');
+      debugPrint('SIP Service: Re-registered account at index $accountIndex');
 
       _updateRegistrationState(SipRegistrationState.registered);
       debugPrint('SIP Service: Re-registration completed successfully');
@@ -417,7 +452,7 @@ mixin _SipServiceAuthentication on _SipServiceBase {
   }
 
   /// Enhanced background re-registration with network state awareness and retry logic
-  /// Enhanced background re-registration with network state awareness and retry logic
+  /// Works for both Android and iOS
   @pragma('vm:entry-point')
   Future<bool> attemptBackgroundReregistration() async {
     try {
@@ -452,11 +487,16 @@ mixin _SipServiceAuthentication on _SipServiceBase {
         return false;
       }
 
-      // Ensure we're properly initialized
+      // Ensure we're properly initialized based on platform
       if (_siprixSdk == null || _accountsModel == null) {
         debugPrint(
-            '🔥 SIP Service: SDK not initialized, attempting quick initialization...');
-        await _quickInitializeForBackground();
+            '🔥 SIP Service: SDK not initialized, attempting platform-specific initialization...');
+
+        if (Platform.isAndroid) {
+          await _initializeForAndroidBackground();
+        } else {
+          await _quickInitializeForBackground();
+        }
       }
 
       if (_accountsModel != null && _accountsModel!.length > 0) {
@@ -772,7 +812,7 @@ mixin _SipServiceAuthentication on _SipServiceBase {
     }
   }
 
-  /// Quick initialization for background state
+  /// Quick initialization for iOS background state
   Future<void> _quickInitializeForBackground() async {
     try {
       debugPrint(
@@ -781,9 +821,9 @@ mixin _SipServiceAuthentication on _SipServiceBase {
       if (_siprixSdk == null) {
         _siprixSdk = SiprixVoipSdk();
 
-        // Minimal initialization for background
+        // Minimal initialization for iOS background
         final initData = InitData();
-        initData.license = dotenv.env['SIPRIX_LICENCE'] ?? '';
+        initData.license = '';
         initData.singleCallMode = false;
         initData.shareUdpTransport = true;
         initData.enableVideoCall = false;
@@ -802,6 +842,38 @@ mixin _SipServiceAuthentication on _SipServiceBase {
       debugPrint('🔥 QUICK INIT: Quick initialization completed');
     } catch (e) {
       debugPrint('🔥 QUICK INIT: Error during quick initialization: $e');
+      throw e;
+    }
+  }
+
+  /// Android-specific background service initialization
+  Future<void> _initializeForAndroidBackground() async {
+    try {
+      debugPrint('SIP Service: Initializing for Android background...');
+
+      // Initialize the SDK with Android-specific settings
+      _siprixSdk = SiprixVoipSdk();
+
+      final initData = InitData();
+      initData.license = '';
+      initData.singleCallMode = false;
+      initData.shareUdpTransport = true;
+      initData.enableVideoCall = false;
+
+      // Android-specific settings
+      // initData.enableAndroidForegroundService = true;
+      // initData.foregroundServiceNotificationId = 1001;
+      // initData.foregroundServiceNotificationTitle = AppConstants.appName;
+      // initData.foregroundServiceNotificationText = 'SIP service running';
+
+      await _siprixSdk!.initialize(initData);
+
+      _accountsModel ??= getGlobalAccountsModel() ?? AccountsModel();
+      _callsModel ??= AppCallsModel(_accountsModel!, null, null);
+
+      debugPrint('SIP Service: Android background initialization completed');
+    } catch (e) {
+      debugPrint('SIP Service: Android background initialization failed: $e');
       throw e;
     }
   }
@@ -846,7 +918,7 @@ mixin _SipServiceAuthentication on _SipServiceBase {
   void _scheduleTokenRetry() {
     final delays = [2, 5, 10, 20]; // Retry after 2s, 5s, 10s, 20s
 
-    for (int i = 0; i < 1; i++) {
+    for (int i = 0; i < delays.length; i++) {
       Timer(Duration(seconds: delays[i]), () async {
         debugPrint(
             'SIP Service: PushKit token retry attempt ${i + 1}/${delays.length}');
