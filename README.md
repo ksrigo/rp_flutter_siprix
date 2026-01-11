@@ -37,6 +37,8 @@ Then flutter run again.
 
 ---
 
+flutter run --release
+
 4. Build release APK (for testing before Play Store)
 
 Run:

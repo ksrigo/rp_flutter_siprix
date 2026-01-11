@@ -103,7 +103,7 @@ mixin _SipServiceAuthentication on _SipServiceBase {
       if (Platform.isAndroid) {
         try {
           debugPrint('Register: Checking for Android FCM token...');
-          final fcmToken = await FirebaseMessaging.instance.getToken();
+          final fcmToken = NotificationService.instance.getCurrentFCMToken();
           if (fcmToken != null && fcmToken.isNotEmpty) {
             // Add RFC 8599 push notification parameters to Contact URI
             account.xContactUriParams ??= <String, String>{};
