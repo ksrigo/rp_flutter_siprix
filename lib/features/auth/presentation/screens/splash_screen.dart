@@ -1,9 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/services/auth_service.dart';
+import '../../../../core/services/sip_service.dart';
+import '../../../../core/services/sip_service/sip_service_base.dart' show AppCallState;
+import '../../../../main.dart' show getPendingIncomingCallData, clearPendingIncomingCallData;
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -85,41 +89,229 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   Future<void> _initializeApp() async {
     debugPrint('🔄 SplashScreen: _initializeApp started');
-    
+
     try {
+      // Check for Android fast-start mode (launched from incoming call notification)
+      if (Platform.isAndroid) {
+        final pendingCallData = getPendingIncomingCallData();
+        if (pendingCallData != null) {
+          debugPrint('🚀 SplashScreen: Android fast-start mode detected via getInitialMessage!');
+          debugPrint('🚀 SplashScreen: Pending call data: $pendingCallData');
+          await _handleAndroidFastStart(pendingCallData);
+          return; // Skip normal splash flow
+        }
+
+        // Also check if there's already an active call (app might have been launched
+        // from Siprix's notification, which doesn't set getInitialMessage)
+        debugPrint('🚀 SplashScreen: Checking for active call (Siprix notification launch)...');
+        if (await _checkAndHandleActiveCall()) {
+          return; // Skip normal splash flow
+        }
+      }
+
       // Ensure minimum splash duration - adjusted for smooth transition from Android splash
       final minimumDurationFuture = Future.delayed(const Duration(milliseconds: 2000));
-      
+
       // Start initialization but don't wait for it initially
       final initializationFuture = _performInitialization();
-      
+
       // Always wait for minimum duration first
       debugPrint('🕒 SplashScreen: Starting 2-second minimum display...');
       await minimumDurationFuture;
       debugPrint('✅ SplashScreen: 2-second minimum display completed');
-      
+
       // Then ensure initialization is complete
       debugPrint('🔧 SplashScreen: Ensuring initialization is complete...');
       final targetRoute = await initializationFuture;
       debugPrint('✅ SplashScreen: All initialization completed');
-      
+
       // Navigate to the determined route
       if (targetRoute != null) {
         _navigateToRoute(targetRoute);
       }
-      
+
     } catch (e) {
       debugPrint('❌ SplashScreen: Error during app initialization: $e');
       debugPrint('❌ SplashScreen: Error stack trace: ${e.toString()}');
-      
+
       // Wait minimum duration even on error
       await Future.delayed(const Duration(milliseconds: 1500));
-      
+
       debugPrint('🔐 SplashScreen: Error occurred, navigating to login as fallback');
       _navigateToRoute('/login');
     }
-    
+
     debugPrint('🏁 SplashScreen: _initializeApp finished');
+  }
+
+  /// Check if there's an active call and handle it (for Siprix notification launches)
+  /// Returns true if an active call was found and handled
+  Future<bool> _checkAndHandleActiveCall() async {
+    try {
+      // Quick auth check first
+      await AuthService.instance.initialize();
+      final validToken = await AuthService.instance.getValidAccessToken();
+
+      if (validToken == null) {
+        debugPrint('🚀 SplashScreen: No valid token, skipping active call check');
+        return false;
+      }
+
+      // Initialize SIP service to check for active calls
+      try {
+        await SipService.instance.initialize();
+      } catch (e) {
+        debugPrint('🚀 SplashScreen: SIP service init error during active call check: $e');
+        return false;
+      }
+
+      // Check for active call
+      final currentCall = SipService.instance.currentCall;
+      if (currentCall == null) {
+        debugPrint('🚀 SplashScreen: No active call found');
+        return false;
+      }
+
+      debugPrint('🚀 SplashScreen: Active call found! ID: ${currentCall.id}, State: ${currentCall.state}');
+      debugPrint('🚀 SplashScreen: Caller: ${currentCall.remoteName} (${currentCall.remoteNumber})');
+
+      if (!mounted) return false;
+
+      // Navigate based on call state
+      final isCallConnected = currentCall.state == AppCallState.answered || currentCall.isConnectedWithAudio;
+      final isCallRinging = currentCall.state == AppCallState.ringing;
+
+      if (isCallConnected) {
+        debugPrint('🚀 SplashScreen: Call is connected, navigating to in-call screen');
+        context.go('/in-call?callId=${currentCall.id}&phoneNumber=${Uri.encodeQueryComponent(currentCall.remoteNumber)}&contactName=${Uri.encodeQueryComponent(currentCall.remoteName)}');
+        return true;
+      } else if (isCallRinging) {
+        debugPrint('🚀 SplashScreen: Call is ringing, navigating to incoming call screen');
+        context.go('/incoming-call?callId=${currentCall.id}&callerName=${Uri.encodeQueryComponent(currentCall.remoteName)}&callerNumber=${Uri.encodeQueryComponent(currentCall.remoteNumber)}');
+        return true;
+      } else {
+        // Call exists but in other state (connecting, etc.) - go to in-call
+        debugPrint('🚀 SplashScreen: Call in state ${currentCall.state}, navigating to in-call screen');
+        context.go('/in-call?callId=${currentCall.id}&phoneNumber=${Uri.encodeQueryComponent(currentCall.remoteNumber)}&contactName=${Uri.encodeQueryComponent(currentCall.remoteName)}');
+        return true;
+      }
+    } catch (e) {
+      debugPrint('🚀 SplashScreen: Error checking for active call: $e');
+      return false;
+    }
+  }
+
+  /// Handle Android fast-start mode when app is launched from incoming call notification
+  Future<void> _handleAndroidFastStart(Map<String, dynamic> callData) async {
+    debugPrint('🚀 SplashScreen: Handling Android fast-start...');
+
+    final action = callData['action'];
+    final callId = callData['call_id'] ?? '';
+    final callerName = callData['caller_name'] ?? 'Unknown';
+    final callerNumber = callData['caller_number'] ?? callData['caller_uri'] ?? 'Unknown';
+
+    debugPrint('🚀 SplashScreen: Action: $action, CallId: $callId');
+    debugPrint('🚀 SplashScreen: Caller: $callerName ($callerNumber)');
+    debugPrint('🚀 SplashScreen: Full call data: $callData');
+
+    // Clear pending data to prevent re-processing
+    clearPendingIncomingCallData();
+
+    // Quick auth check (no delay)
+    debugPrint('🚀 SplashScreen: Quick auth check...');
+    await AuthService.instance.initialize();
+    final validToken = await AuthService.instance.getValidAccessToken();
+
+    if (validToken == null) {
+      debugPrint('🚀 SplashScreen: No valid token in fast-start, navigating to login');
+      if (mounted) {
+        context.go('/login');
+      }
+      return;
+    }
+
+    debugPrint('🚀 SplashScreen: Auth valid, processing call action...');
+
+    // Ensure SIP service is ready
+    try {
+      await SipService.instance.initialize();
+      debugPrint('🚀 SplashScreen: SIP service initialized');
+    } catch (e) {
+      debugPrint('🚀 SplashScreen: SIP service initialization error: $e');
+    }
+
+    if (!mounted) return;
+
+    // Check if there's already an active/connected call (Siprix may have already answered)
+    final currentCall = SipService.instance.currentCall;
+    final hasActiveCall = currentCall != null;
+    final isCallConnected = hasActiveCall &&
+        (currentCall.state == AppCallState.answered || currentCall.isConnectedWithAudio);
+    final isCallRinging = hasActiveCall && currentCall.state == AppCallState.ringing;
+
+    debugPrint('🚀 SplashScreen: Current call: $currentCall');
+    debugPrint('🚀 SplashScreen: Has active call: $hasActiveCall, Is connected: $isCallConnected, Is ringing: $isCallRinging');
+    if (hasActiveCall) {
+      debugPrint('🚀 SplashScreen: Call state: ${currentCall.state}');
+    }
+
+    if (action == 'accept' || isCallConnected) {
+      // User accepted call from notification OR call was already accepted by Siprix
+      debugPrint('🚀 SplashScreen: Call accepted (action=$action, isConnected=$isCallConnected)');
+
+      if (!isCallConnected && hasActiveCall) {
+        try {
+          // Set auto-answer flag in case call hasn't been answered yet
+          SipService.instance.setAutoAnswerCall(callId, callerName, callerNumber);
+
+          // Try to answer if call exists but not connected
+          debugPrint('🚀 SplashScreen: Answering call...');
+          await SipService.instance.answerCall(currentCall.id);
+        } catch (e) {
+          debugPrint('🚀 SplashScreen: Error answering call: $e');
+        }
+      }
+
+      // Navigate directly to in-call screen
+      final activeCallId = currentCall?.id ?? callId;
+      final activeCallerNumber = currentCall?.remoteNumber ?? callerNumber;
+      final activeCallerName = currentCall?.remoteName ?? callerName;
+
+      debugPrint('🚀 SplashScreen: Navigating to in-call screen');
+      context.go('/in-call?callId=$activeCallId&phoneNumber=${Uri.encodeQueryComponent(activeCallerNumber)}&contactName=${Uri.encodeQueryComponent(activeCallerName)}');
+    } else if (action == 'reject') {
+      // User rejected call from notification
+      debugPrint('🚀 SplashScreen: User rejected call, hanging up...');
+
+      try {
+        if (hasActiveCall) {
+          await SipService.instance.hangupCall(currentCall.id);
+        } else {
+          await SipService.instance.hangupCall(callId);
+        }
+      } catch (e) {
+        debugPrint('🚀 SplashScreen: Error rejecting call: $e');
+      }
+
+      // Navigate to keypad
+      context.go('/keypad');
+    } else if (hasActiveCall) {
+      // There's an active call but action is not specified
+      // Check if it's ringing (incoming) or connected
+      if (isCallRinging) {
+        debugPrint('🚀 SplashScreen: Call is ringing, navigating to incoming call screen');
+        context.go('/incoming-call?callId=${currentCall.id}&callerName=${Uri.encodeQueryComponent(currentCall.remoteName)}&callerNumber=${Uri.encodeQueryComponent(currentCall.remoteNumber)}');
+      } else {
+        debugPrint('🚀 SplashScreen: Call is active, navigating to in-call screen');
+        context.go('/in-call?callId=${currentCall.id}&phoneNumber=${Uri.encodeQueryComponent(currentCall.remoteNumber)}&contactName=${Uri.encodeQueryComponent(currentCall.remoteName)}');
+      }
+    } else {
+      // No active call and no specific action - show incoming call screen
+      debugPrint('🚀 SplashScreen: No active call, navigating to incoming call screen');
+      context.go('/incoming-call?callId=$callId&callerName=${Uri.encodeQueryComponent(callerName)}&callerNumber=${Uri.encodeQueryComponent(callerNumber)}');
+    }
+
+    debugPrint('🚀 SplashScreen: Android fast-start handling complete');
   }
 
   Future<String?> _performInitialization() async {
