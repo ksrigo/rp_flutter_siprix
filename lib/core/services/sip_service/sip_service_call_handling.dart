@@ -5,7 +5,7 @@ mixin SipServiceCallHandling on _SipServiceBase {
   final Map<int, String> _foregroundCallKitMap = {};
   final Map<int, bool> _callKitReportedMap = {};
   final Map<int, DateTime> _callStartTimeMap = {};
-
+  late InitData initData;
   @override
   @pragma('vm:entry-point')
   Future<void> initialize() async {
@@ -17,9 +17,17 @@ mixin SipServiceCallHandling on _SipServiceBase {
       }
 
       // Initialize Siprix SDK
-      InitData initData = InitData();
-      initData.license = dotenv.env['SIPRIX_LICENCE'] ?? '';
-      initData.singleCallMode = false; // Allow multiple calls
+      try {
+        initData = InitData();
+        //initData.license = '';
+        initData.license = dotenv.env['SIPRIX_LICENCE'] ?? '';
+        initData.singleCallMode = false; // Allow multiple calls
+      } catch (e) {
+        debugPrint('❌ Error initializing SIP service12: $e');
+      }
+      //initData.license = dotenv.env['SIPRIX_LICENCE'] ?? '';
+      // initData.license = '';
+      // initData.singleCallMode = false; // Allow multiple calls
 
       // Share UDP transport for efficiency
       initData.shareUdpTransport = true;

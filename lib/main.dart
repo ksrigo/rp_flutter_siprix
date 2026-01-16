@@ -39,10 +39,9 @@ CdrsModel? getGlobalCdrsModel() => _globalCdrsModel;
 
 void main() async {
   try {
+    debugPrint('🚀 MAIN: Application starting...');
     await dotenv.load(fileName: ".env");
     WidgetsFlutterBinding.ensureInitialized();
-
-    debugPrint('🚀 MAIN: Application starting...');
 
     // CRITICAL FOR iOS: Initialize Siprix SDK IMMEDIATELY to handle VoIP push
     // This must happen BEFORE runApp() so the CallStateListener is ready

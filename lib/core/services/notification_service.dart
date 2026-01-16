@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 // import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart'; // Removed - using Siprix built-in CallKit
@@ -199,6 +201,17 @@ class NotificationService {
       debugPrint('🔥 Android: Caller: ${data['caller_name']} (${data['caller_uri']})');
       debugPrint('🔥 Android: Callee: ${data['callee_uri']}');
 
+      // CRITICAL: Ensure Flutter binding is initialized before anything else
+      // This is required for Siprix SDK's InitData() to work in background
+      debugPrint('🔥 Android: Ensuring Flutter binding is initialized...');
+      WidgetsFlutterBinding.ensureInitialized();
+      debugPrint('🔥 Android: Flutter binding initialized');
+
+      // Load dotenv for SIPRIX_LICENCE access
+      debugPrint('🔥 Android: Loading dotenv...');
+      await dotenv.load(fileName: ".env");
+      debugPrint('🔥 Android: dotenv loaded');
+
       // Initialize core services required by SIP service
       debugPrint('🔥 Android: Initializing storage service...');
       await StorageService.instance.initialize();
@@ -258,13 +271,24 @@ class NotificationService {
     try {
       debugPrint('🔥 Android: STARTING wake-up process for call action from notification');
       debugPrint('🔥 Android: Action data: $data');
-      
+
       final action = data['action'];
       final callId = data['call_id'];
       debugPrint('🔥 Android: Caller: ${data['caller_name']} (${data['caller_number']})');
-      
+
       debugPrint('🔥 Android: Action: $action, CallId: $callId');
-      
+
+      // CRITICAL: Ensure Flutter binding is initialized before anything else
+      // This is required for Siprix SDK's InitData() to work in background
+      debugPrint('🔥 Android: Ensuring Flutter binding is initialized...');
+      WidgetsFlutterBinding.ensureInitialized();
+      debugPrint('🔥 Android: Flutter binding initialized');
+
+      // Load dotenv for SIPRIX_LICENCE access
+      debugPrint('🔥 Android: Loading dotenv...');
+      await dotenv.load(fileName: ".env");
+      debugPrint('🔥 Android: dotenv loaded');
+
       // Initialize core services required by SIP service
       debugPrint('🔥 Android: Initializing services for call action...');
       await StorageService.instance.initialize();
