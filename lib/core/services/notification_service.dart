@@ -72,31 +72,18 @@ class NotificationService {
   Future<void> _initializeFirebaseMessaging() async {
     try {
       // Initialize Firebase if not already done
-      await Firebase.initializeApp();
-      
-      _firebaseMessaging = FirebaseMessaging.instance;
-
-      // Request permission for Android 13+
-      final settings = await _firebaseMessaging!.requestPermission(
-        alert: true,
-        announcement: false,
-        badge: true,
-        carPlay: false,
-        criticalAlert: false,
-        provisional: false,
-        sound: true,
-      );
-
-      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-        debugPrint('Android: User granted permission for notifications');
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp();
+        debugPrint('Android: Firebase initialized in NotificationService');
       } else {
-        debugPrint('Android: User declined or has not accepted permission');
-        return;
+        debugPrint('Android: Firebase already initialized');
       }
 
-      // Get FCM token
-      _fcmToken = await _firebaseMessaging!.getToken();
-      debugPrint('Android: FCM Token: $_fcmToken');
+      _firebaseMessaging = FirebaseMessaging.instance;
+
+      // Request permission for Android 13+ (non-blocking)
+      // Don't wait for user interaction - get token in background
+      _requestPermissionAndGetToken();
 
       // Listen for token refresh
       _firebaseMessaging!.onTokenRefresh.listen((token) {
@@ -109,13 +96,14 @@ class NotificationService {
       // Handle foreground messages
       FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
 
-      // Handle background messages
-      FirebaseMessaging.onBackgroundMessage(_handleBackgroundMessage);
+      // Handle background messages - already registered in main.dart
+      // FirebaseMessaging.onBackgroundMessage(_handleBackgroundMessage);
 
       // Handle notification taps (app opened from background)
       FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
 
       // Check for initial message (app opened from terminated state)
+      // Note: This is also handled in main.dart for fast-start mode
       final initialMessage = await _firebaseMessaging!.getInitialMessage();
       if (initialMessage != null) {
         debugPrint('Android: App opened from terminated state via notification');
@@ -126,6 +114,37 @@ class NotificationService {
 
     } catch (e) {
       debugPrint('Android: Error initializing Firebase Messaging: $e');
+    }
+  }
+
+  /// Get FCM token in background (non-blocking)
+  /// Permission is already requested in main.dart, so just check status and get token
+  Future<void> _requestPermissionAndGetToken() async {
+    try {
+      // Check current notification settings instead of requesting again
+      // (permission is already being requested in main.dart's _getEarlyFcmToken)
+      debugPrint('Android: Checking notification permission status...');
+      final settings = await _firebaseMessaging!.getNotificationSettings();
+
+      if (settings.authorizationStatus == AuthorizationStatus.authorized ||
+          settings.authorizationStatus == AuthorizationStatus.provisional) {
+        debugPrint('Android: Notification permission already granted');
+        // Get FCM token
+        debugPrint('Android: Getting FCM token...');
+        _fcmToken = await _firebaseMessaging!.getToken();
+        debugPrint('Android: FCM Token obtained: $_fcmToken');
+      } else if (settings.authorizationStatus == AuthorizationStatus.notDetermined) {
+        // Permission not yet determined - wait a bit for main.dart's request to complete
+        debugPrint('Android: Permission not determined yet, waiting...');
+        await Future.delayed(const Duration(seconds: 2));
+        // Try to get token (permission should be granted by now)
+        _fcmToken = await _firebaseMessaging!.getToken();
+        debugPrint('Android: FCM Token obtained after wait: $_fcmToken');
+      } else {
+        debugPrint('Android: Notification permission denied');
+      }
+    } catch (e) {
+      debugPrint('Android: Error getting FCM token: $e');
     }
   }
 
@@ -195,49 +214,57 @@ class NotificationService {
 
   @pragma('vm:entry-point')
   static Future<void> wakeUpAndRegisterForIncomingCall(Map<String, dynamic> data) async {
-    try {
-      debugPrint('🔥 Android: STARTING wake-up process for incoming call push notification');
-      debugPrint('🔥 Android: Push data: $data');
-      debugPrint('🔥 Android: Caller: ${data['caller_name']} (${data['caller_uri']})');
-      debugPrint('🔥 Android: Callee: ${data['callee_uri']}');
+    // Use print() for critical logs - debugPrint may not work in background isolates
+    print('🔥 Android: STARTING wake-up process for incoming call push notification');
+    print('🔥 Android: Push data: $data');
+    print('🔥 Android: Caller: ${data['caller_name']} (${data['caller_uri']})');
+    print('🔥 Android: Callee: ${data['callee_uri']}');
 
+    try {
       // CRITICAL: Ensure Flutter binding is initialized before anything else
       // This is required for Siprix SDK's InitData() to work in background
-      debugPrint('🔥 Android: Ensuring Flutter binding is initialized...');
+      print('🔥 Android: Ensuring Flutter binding is initialized...');
       WidgetsFlutterBinding.ensureInitialized();
-      debugPrint('🔥 Android: Flutter binding initialized');
+      print('🔥 Android: Flutter binding initialized');
 
       // Load dotenv for SIPRIX_LICENCE access
-      debugPrint('🔥 Android: Loading dotenv...');
-      await dotenv.load(fileName: ".env");
-      debugPrint('🔥 Android: dotenv loaded');
+      // Note: This may fail in background isolate if assets aren't accessible
+      print('🔥 Android: Loading dotenv...');
+      try {
+        await dotenv.load(fileName: ".env");
+        print('🔥 Android: dotenv loaded');
+      } catch (e) {
+        print('🔥 Android: dotenv load failed (expected in background): $e');
+        // Continue without dotenv - license will be empty but SIP can still register
+      }
 
       // Initialize core services required by SIP service
-      debugPrint('🔥 Android: Initializing storage service...');
+      print('🔥 Android: Initializing storage service...');
       await StorageService.instance.initialize();
-      debugPrint('🔥 Android: Storage service initialized');
+      print('🔥 Android: Storage service initialized');
 
-      // Initialize notification service 
-      debugPrint('🔥 Android: Initializing notification service...');
+      // Initialize notification service
+      print('🔥 Android: Initializing notification service...');
       await NotificationService.instance.initialize();
-      debugPrint('🔥 Android: Notification service initialized');
+      print('🔥 Android: Notification service initialized');
 
       final success = await _ensureSipRegistrationForPush('Background push wake-up');
       if (success) {
-        debugPrint('🔥 Android: ✅ SIP registration successful from background wake-up');
+        print('🔥 Android: ✅ SIP registration successful from background wake-up');
       } else {
-        debugPrint('🔥 Android: ❌ SIP registration failed from background wake-up');
+        print('🔥 Android: ❌ SIP registration failed from background wake-up');
       }
 
       try {
-        debugPrint('🔥 Android: Background wake-up final registration status: ${SipService.instance.isRegistered}');
+        print('🔥 Android: Background wake-up final registration status: ${SipService.instance.isRegistered}');
       } catch (e) {
-        debugPrint('🔥 Android: Could not verify final registration status: $e');
+        print('🔥 Android: Could not verify final registration status: $e');
       }
 
-      debugPrint('🔥 Android: 🎯 App wake-up complete, waiting for incoming SIP call');
-    } catch (e) {
-      debugPrint('Android: Error waking up app for incoming call: $e');
+      print('🔥 Android: 🎯 App wake-up complete, waiting for incoming SIP call');
+    } catch (e, stackTrace) {
+      print('🔥 Android: ❌ Error waking up app for incoming call: $e');
+      print('🔥 Android: Stack trace: $stackTrace');
     }
   }
 
@@ -247,20 +274,20 @@ class NotificationService {
     try {
       final sipService = SipService.instance;
 
-      debugPrint('🔥 Android: [$contextLabel] Ensuring SIP service is initialized');
+      print('🔥 Android: [$contextLabel] Ensuring SIP service is initialized');
       try {
         await sipService.initialize();
-        debugPrint('🔥 Android: [$contextLabel] SIP service initialization complete');
+        print('🔥 Android: [$contextLabel] SIP service initialization complete');
       } catch (e) {
-        debugPrint('🔥 Android: [$contextLabel] SIP service initialization issue: $e');
+        print('🔥 Android: [$contextLabel] SIP service initialization issue: $e');
       }
 
-      debugPrint('🔥 Android: [$contextLabel] Triggering SIP re-registration');
+      print('🔥 Android: [$contextLabel] Triggering SIP re-registration');
       final success = await sipService.attemptBackgroundReregistration();
-      debugPrint('🔥 Android: [$contextLabel] Re-registration result: $success');
+      print('🔥 Android: [$contextLabel] Re-registration result: $success');
       return success;
     } catch (e) {
-      debugPrint('🔥 Android: [$contextLabel] Error ensuring SIP registration: $e');
+      print('🔥 Android: [$contextLabel] Error ensuring SIP registration: $e');
       return false;
     }
   }
@@ -268,63 +295,70 @@ class NotificationService {
   /// Wake up app and handle call action (accept/reject) from notification
   @pragma('vm:entry-point')
   static Future<void> wakeUpAndHandleCallAction(Map<String, dynamic> data) async {
+    // Use print() for critical logs - debugPrint may not work in background isolates
+    print('🔥 Android: STARTING wake-up process for call action from notification');
+    print('🔥 Android: Action data: $data');
+
+    final action = data['action'];
+    final callId = data['call_id'];
+    print('🔥 Android: Caller: ${data['caller_name']} (${data['caller_number']})');
+    print('🔥 Android: Action: $action, CallId: $callId');
+
     try {
-      debugPrint('🔥 Android: STARTING wake-up process for call action from notification');
-      debugPrint('🔥 Android: Action data: $data');
-
-      final action = data['action'];
-      final callId = data['call_id'];
-      debugPrint('🔥 Android: Caller: ${data['caller_name']} (${data['caller_number']})');
-
-      debugPrint('🔥 Android: Action: $action, CallId: $callId');
-
       // CRITICAL: Ensure Flutter binding is initialized before anything else
       // This is required for Siprix SDK's InitData() to work in background
-      debugPrint('🔥 Android: Ensuring Flutter binding is initialized...');
+      print('🔥 Android: Ensuring Flutter binding is initialized...');
       WidgetsFlutterBinding.ensureInitialized();
-      debugPrint('🔥 Android: Flutter binding initialized');
+      print('🔥 Android: Flutter binding initialized');
 
       // Load dotenv for SIPRIX_LICENCE access
-      debugPrint('🔥 Android: Loading dotenv...');
-      await dotenv.load(fileName: ".env");
-      debugPrint('🔥 Android: dotenv loaded');
+      // Note: This may fail in background isolate if assets aren't accessible
+      print('🔥 Android: Loading dotenv...');
+      try {
+        await dotenv.load(fileName: ".env");
+        print('🔥 Android: dotenv loaded');
+      } catch (e) {
+        print('🔥 Android: dotenv load failed (expected in background): $e');
+        // Continue without dotenv - license will be empty but SIP can still register
+      }
 
       // Initialize core services required by SIP service
-      debugPrint('🔥 Android: Initializing services for call action...');
+      print('🔥 Android: Initializing services for call action...');
       await StorageService.instance.initialize();
       await NotificationService.instance.initialize();
-      
+
       // Initialize SIP service
       final sipService = SipService.instance;
       try {
         await sipService.initialize();
-        debugPrint('🔥 Android: SIP service initialized for call action');
+        print('🔥 Android: SIP service initialized for call action');
       } catch (e) {
-        debugPrint('🔥 Android: SIP service initialization failed: $e');
+        print('🔥 Android: SIP service initialization failed: $e');
       }
       
       // Handle the specific action
       if (action == 'accept' && callId != null) {
-        debugPrint('🔥 Android: Handling ACCEPT action for call: $callId');
+        print('🔥 Android: Handling ACCEPT action for call: $callId');
         try {
           await sipService.answerCall(callId);
-          debugPrint('🔥 Android: Call answered successfully from background notification');
+          print('🔥 Android: Call answered successfully from background notification');
         } catch (e) {
-          debugPrint('🔥 Android: Error answering call from background: $e');
+          print('🔥 Android: Error answering call from background: $e');
         }
       } else if (action == 'reject' && callId != null) {
-        debugPrint('🔥 Android: Handling REJECT action for call: $callId');
+        print('🔥 Android: Handling REJECT action for call: $callId');
         try {
           await sipService.hangupCall(callId);
-          debugPrint('🔥 Android: Call rejected successfully from background notification');
+          print('🔥 Android: Call rejected successfully from background notification');
         } catch (e) {
-          debugPrint('🔥 Android: Error rejecting call from background: $e');
+          print('🔥 Android: Error rejecting call from background: $e');
         }
       }
-      
-      debugPrint('🔥 Android: 🎯 Background call action handled');
-    } catch (e) {
-      debugPrint('Android: Error handling call action from background: $e');
+
+      print('🔥 Android: 🎯 Background call action handled');
+    } catch (e, stackTrace) {
+      print('🔥 Android: ❌ Error handling call action from background: $e');
+      print('🔥 Android: Stack trace: $stackTrace');
     }
   }
 

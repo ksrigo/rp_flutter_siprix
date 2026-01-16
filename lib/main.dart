@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:siprix_voip_sdk/cdrs_model.dart';
 import 'dart:io';
@@ -62,16 +63,25 @@ void main() async {
           '🚀 MAIN: ✅ Siprix SDK early initialization complete for all states');
     }
 
-    // Register Firebase background message handler for Android push notifications
+    // Initialize Firebase for Android (required before using any Firebase services)
     if (Platform.isAndroid) {
+      debugPrint('🚀 MAIN: Initializing Firebase for Android...');
+      await Firebase.initializeApp();
+      debugPrint('🚀 MAIN: Firebase initialized');
+
+      // Register Firebase background message handler
       FirebaseMessaging.onBackgroundMessage(
           _firebaseMessagingBackgroundHandler);
+
+      // Start getting FCM token early (non-blocking) so it's available for SIP registration
+      _getEarlyFcmToken();
     }
 
     // CRITICAL FOR Android: Check if app was launched from incoming call notification
     // If so, initialize Siprix SDK early for fast call answering (similar to iOS)
     if (Platform.isAndroid) {
       try {
+        debugPrint('🔥 Android: Checking for initial message...');
         final initialMessage =
             await FirebaseMessaging.instance.getInitialMessage();
         if (initialMessage != null &&
@@ -199,7 +209,8 @@ Future<void> _initializeSiprixForPush() async {
 /// Similar to iOS _initializeSiprixForPush but without CallKit/PushKit settings
 Future<void> _initializeSiprixForAndroid() async {
   try {
-    debugPrint('🚀 MAIN: Android - Initializing Siprix SDK for fast call handling...');
+    debugPrint(
+        '🚀 MAIN: Android - Initializing Siprix SDK for fast call handling...');
     AppConstants.isMainCalled = true;
 
     // Initialize storage first (needed for CDR persistence)
@@ -269,7 +280,8 @@ Future<void> _initializeServices() async {
       await StorageService.instance.initialize();
       debugPrint('🚀 MAIN: StorageService initialized');
     } else {
-      debugPrint('🚀 MAIN: StorageService already initialized in fast-start mode');
+      debugPrint(
+          '🚀 MAIN: StorageService already initialized in fast-start mode');
     }
 
     debugPrint('🚀 MAIN: Initializing ApiService...');
@@ -383,30 +395,61 @@ class RingplusApp extends ConsumerWidget {
   }
 }
 
+/// Get FCM token early in background so it's available for SIP registration
+/// This runs in parallel with app initialization
+Future<void> _getEarlyFcmToken() async {
+  try {
+    debugPrint('🚀 MAIN: Getting FCM token early...');
+
+    // Request permission first (Android 13+)
+    final messaging = FirebaseMessaging.instance;
+    final settings = await messaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+
+    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+      debugPrint('🚀 MAIN: Notification permission granted');
+      final token = await messaging.getToken();
+      debugPrint('🚀 MAIN: Early FCM token obtained: $token');
+    } else {
+      debugPrint('🚀 MAIN: Notification permission not granted');
+    }
+  } catch (e) {
+    debugPrint('🚀 MAIN: Error getting early FCM token: $e');
+  }
+}
+
 /// Firebase background message handler for Android push notifications
 /// This function must be top-level (not inside a class) for Firebase to call it
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // Use print() instead of debugPrint() - debugPrint may not work in background isolates
+  print('🚀 Android: =================================');
+  print('🚀 Android: BACKGROUND PUSH NOTIFICATION RECEIVED');
+  print('🚀 Android: Message ID: ${message.messageId}');
+  print('🚀 Android: From: ${message.from}');
+  print('🚀 Android: Data: ${message.data}');
+  print('🚀 Android: Type: ${message.data['type']}');
+  print('🚀 Android: =================================');
+
   try {
-    debugPrint('🚀 Android: =================================');
-    debugPrint('🚀 Android: BACKGROUND PUSH NOTIFICATION RECEIVED');
-    debugPrint('🚀 Android: Message ID: ${message.messageId}');
-    debugPrint('🚀 Android: From: ${message.from}');
-    debugPrint('🚀 Android: Data: ${message.data}');
-    debugPrint('🚀 Android: Type: ${message.data['type']}');
-    debugPrint('🚀 Android: =================================');
+    // Ensure Flutter binding is initialized in background isolate
+    WidgetsFlutterBinding.ensureInitialized();
+    print('🚀 Android: Flutter binding initialized in background handler');
 
     if (message.data['type'] == 'INCOMING_CALL' ||
         message.data['type'] == 'incoming_call') {
-      debugPrint('🚀 Android: ✅ Recognized as incoming call notification');
+      print('🚀 Android: ✅ Recognized as incoming call notification');
       // Call the notification service handler
       await NotificationService.wakeUpAndRegisterForIncomingCall(message.data);
     } else {
-      debugPrint(
+      print(
           '🚀 Android: ❌ Ignoring push notification with type: ${message.data['type']}');
     }
-  } catch (e) {
-    debugPrint('🚀 Android: ❌ ERROR in background message handler: $e');
-    debugPrint('🚀 Android: Stack trace: ${StackTrace.current}');
+  } catch (e, stackTrace) {
+    print('🚀 Android: ❌ ERROR in background message handler: $e');
+    print('🚀 Android: Stack trace: $stackTrace');
   }
 }
