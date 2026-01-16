@@ -24,15 +24,22 @@ import 'shared/services/storage_service.dart';
 // Global flag to track if we're in fast-start mode (launched from notification)
 bool _isFastStartMode = false;
 
-// Global references to early-initialized Siprix components (for iOS push handling)
+// Global references to early-initialized Siprix components (for iOS/Android push handling)
 // These are created in _initializeSiprixForPush() and reused by SipService
 AppCallsModel? _globalCallsModel;
 AccountsModel? _globalAccountsModel;
 CdrsModel? _globalCdrsModel;
 
+// Store incoming call data from notification launch (for Android fast-start)
+Map<String, dynamic>? _pendingIncomingCallData;
+
 // Getter functions for SipService to access the early-initialized instances
 AppCallsModel? getGlobalCallsModel() => _globalCallsModel;
 AccountsModel? getGlobalAccountsModel() => _globalAccountsModel;
+
+// Getter for pending incoming call data (Android fast-start)
+Map<String, dynamic>? getPendingIncomingCallData() => _pendingIncomingCallData;
+void clearPendingIncomingCallData() => _pendingIncomingCallData = null;
 
 // Termination data storage
 CdrsModel? getGlobalCdrsModel() => _globalCdrsModel;
@@ -61,18 +68,30 @@ void main() async {
           _firebaseMessagingBackgroundHandler);
     }
 
-    // Check if app was launched from notification (fast-start mode)
+    // CRITICAL FOR Android: Check if app was launched from incoming call notification
+    // If so, initialize Siprix SDK early for fast call answering (similar to iOS)
     if (Platform.isAndroid) {
       try {
         final initialMessage =
             await FirebaseMessaging.instance.getInitialMessage();
         if (initialMessage != null &&
             (initialMessage.data['type'] == 'INCOMING_CALL' ||
-                initialMessage.data['type'] == 'incoming_call') &&
-            initialMessage.data['action'] == 'accept') {
+                initialMessage.data['type'] == 'incoming_call')) {
           _isFastStartMode = true;
+          _pendingIncomingCallData = initialMessage.data;
           debugPrint(
-              '🚀 MAIN: Fast-start mode enabled - launched from notification acceptance');
+              '🚀 MAIN: Android fast-start mode - launched from incoming call notification');
+          debugPrint(
+              '🚀 MAIN: Action: ${initialMessage.data['action']}, CallId: ${initialMessage.data['call_id']}');
+          debugPrint(
+              '🚀 MAIN: Caller: ${initialMessage.data['caller_name']} (${initialMessage.data['caller_number']})');
+
+          // Initialize Siprix SDK early for fast call handling (like iOS)
+          debugPrint(
+              '🚀 MAIN: Android - initializing Siprix SDK early for fast call answering');
+          await _initializeSiprixForAndroid();
+          debugPrint(
+              '🚀 MAIN: ✅ Android Siprix SDK early initialization complete');
         }
       } catch (e) {
         debugPrint('🚀 MAIN: Error checking initial message: $e');
@@ -176,12 +195,82 @@ Future<void> _initializeSiprixForPush() async {
   }
 }
 
+/// Android-specific Siprix initialization for fast-start mode (launched from notification)
+/// Similar to iOS _initializeSiprixForPush but without CallKit/PushKit settings
+Future<void> _initializeSiprixForAndroid() async {
+  try {
+    debugPrint('🚀 MAIN: Android - Initializing Siprix SDK for fast call handling...');
+    AppConstants.isMainCalled = true;
+
+    // Initialize storage first (needed for CDR persistence)
+    await StorageService.instance.initialize();
+    debugPrint('🚀 MAIN: Android - StorageService initialized');
+
+    final siprixSdk = SiprixVoipSdk();
+
+    final initData = InitData();
+    initData.license = dotenv.env['SIPRIX_LICENCE'] ?? '';
+    initData.singleCallMode = false;
+    initData.shareUdpTransport = true;
+    initData.enableVideoCall = false;
+    // Android doesn't use CallKit/PushKit - uses FCM instead
+    initData.unregOnDestroy = false;
+
+    _globalAccountsModel = AccountsModel();
+    debugPrint('🚀 MAIN: Android - AccountsModel created');
+
+    // Create CdrsModel to track call history
+    _globalCdrsModel = CdrsModel(maxItems: 100);
+    debugPrint('🚀 MAIN: Android - CdrsModel created');
+
+    // Set up CDR persistence - save changes to storage
+    _globalCdrsModel!.onSaveChanges = (String jsonStr) async {
+      debugPrint('🚀 MAIN: Android - Saving CDR history to storage');
+      await StorageService.instance.saveCdrCallHistory(jsonStr);
+    };
+
+    // Load CDRs from storage
+    try {
+      final savedCdrs = await StorageService.instance.getCdrCallHistory();
+      if (savedCdrs != null && savedCdrs.isNotEmpty) {
+        _globalCdrsModel!.loadFromJson(savedCdrs);
+        debugPrint(
+            '🚀 MAIN: Android - Loaded ${_globalCdrsModel!.length} CDR entries from storage');
+      } else {
+        debugPrint('🚀 MAIN: Android - No saved CDR history found');
+      }
+    } catch (e) {
+      debugPrint('🚀 MAIN: Android - Error loading CDR history: $e');
+    }
+
+    // Create AppCallsModel - this sets up the CallStateListener
+    _globalCallsModel =
+        AppCallsModel(_globalAccountsModel!, null, _globalCdrsModel);
+    debugPrint(
+        '🚀 MAIN: Android - AppCallsModel created with CdrsModel - CallStateListener configured');
+
+    // Initialize SDK
+    await siprixSdk.initialize(initData);
+
+    debugPrint('🚀 MAIN: Android - Siprix SDK initialized');
+    debugPrint('🚀 MAIN: ✅ Android Siprix SDK ready for fast call handling');
+  } catch (e, stackTrace) {
+    debugPrint('🚀 MAIN: ❌ Android - Failed to initialize Siprix SDK: $e');
+    debugPrint('🚀 MAIN: Android - Stack trace: $stackTrace');
+  }
+}
+
 Future<void> _initializeServices() async {
   try {
     // Always initialize critical services first
-    debugPrint('🚀 MAIN: Initializing StorageService...');
-    await StorageService.instance.initialize();
-    debugPrint('🚀 MAIN: StorageService initialized');
+    // Skip StorageService if already initialized in Android fast-start mode
+    if (!_isFastStartMode || !Platform.isAndroid) {
+      debugPrint('🚀 MAIN: Initializing StorageService...');
+      await StorageService.instance.initialize();
+      debugPrint('🚀 MAIN: StorageService initialized');
+    } else {
+      debugPrint('🚀 MAIN: StorageService already initialized in fast-start mode');
+    }
 
     debugPrint('🚀 MAIN: Initializing ApiService...');
     await ApiService.instance.initialize();
